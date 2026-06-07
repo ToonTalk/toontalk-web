@@ -223,11 +223,11 @@ async function start(): Promise<void> {
       return;
     }
     setHud(
-      `ToonTalk Web — Phase 3\n` +
+      `ToonTalk Web — Phase 4\n` +
         `render mode: ${mode}\n` +
         `things: ${world.size}\n` +
         `trained robot + 2-number box → it adds · UNtrained robot + filled box → train it\n` +
-        `numbers add · text joins · box holes fill · bird→nest · wand copies` +
+        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty erases · bomb destroys` +
         (lastResult && lastResult !== 'none' && lastResult !== 'train'
           ? `\nlast drop: ${lastResult}`
           : ''),
