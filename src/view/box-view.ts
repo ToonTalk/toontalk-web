@@ -34,14 +34,24 @@ export class BoxView extends ThingView {
     frame.endFill();
     this.container.addChild(frame);
 
+    const cubby = this.textures.get('cubby');
     for (let i = 0; i < n; i++) {
       const cx = left + i * (CELL + GAP) + CELL / 2;
-      const cell = new PIXI.Graphics();
-      cell.lineStyle(bw, 0x2e6e8e, 1);
-      cell.beginFill(0xcdeaf5, 1);
-      cell.drawRoundedRect(cx - CELL / 2, -CELL / 2, CELL, CELL, r);
-      cell.endFill();
-      this.container.addChild(cell);
+      if (cubby && cubby !== PIXI.Texture.WHITE) {
+        // Authentic cyan cubby cell, nine-sliced to the hole size.
+        const plane = new PIXI.NineSlicePlane(cubby, 14, 18, 14, 20);
+        plane.width = CELL;
+        plane.height = CELL;
+        plane.position.set(cx - CELL / 2, -CELL / 2);
+        this.container.addChild(plane);
+      } else {
+        const cell = new PIXI.Graphics();
+        cell.lineStyle(bw, 0x2e6e8e, 1);
+        cell.beginFill(0xcdeaf5, 1);
+        cell.drawRoundedRect(cx - CELL / 2, -CELL / 2, CELL, CELL, r);
+        cell.endFill();
+        this.container.addChild(cell);
+      }
 
       const occupant = box.contentsAt(i);
       if (occupant) {

@@ -65,10 +65,12 @@ When in doubt, consult the per-element manual pages (URLs below).
   font, no shadows; `?mode=modern` = rounded corners, soft drop shadows, drag
   glow, smoothed textures, clean sans. Driven by theme fields (`cornerRadius`,
   `borderWidth`, `fontFamily`, `dropShadow`, `scaleMode`, `dragHighlight`).
-  ▢ **Deeper faithfulness TODO:** numbers/text/boxes are still drawn as themed
-  rounded-rects, not the original bitmaps. To really match the desktop look, wire
-  the authentic plates (`NUMBPLAT`/`TEXTPLT1`, chroma-keyed) and the cubby art
-  (`cubby.png`, needs 9-slice) into the pad/box views.
+  ✅ **Authentic plates done:** numbers use `numplat.png` (NUMBPLAT, green lego
+  plate), text uses `textplat.png` (TEXTPLT1, pink), boxes use `cubby.png`
+  (CUBBY0, cyan) — all rendered as **nine-slice** via `view/plate.ts`
+  (`drawPlate`) so the studded border stays crisp while the centre fits the
+  label. Chroma keys (green/magenta) are NOT keyed out — the plates are
+  rectangular, used whole. Insets are in number-view/text-view/box-view.
 
 ## Reference: the original manual
 
