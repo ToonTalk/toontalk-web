@@ -12,13 +12,16 @@ export function renderThingDisplay(
   thing: Thing,
   textures: Map<string, PIXI.Texture>,
   theme: RenderTheme,
-  maxSize: number,
+  size: number,
+  opts: { scaleUp?: boolean } = {},
 ): PIXI.Container {
   const view = createThingView(thing, textures, theme);
   const node = view.container;
   node.eventMode = 'none';
   const bounds = node.getLocalBounds();
   const largest = Math.max(bounds.width, bounds.height, 1);
-  if (largest > maxSize) node.scale.set(maxSize / largest);
+  // Shrink to fit by default; with scaleUp, also enlarge small things to fill
+  // `size` (used so a delivered thing fully covers its nest).
+  if (largest > size || opts.scaleUp) node.scale.set(size / largest);
   return node;
 }

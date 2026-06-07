@@ -38,16 +38,20 @@ export class NestView extends ThingView {
 
     const latest = nest.latest();
     if (latest) {
-      // The delivered thing sits ON the nest, covering the egg, and is grabbable.
-      const node = renderThingDisplay(latest, this.textures, this.theme, sprite.height * 0.7);
-      node.position.set(0, -sprite.height * 0.06);
+      // A delivered thing fully covers the nest (the egg disappears beneath it),
+      // centered and scaled up to the nest's footprint, and is grabbable.
+      const cover = Math.max(sprite.width, sprite.height);
+      const node = renderThingDisplay(latest, this.textures, this.theme, cover, {
+        scaleUp: true,
+      });
+      node.position.set(0, 0);
       this.container.addChild(node);
       this.itemNode = node;
 
       if (nest.contents.length > 1) {
         const b = node.getBounds();
         const badge = new PIXI.Text(`×${nest.contents.length}`, {
-          fontFamily: 'Tahoma, system-ui, sans-serif',
+          fontFamily: this.theme.fontFamily,
           fontSize: 13,
           fill: 0x884400,
           fontWeight: 'bold',

@@ -23,7 +23,7 @@ export function drawPad(
   const padY = 8;
 
   const text = new PIXI.Text(label, {
-    fontFamily: 'Tahoma, Verdana, system-ui, sans-serif',
+    fontFamily: theme.fontFamily,
     fontSize: 22,
     fill: opts.textColor ?? 0x102030,
     align: 'center',
@@ -32,16 +32,17 @@ export function drawPad(
 
   const w = Math.max(40, text.width + padX * 2);
   const h = Math.max(34, text.height + padY * 2);
+  const r = theme.cornerRadius;
 
   const bg = new PIXI.Graphics();
   if (theme.dropShadow) {
     bg.beginFill(0x000000, 0.2);
-    bg.drawRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, 10);
+    bg.drawRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, r);
     bg.endFill();
   }
-  bg.lineStyle(2, opts.borderColor ?? 0x3a4a5a, 1);
+  bg.lineStyle(theme.borderWidth, opts.borderColor ?? 0x3a4a5a, 1);
   bg.beginFill(fill, 1);
-  bg.drawRoundedRect(-w / 2, -h / 2, w, h, theme.mode === 'modern' ? 10 : 4);
+  bg.drawRoundedRect(-w / 2, -h / 2, w, h, r);
   bg.endFill();
 
   node.addChild(bg, text);

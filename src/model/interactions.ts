@@ -35,6 +35,7 @@ export type DropResult =
   | 'train'
   | 'erased'
   | 'exploded'
+  | 'joined'
   | 'none';
 
 export function resolveDrop(
@@ -97,6 +98,15 @@ export function resolveDrop(
       if (robot.actions.length === 0) return 'train';
       return runRobot(world, robot, box) ? 'ran' : 'none';
     }
+  }
+
+  // Two boxes dropped edge-to-edge (not into a specific hole) join into one,
+  // like text pads: the drop side decides which end the holes are added to.
+  if (dragged instanceof Box && target instanceof Box && ctx.holeIndex == null) {
+    target.join(dragged, ctx.side ?? 'right');
+    world.remove(dragged.id);
+    world.notifyChanged(target);
+    return 'joined';
   }
 
   // Give a thing to a bird → it delivers to its nest.

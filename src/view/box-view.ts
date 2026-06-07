@@ -18,25 +18,28 @@ export class BoxView extends ThingView {
     const totalW = n * CELL + (n - 1) * GAP;
     const left = -totalW / 2;
 
+    const r = this.theme.cornerRadius;
+    const bw = this.theme.borderWidth;
+
     const frame = new PIXI.Graphics();
     if (this.theme.dropShadow) {
       frame.beginFill(0x000000, 0.2);
-      frame.drawRoundedRect(left - 6 + 3, -CELL / 2 - 6 + 4, totalW + 12, CELL + 12, 10);
+      frame.drawRoundedRect(left - 6 + 3, -CELL / 2 - 6 + 4, totalW + 12, CELL + 12, r);
       frame.endFill();
     }
     // Authentic ToonTalk box (cubby) palette: blue lego, sampled from CUBBY1.BMP.
-    frame.lineStyle(3, 0x2e6e8e, 1);
+    frame.lineStyle(bw + 1, 0x2e6e8e, 1);
     frame.beginFill(0x5aa6c8, 1);
-    frame.drawRoundedRect(left - 6, -CELL / 2 - 6, totalW + 12, CELL + 12, 8);
+    frame.drawRoundedRect(left - 6, -CELL / 2 - 6, totalW + 12, CELL + 12, r);
     frame.endFill();
     this.container.addChild(frame);
 
     for (let i = 0; i < n; i++) {
       const cx = left + i * (CELL + GAP) + CELL / 2;
       const cell = new PIXI.Graphics();
-      cell.lineStyle(2, 0x2e6e8e, 1);
+      cell.lineStyle(bw, 0x2e6e8e, 1);
       cell.beginFill(0xcdeaf5, 1);
-      cell.drawRoundedRect(cx - CELL / 2, -CELL / 2, CELL, CELL, 6);
+      cell.drawRoundedRect(cx - CELL / 2, -CELL / 2, CELL, CELL, r);
       cell.endFill();
       this.container.addChild(cell);
 

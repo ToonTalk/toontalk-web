@@ -19,8 +19,10 @@ import { Wand } from '../model/wand';
 import { NumberThing } from '../model/number';
 import type { Renderer } from '../view/renderer';
 import type { ThingView } from '../view/thing-view';
+import type { RenderTheme } from '../config/render-mode';
 import { BoxView } from '../view/box-view';
 import { NestView } from '../view/nest-view';
+import { renderThingDisplay } from '../view/display';
 
 export type DropResolver = (dragged: Thing, target: Thing | undefined, ctx: DropContext) => void;
 export type TrainStep = (from: number, to: number) => void;
@@ -29,18 +31,22 @@ export class DragController {
   private dragging: ThingView | null = null;
   private grabOffset = { x: 0, y: 0 };
   private trainFrom: number | null = null;
+  /** Floating copy of a hole's contents, shown while demonstrating a combine. */
+  private trainGhost: PIXI.Container | null = null;
 
   constructor(
     private readonly world: World,
-    renderer: Renderer,
+    private readonly renderer: Renderer,
     private readonly views: Map<string, ThingView>,
     private readonly resolve: DropResolver,
     private readonly trainer: Trainer,
     private readonly onTrainStep: TrainStep,
+    private readonly textures: Map<string, PIXI.Texture>,
+    private readonly theme: RenderTheme,
   ) {
-    const stage = renderer.app.stage;
+    const stage = this.renderer.app.stage;
     stage.eventMode = 'static';
-    stage.hitArea = renderer.app.screen;
+    stage.hitArea = this.renderer.app.screen;
     stage.on('pointerdown', this.onPointerDown);
     stage.on('pointermove', this.onPointerMove);
     stage.on('pointerup', this.onPointerUp);
@@ -86,10 +92,22 @@ export class DragController {
   private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
     const { x, y } = e.global;
 
-    // Training: begin a hole-to-hole demonstration.
+    // Training: begin a hole-to-hole demonstration, lifting a visible copy of
+    // the grabbed hole's contents so the gesture is legible.
     if (this.trainer.active) {
       const bv = this.trainingBoxView();
       this.trainFrom = bv ? bv.holeIndexAt(x, y) : null;
+      this.clearTrainGhost();
+      const box = this.trainer.box;
+      const occupant = this.trainFrom != null ? box?.contentsAt(this.trainFrom) : null;
+      if (occupant) {
+        const ghost = renderThingDisplay(occupant, this.textures, this.theme, 56);
+        ghost.position.set(x, y);
+        ghost.alpha = 0.85;
+        ghost.zIndex = 5000;
+        this.renderer.thingLayer.addChild(ghost);
+        this.trainGhost = ghost;
+      }
       return;
     }
 
@@ -143,7 +161,11 @@ export class DragController {
   }
 
   private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
-    if (this.trainer.active || !this.dragging) return;
+    if (this.trainer.active) {
+      if (this.trainGhost) this.trainGhost.position.set(e.global.x, e.global.y);
+      return;
+    }
+    if (!this.dragging) return;
     const { x, y } = e.global;
     this.world.moveThing(this.dragging.thing.id, {
       x: x + this.grabOffset.x,
@@ -151,9 +173,17 @@ export class DragController {
     });
   };
 
+  private clearTrainGhost(): void {
+    if (this.trainGhost) {
+      this.trainGhost.destroy({ children: true });
+      this.trainGhost = null;
+    }
+  }
+
   private onPointerUp = (e: PIXI.FederatedPointerEvent): void => {
     // Training: complete a hole-to-hole demonstration.
     if (this.trainer.active) {
+      this.clearTrainGhost();
       if (this.trainFrom != null) {
         const bv = this.trainingBoxView();
         const to = bv ? bv.holeIndexAt(e.global.x, e.global.y) : null;
@@ -211,6 +241,9 @@ export class DragController {
       if (tv instanceof BoxView) {
         const hole = tv.holeIndexAt(cx, cy);
         if (hole != null) ctx.holeIndex = hole;
+        // Dropped on the box's edge (not over a hole) → record a side so two
+        // boxes can join.
+        else ctx.side = cx < target.x ? 'left' : 'right';
       } else {
         ctx.side = cx < target.x ? 'left' : 'right';
       }

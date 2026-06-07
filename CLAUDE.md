@@ -51,6 +51,15 @@ When in doubt, consult the per-element manual pages (URLs below).
   like the green/magenta-keyed number/text plates).
 - Known M25 gaps already substituted: wand (`USEWAND1`), dusty (`SUCK0`),
   thought bubble (`BUBBL10`). Tooling: `tools/parse-tts.py` → `tools/tts-manifest.json`.
+- **Render modes** (`config/render-mode.ts`, view-only): `?mode=faithful`
+  (default) = square corners, chunky borders, nearest-neighbor pixels, playful
+  font, no shadows; `?mode=modern` = rounded corners, soft drop shadows, drag
+  glow, smoothed textures, clean sans. Driven by theme fields (`cornerRadius`,
+  `borderWidth`, `fontFamily`, `dropShadow`, `scaleMode`, `dragHighlight`).
+  ▢ **Deeper faithfulness TODO:** numbers/text/boxes are still drawn as themed
+  rounded-rects, not the original bitmaps. To really match the desktop look, wire
+  the authentic plates (`NUMBPLAT`/`TEXTPLT1`, chroma-keyed) and the cubby art
+  (`cubby.png`, needs 9-slice) into the pad/box views.
 
 ## Reference: the original manual
 
@@ -89,13 +98,16 @@ divergence/simplification in our current code, ▢ = not yet implemented.
 - **Text** (`text.htm`): ✅ drop side decides order (left=prepend, right=append).
   ▢ a **blank pad acts as a wildcard** in robot conditions (like erased); ▢
   dropping a number on a blank pad converts it to text; ▢ editing.
-- **Boxes** (`box.htm`): ✅ holes fill / combine-in-place. ▢ **join** (drop box on
-  another box's edge → merged box), ▢ **split** (drop box on a number N → splits
-  into N and remainder), ▢ text on an (erased/empty) box explodes into one hole
-  per character, ▢ set hole count by typing a digit. Robots ignore hole labels —
-  only hole count + contents matter (we have no labels, fine).
+- **Boxes** (`box.htm`): ✅ holes fill / combine-in-place. ✅ **join** — drop a box
+  on another box's *edge* (not over a hole) → holes merge, side decides order
+  (`Box.join`); dropping *over a hole* still nests/fills. ▢ **split** (drop box on
+  a number N → splits into N and remainder), ▢ text on an (erased/empty) box
+  explodes into one hole per character, ▢ set hole count by typing a digit.
+  Robots ignore hole labels — only hole count + contents matter (we have no
+  labels, fine).
 - **Birds & nests** (`bird.htm`): ⚠ a bird **stacks** deliveries on the nest (we
-  show latest + count). ▢ copying a *nest* makes the bird copy itself to deliver
+  show latest + count). ✅ a delivered thing now **fully covers** the nest
+  (centered, scaled up via `renderThingDisplay(..., { scaleUp: true })`). ▢ copying a *nest* makes the bird copy itself to deliver
   to both nests; ▢ combining nests (drop nest on nest); ▢ eggs hatch into birds;
   ▢ a nest saved without its bird reloads as a fresh egg → new bird. Birds/nests
   are ToonTalk's inter-process channel (a robot waits for a bird to fill a nest).

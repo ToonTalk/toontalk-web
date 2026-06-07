@@ -104,6 +104,8 @@ async function start(): Promise<void> {
       trainer.recordCombine(from, to);
       updateHud('train');
     },
+    textures,
+    theme,
   );
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels

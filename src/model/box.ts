@@ -4,6 +4,7 @@
  * Boxes are how data is structured and how robots' conditions are expressed.
  */
 import { Thing, type ThingKind, type ThingSnapshot } from './thing';
+import type { Side } from './text';
 
 export interface BoxSnapshot extends ThingSnapshot {
   holes: (ThingSnapshot | null)[];
@@ -48,6 +49,16 @@ export class Box extends Thing {
     const t = this.holes[i] ?? null;
     this.holes[i] = null;
     return t;
+  }
+
+  /**
+   * Merge another box's holes into this one, like joining text pads: dropping on
+   * the right side appends the other box's holes after ours; the left side
+   * prepends them. The other box is consumed by the caller.
+   */
+  join(other: Box, side: Side): void {
+    if (side === 'left') this.holes.unshift(...other.holes);
+    else this.holes.push(...other.holes);
   }
 
   copy(): Box {

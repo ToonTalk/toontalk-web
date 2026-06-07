@@ -20,7 +20,7 @@ export class NumberView extends ThingView {
 
     // Operation badge (top-left), only meaningful for non-default ops shown subtly.
     const badge = new PIXI.Text(OP_GLYPH[n.operation] ?? '+', {
-      fontFamily: 'Tahoma, system-ui, sans-serif',
+      fontFamily: this.theme.fontFamily,
       fontSize: 14,
       fill: 0x884400,
       fontWeight: 'bold',

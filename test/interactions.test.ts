@@ -107,6 +107,41 @@ describe('resolveDrop: boxes', () => {
   });
 });
 
+describe('resolveDrop: box joining', () => {
+  it('joins two boxes on the right by default (holes appended)', () => {
+    const w = new World();
+    const target = w.add(new Box({ holes: [new NumberThing({ value: 1 })] })) as Box;
+    const dragged = w.add(new Box({ holes: [new NumberThing({ value: 2 }), null] })) as Box;
+    const result = resolveDrop(w, dragged, target, { side: 'right' });
+    expect(result).toBe('joined');
+    expect(target.size).toBe(3);
+    expect((target.contentsAt(0) as NumberThing).value.toString()).toBe('1');
+    expect((target.contentsAt(1) as NumberThing).value.toString()).toBe('2');
+    expect(target.isHoleEmpty(2)).toBe(true);
+    expect(w.get(dragged.id)).toBeUndefined();
+  });
+
+  it('joins on the left (holes prepended)', () => {
+    const w = new World();
+    const target = w.add(new Box({ holes: [new NumberThing({ value: 1 })] })) as Box;
+    const dragged = w.add(new Box({ holes: [new NumberThing({ value: 2 })] })) as Box;
+    resolveDrop(w, dragged, target, { side: 'left' });
+    expect(target.size).toBe(2);
+    expect((target.contentsAt(0) as NumberThing).value.toString()).toBe('2');
+    expect((target.contentsAt(1) as NumberThing).value.toString()).toBe('1');
+  });
+
+  it('nests (fills a hole) rather than joining when dropped onto a hole', () => {
+    const w = new World();
+    const target = w.add(new Box({ size: 1 })) as Box;
+    const dragged = w.add(new Box({ size: 1 })) as Box;
+    const result = resolveDrop(w, dragged, target, { holeIndex: 0 });
+    expect(result).toBe('filled');
+    expect(target.size).toBe(1);
+    expect(target.contentsAt(0)).toBe(dragged);
+  });
+});
+
 describe('resolveDrop: no-ops', () => {
   it('does nothing for incompatible types', () => {
     const w = new World();

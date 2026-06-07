@@ -26,6 +26,12 @@ export interface RenderTheme {
   /** Highlight style when a thing is being dragged. */
   dragHighlight: 'none' | 'glow';
   background: number;
+  /** Corner radius for pads/boxes: square & chunky (faithful) vs rounded (modern). */
+  cornerRadius: number;
+  /** Border thickness for pads/boxes (faithful uses chunkier outlines). */
+  borderWidth: number;
+  /** UI font: a blocky retro face (faithful) vs a clean sans (modern). */
+  fontFamily: string;
 }
 
 export function themeFor(mode: RenderMode): RenderTheme {
@@ -36,6 +42,9 @@ export function themeFor(mode: RenderMode): RenderTheme {
       dropShadow: true,
       dragHighlight: 'glow',
       background: 0x2a2d3a,
+      cornerRadius: 12,
+      borderWidth: 2,
+      fontFamily: 'Tahoma, Verdana, system-ui, sans-serif',
     };
   }
   return {
@@ -44,5 +53,8 @@ export function themeFor(mode: RenderMode): RenderTheme {
     dropShadow: false,
     dragHighlight: 'none',
     background: 0x000000,
+    cornerRadius: 0,
+    borderWidth: 3,
+    fontFamily: '"Comic Sans MS", "Chalkboard SE", "Courier New", monospace',
   };
 }
