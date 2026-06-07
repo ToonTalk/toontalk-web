@@ -36,7 +36,11 @@ export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, 
 /** Called when a toolbox/tool icon is clicked; spawns that element in the world. */
 export type PickHandler = (key: string) => void;
 
-const ARM_COLOR = 0xcb6b5e; // sampled from the hand's coral sleeve
+const ARM_COLOR = 0xbb5d64; // sampled from the hand texture's wrist stub
+// The wrist stub in hand.png sits right-of-centre; the arm must continue it.
+const WRIST_CX = 0.18; // stub centre offset from sprite centre, as a fraction of width
+const WRIST_W = 0.32; // stub width as a fraction of sprite width
+const WRIST_TOP = 0.72; // where the sleeve starts, as a fraction of sprite height below the hotspot
 
 export class Room {
   private readonly floor: PIXI.TilingSprite;
@@ -81,18 +85,19 @@ export class Room {
     this.layoutChrome();
   }
 
-  /** Move the hand so its fingertip points at (x, y); a coral arm trails down. */
+  /** Move the hand so its fingertip points at (x, y); the sleeve continues the
+   * hand texture's wrist stub (same colour, position and width) down off-screen. */
   setHand(x: number, y: number): void {
     this.handSprite.position.set(x, y);
     const w = this.handSprite.width;
     const h = this.handSprite.height;
-    const wristY = y + h * 0.42; // where the hand meets the sleeve
+    const armCx = x + w * WRIST_CX;
+    const armW = w * WRIST_W;
+    const wristY = y + h * WRIST_TOP; // starts inside the hand, emerges at the wrist
     const bottom = this.renderer.height + 40;
-    const armW = w * 0.34;
     this.arm.clear();
     this.arm.beginFill(ARM_COLOR, 1);
-    // A rounded, near-constant-width sleeve down to off-screen.
-    this.arm.drawRoundedRect(x - armW / 2, wristY, armW, bottom - wristY, armW * 0.5);
+    this.arm.drawRoundedRect(armCx - armW / 2, wristY, armW, bottom - wristY, armW * 0.5);
     this.arm.endFill();
   }
 

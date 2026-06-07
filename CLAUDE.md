@@ -156,6 +156,13 @@ divergence/simplification in our current code, ▢ = not yet implemented.
 
 ## Room reconstruction (the desktop shell)
 
+ToonTalk has **3 house types, each with a different floor colour** (tan `FLOORC`,
+blue `FLOORB`, green `FLOORD` — all 640×480 baseplates in M25). We render the tan
+floor; per-house floor colour is a later concern. The hand cursor's coral sleeve
+must continue `hand.png`'s **wrist stub**, which sits right-of-centre (~0.68w,
+~0.32w wide, colour `#bb5d64`) — see `WRIST_*` constants in room.ts.
+
+
 `src/view/room.ts` (`Room`) reconstructs the original ToonTalk room as
 presentation-only chrome over the model: a tiled **tan floor** (`FLOORC`), the
 open **toolbox** top-right (a drawn tray with the tool icons), an open
