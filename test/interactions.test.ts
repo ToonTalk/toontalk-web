@@ -20,9 +20,49 @@ describe('resolveDrop: numbers', () => {
   it('applies the dragged number operation (target op dragged)', () => {
     const w = new World();
     const target = w.add(new NumberThing({ value: 10 })) as NumberThing;
-    const dragged = w.add(new NumberThing({ value: 4, operation: '-' })) as NumberThing;
+    const dragged = w.add(new NumberThing({ value: 4, operation: '*' })) as NumberThing;
     resolveDrop(w, dragged, target);
-    expect(target.value.toString()).toBe('6');
+    expect(target.value.toString()).toBe('40');
+  });
+
+  it('subtracts via negate-then-add (the manual has no binary minus)', () => {
+    const w = new World();
+    const target = w.add(new NumberThing({ value: 10 })) as NumberThing;
+    const dragged = w.add(new NumberThing({ value: 4 })) as NumberThing; // op '+'
+    dragged.negate(); // the '-' key flips the sign → -4
+    resolveDrop(w, dragged, target);
+    expect(target.value.toString()).toBe('6'); // 10 + (-4)
+  });
+
+  it('supports remainder, power, divide (exact), and replace ops', () => {
+    const run = (a: number, b: number, op: '%' | '^' | '/' | '=') => {
+      const w = new World();
+      const target = w.add(new NumberThing({ value: a })) as NumberThing;
+      const dragged = w.add(new NumberThing({ value: b, operation: op })) as NumberThing;
+      resolveDrop(w, dragged, target);
+      return (target.value as { toString(): string }).toString();
+    };
+    expect(run(7, 2, '%')).toBe('1');
+    expect(run(7, 2, '^')).toBe('49');
+    expect(run(4, 3, '/')).toBe('4/3'); // exact fraction
+    expect(run(7, 2, '=')).toBe('2'); // replacement
+  });
+
+  it('drops a number on a blank text pad → digits become text', () => {
+    const w = new World();
+    const pad = w.add(new TextThing({ value: '' })) as TextThing;
+    const num = w.add(new NumberThing({ value: 42 })) as NumberThing;
+    expect(resolveDrop(w, num, pad)).toBe('combined');
+    expect(pad.value).toBe('42');
+    expect(w.get(num.id)).toBeUndefined();
+  });
+
+  it('leaves a NON-blank text pad alone when a number is dropped', () => {
+    const w = new World();
+    const pad = w.add(new TextThing({ value: 'x' })) as TextThing;
+    const num = w.add(new NumberThing({ value: 42 })) as NumberThing;
+    expect(resolveDrop(w, num, pad)).toBe('none');
+    expect(pad.value).toBe('x');
   });
 });
 

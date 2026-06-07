@@ -3,12 +3,16 @@
  * what happens when this number is dropped onto another number.
  *
  * ToonTalk semantics: dropping number A (with operation op) onto number B makes
- * B become "B op A", and A is consumed. Default operation is addition.
+ * B become "B op A", and A is consumed. Default operation is addition. The op is
+ * set by pressing a key before dropping (+ × ÷ % ^ =); to subtract you negate a
+ * number (the '-' key flips its sign) and then add it. So there is no binary
+ * subtract op — that matches the original manual.
  */
 import { Thing, type ThingKind, type ThingSnapshot } from './thing';
 import { Rational } from './rational';
 
-export type NumberOp = '+' | '-' | '*' | '/';
+/** + add · * multiply · / divide · % remainder · ^ power · = replace. */
+export type NumberOp = '+' | '*' | '/' | '%' | '^' | '=';
 
 export interface NumberSnapshot extends ThingSnapshot {
   value: string;
@@ -41,16 +45,27 @@ export class NumberThing extends Thing {
     target.value = NumberThing.combine(target.value, this.value, this.operation);
   }
 
+  /** Flip the sign of this number (the '-' key); subtraction is negate-then-add. */
+  negate(): void {
+    this.value = this.value.negate();
+  }
+
   static combine(a: Rational, b: Rational, op: NumberOp): Rational {
     switch (op) {
       case '+':
         return a.add(b);
-      case '-':
-        return a.subtract(b);
       case '*':
         return a.multiply(b);
       case '/':
         return a.divide(b);
+      case '%':
+        return a.remainder(b);
+      case '^':
+        return a.power(b);
+      case '=':
+        return b; // replacement: target becomes the dropped value
+      default:
+        return a.add(b); // robustness for any legacy/unknown op
     }
   }
 

@@ -33,4 +33,28 @@ describe('Rational', () => {
     expect(() => new Rational(1n, 0n)).toThrow();
     expect(() => Rational.fromInt(1).divide(Rational.fromInt(0))).toThrow();
   });
+
+  it('negates and truncates toward zero', () => {
+    expect(Rational.parse('3/4').negate().toString()).toBe('-3/4');
+    expect(Rational.parse('-7/2').truncate().toString()).toBe('-3'); // toward zero
+    expect(Rational.parse('7/2').truncate().toString()).toBe('3');
+  });
+
+  it('computes remainder of truncated division', () => {
+    expect(Rational.fromInt(7).remainder(Rational.fromInt(2)).toString()).toBe('1');
+    expect(Rational.parse('7/2').remainder(Rational.fromInt(1)).toString()).toBe('1/2');
+    expect(() => Rational.fromInt(1).remainder(Rational.fromInt(0))).toThrow();
+  });
+
+  it('raises to exact integer powers, including negative exponents', () => {
+    expect(Rational.fromInt(7).power(Rational.fromInt(2)).toString()).toBe('49');
+    expect(Rational.parse('2/3').power(Rational.fromInt(3)).toString()).toBe('8/27');
+    expect(Rational.fromInt(2).power(Rational.fromInt(-2)).toString()).toBe('1/4');
+    expect(() => Rational.fromInt(0).power(Rational.fromInt(-1))).toThrow();
+  });
+
+  it('approximates non-integer exponents', () => {
+    // 4 ^ (1/2) = 2 (within float precision, lands exactly here)
+    expect(Rational.fromInt(4).power(Rational.parse('1/2')).toNumber()).toBeCloseTo(2, 6);
+  });
 });

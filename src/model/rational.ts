@@ -76,6 +76,47 @@ export class Rational {
     return new Rational(this.num * o.den, this.den * o.num);
   }
 
+  negate(): Rational {
+    return new Rational(-this.num, this.den);
+  }
+
+  /** Integer part, truncated toward zero. */
+  truncate(): Rational {
+    return new Rational(this.num / this.den); // BigInt division truncates toward zero
+  }
+
+  /** Remainder of truncated division: this − o·trunc(this/o). e.g. 7 % 2 = 1. */
+  remainder(o: Rational): Rational {
+    if (o.num === 0n) throw new Error('Rational: remainder by zero');
+    const q = this.divide(o).truncate();
+    return this.subtract(o.multiply(q));
+  }
+
+  /**
+   * Exponentiation. Exact for integer exponents (incl. negative); for a
+   * non-integer exponent the result is generally irrational, so we fall back to
+   * a floating-point approximation.
+   */
+  power(o: Rational): Rational {
+    if (o.isInteger()) {
+      const exp = o.num;
+      if (exp >= 0n) return new Rational(this.num ** exp, this.den ** exp);
+      if (this.num === 0n) throw new Error('Rational: zero to a negative power');
+      const e = -exp;
+      return new Rational(this.den ** e, this.num ** e);
+    }
+    return Rational.fromFloat(Math.pow(this.toNumber(), o.toNumber()));
+  }
+
+  /** Best-effort rational from a JS float (used for inexact results). */
+  static fromFloat(x: number): Rational {
+    if (!Number.isFinite(x)) throw new Error('Rational: not a finite number');
+    if (Number.isInteger(x)) return Rational.fromInt(x);
+    const s = x.toPrecision(15);
+    if (s.includes('e') || s.includes('E')) return Rational.fromInt(Math.round(x));
+    return Rational.parse(s);
+  }
+
   equals(o: Rational): boolean {
     return this.num === o.num && this.den === o.den;
   }

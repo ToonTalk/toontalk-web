@@ -16,6 +16,7 @@ import type { Trainer } from '../model/trainer';
 import { Box } from '../model/box';
 import { Nest } from '../model/nest';
 import { Wand } from '../model/wand';
+import { NumberThing } from '../model/number';
 import type { Renderer } from '../view/renderer';
 import type { ThingView } from '../view/thing-view';
 import { BoxView } from '../view/box-view';
@@ -44,7 +45,36 @@ export class DragController {
     stage.on('pointermove', this.onPointerMove);
     stage.on('pointerup', this.onPointerUp);
     stage.on('pointerupoutside', this.onPointerUp);
+    window.addEventListener('keydown', this.onKeyDown);
   }
+
+  /**
+   * While holding a number, set its operation (applied when it's dropped) by
+   * pressing a key, matching the original: + add · x/* multiply · / divide ·
+   * % remainder · ^ power · = replace · - negate (subtraction is negate-then-add).
+   */
+  private onKeyDown = (e: KeyboardEvent): void => {
+    if (this.trainer.active) return;
+    const thing = this.dragging?.thing;
+    if (!(thing instanceof NumberThing)) return;
+    let handled = true;
+    switch (e.key) {
+      case '+': thing.operation = '+'; break;
+      case '*':
+      case 'x':
+      case 'X': thing.operation = '*'; break;
+      case '/': thing.operation = '/'; break;
+      case '%': thing.operation = '%'; break;
+      case '^': thing.operation = '^'; break;
+      case '=': thing.operation = '='; break;
+      case '-': thing.negate(); break;
+      default: handled = false;
+    }
+    if (handled) {
+      e.preventDefault();
+      this.world.notifyChanged(thing);
+    }
+  };
 
   private trainingBoxView(): BoxView | null {
     const box = this.trainer.box;

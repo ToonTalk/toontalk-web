@@ -7,7 +7,9 @@ import { ThingView } from './thing-view';
 import { NumberThing } from '../model/number';
 import { drawPad } from './pad';
 
-const OP_GLYPH: Record<string, string> = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+const OP_GLYPH: Record<string, string> = {
+  '+': '+', '*': '×', '/': '÷', '%': '%', '^': '^', '=': '=',
+};
 
 export class NumberView extends ThingView {
   protected build(): void {

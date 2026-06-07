@@ -136,6 +136,14 @@ export function resolveDrop(
     return 'none';
   }
 
+  // Number on a blank text pad → the pad shows the number's digits as text.
+  if (dragged instanceof NumberThing && target instanceof TextThing && target.value === '') {
+    target.value = dragged.value.toString();
+    world.remove(dragged.id);
+    world.notifyChanged(target);
+    return 'combined';
+  }
+
   // Number on number → arithmetic.
   if (target instanceof NumberThing && dragged instanceof NumberThing) {
     dragged.applyTo(target);
@@ -163,6 +171,11 @@ function combineInPlace(occupant: Thing, dragged: Thing, ctx: DropContext): bool
   }
   if (occupant instanceof TextThing && dragged instanceof TextThing) {
     occupant.concat(dragged, ctx.side ?? 'right');
+    return true;
+  }
+  // A number dropped on a blank text pad in a hole → digits become text.
+  if (occupant instanceof TextThing && dragged instanceof NumberThing && occupant.value === '') {
+    occupant.value = dragged.value.toString();
     return true;
   }
   return false;

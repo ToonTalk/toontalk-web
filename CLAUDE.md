@@ -79,12 +79,13 @@ Playground — are app-launcher options, not element behavior.)
 Read 2026-06 from the per-element pages above. ✅ = matches our impl, ⚠ =
 divergence/simplification in our current code, ▢ = not yet implemented.
 
-- **Numbers** (`newnum.htm`): ⚠ **op is chosen by a keypress *before* the drop,
-  default is `+`** — not baked into the number. We currently store an
-  `operation` on the NumberThing and apply that; authentic behavior is
-  transient per-drop. Also ▢ missing ops: `%` remainder, `^` power, `=` replace,
-  `-` negation, and number-on-blank-text → text conversion. ✅ exact BigInt
-  rationals (division → exact fractions) is correct.
+- **Numbers** (`newnum.htm`): ✅ **op set by a keypress while holding the pad**,
+  default `+` — `+` add, `x`/`*` multiply, `/` divide, `%` remainder, `^` power,
+  `=` replace; `-` **negates** the pad (the manual has no binary minus —
+  subtraction is negate-then-add). ✅ dropping a number on a **blank** text pad
+  converts it to its digits as text. ✅ exact BigInt rationals (division → exact
+  fractions; integer powers exact, non-integer powers approximated). Keyboard
+  handling lives in `input/drag-controller.ts`.
 - **Text** (`text.htm`): ✅ drop side decides order (left=prepend, right=append).
   ▢ a **blank pad acts as a wildcard** in robot conditions (like erased); ▢
   dropping a number on a blank pad converts it to text; ▢ editing.
