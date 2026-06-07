@@ -106,15 +106,17 @@ async function start(): Promise<void> {
     },
   );
 
-  // Enter finishes training; Escape cancels it.
+  // Escape finishes training (the original ToonTalk gesture). Backspace cancels
+  // — there's no "cancel training" in the manual, so this is a web-only helper.
   window.addEventListener('keydown', (ev) => {
     if (!trainer.active) return;
-    if (ev.key === 'Enter') {
+    if (ev.key === 'Escape') {
       const box = trainer.box;
       const robot = trainer.finish();
       if (robot && box) world.moveThing(robot.id, { x: box.x + 170, y: box.y - 96 });
       updateHud('none');
-    } else if (ev.key === 'Escape') {
+    } else if (ev.key === 'Backspace') {
+      ev.preventDefault();
       trainer.cancel();
       updateHud('none');
     }
@@ -218,7 +220,7 @@ async function start(): Promise<void> {
       setHud(
         `TRAINING (${trainer.stepCount} step${trainer.stepCount === 1 ? '' : 's'})\n` +
           `Demonstrate: drag from one box hole onto another to combine them.\n` +
-          `Enter = done (the robot learns it) · Esc = cancel`,
+          `Esc = done (the robot learns it) · Backspace = cancel`,
       );
       return;
     }

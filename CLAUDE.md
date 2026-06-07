@@ -5,6 +5,13 @@ programming environment for children, 1992–2007). TypeScript + PixiJS + Vite,
 tested with Vitest. This is a clean rewrite, **not** a port of the original
 DirectX C++.
 
+## Guiding principle
+
+**Stick with the original ToonTalk manual.** When our behavior diverges from the
+manual (see the digest below), fix it to match the manual rather than inventing.
+Hold enhancements/new ideas until everything documented is working faithfully.
+When in doubt, consult the per-element manual pages (URLs below).
+
 ## Working facts
 
 - **This dir (`toontalk-web/`) is a git repo** (initialized 2026-06; commits
@@ -92,9 +99,9 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   ▢ a nest saved without its bird reloads as a fresh egg → new bird. Birds/nests
   are ToonTalk's inter-process channel (a robot waits for a bird to fill a nest).
 - **Robots** (`robot.htm`): ✅ train by example; condition = box shape; erasing
-  generalizes; thought bubble shows the condition. ⚠ **finish key**: the manual
-  says **Escape finishes** training — we use **Enter to finish, Esc to cancel**.
-  Confirm desired web UX before changing. ▢ **teams**: drop robot on robot →
+  generalizes; thought bubble shows the condition. ✅ **finish key**: Escape
+  finishes training (matches the manual; Backspace cancels as a web-only helper
+  since the manual has no cancel gesture). ▢ **teams**: drop robot on robot →
   tried front-to-back, first match runs, others step aside, no match passes
   along; if nothing matches it waits. ▢ negation via a team + marker. ▢ recursion
   via the wand's 'S' mode copying the robot+team.
