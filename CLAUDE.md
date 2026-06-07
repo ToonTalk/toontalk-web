@@ -164,10 +164,15 @@ open **toolbox** top-right (a drawn tray with the tool icons), an open
 that follows the pointer (the OS cursor is hidden via `cursorStyles`). Room art
 is in `public/assets/room/` (`floor/toolbox/notebook/hand/wandbar/truck.png`),
 converted from M25 (toolbox+wand came from **M22** — missing from M25).
-Reference: a screen-capture video is at `C:\Users\toont\dev\*.mp4`; extract
-frames with the ffmpeg at `C:\Program Files\CEWE Creator\CEWE Creator\ffmpeg.exe`
-(PNG encoder disabled — output `.jpg`). ▢ The seeded *world* still has the busy
-feature-demo on the floor; the video's room was nearly empty.
+The toolbox is a *drawn* charcoal 3D lego tray (2×4 recessed slots + a studded
+open lid) — the real `TBOPEN5` bitmap is teal and only 2×3, so it doesn't match
+the video; the engine draws the grid dynamically. **Clicking a toolbox/tool icon
+calls `onPick(key)` → `spawnTool` in main.ts**, dropping a fresh element on the
+floor. Reference: a screen-capture video is at `C:\Users\toont\dev\*.mp4`;
+extract frames with the ffmpeg at
+`C:\Program Files\CEWE Creator\CEWE Creator\ffmpeg.exe` (PNG encoder disabled —
+output `.jpg`; crop frames with PIL for close study). ▢ The seeded *world* still
+has the busy feature-demo on the floor; the video's room was nearly empty.
 
 ## Status
 

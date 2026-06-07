@@ -1,12 +1,13 @@
 /**
  * The ToonTalk "room" chrome — a reconstruction of the original desktop scene:
- * a tan LEGO-baseplate floor, the open toolbox (top-right) holding the tool
- * icons, an open notebook (bottom), the wand and vacuum tools (left), and the
- * giant hand cursor on a red arm that follows the pointer.
+ * a tan LEGO-baseplate floor, the open toolbox (top-right) whose icons can be
+ * picked to drop a fresh element on the floor, an open notebook (bottom), the
+ * wand and vacuum tools (left), and the giant hand cursor on a red arm that
+ * follows the pointer.
  *
- * This is presentation only: it draws onto the renderer's background (below the
- * interactive things) plus a top cursor layer. It reads textures; it never
- * touches the model.
+ * Presentation only: it draws onto the renderer's background (below the
+ * interactive things) plus a top cursor layer. It reads textures and emits
+ * pick events; it never touches the model directly.
  */
 import * as PIXI from 'pixi.js';
 import type { Renderer } from './renderer';
@@ -32,7 +33,10 @@ export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, 
   return map;
 }
 
-const ARM_COLOR = 0xc65b4e; // sampled from the hand's red sleeve
+/** Called when a toolbox/tool icon is clicked; spawns that element in the world. */
+export type PickHandler = (key: string) => void;
+
+const ARM_COLOR = 0xcb6b5e; // sampled from the hand's coral sleeve
 
 export class Room {
   private readonly floor: PIXI.TilingSprite;
@@ -43,11 +47,11 @@ export class Room {
 
   constructor(
     private readonly renderer: Renderer,
-    room: Map<string, PIXI.Texture>,
-    tools: Map<string, PIXI.Texture>,
+    private readonly room: Map<string, PIXI.Texture>,
+    private readonly tools: Map<string, PIXI.Texture>,
     private readonly theme: RenderTheme,
+    private readonly onPick: PickHandler,
   ) {
-    // Floor fills the screen, tiled.
     this.floor = new PIXI.TilingSprite(
       room.get('floor') ?? PIXI.Texture.WHITE,
       renderer.width,
@@ -55,145 +59,182 @@ export class Room {
     );
     renderer.background.addChild(this.floor);
 
-    // Static chrome (toolbox, notebook, tools) sits above the floor, below things.
     this.chrome = new PIXI.Container();
     renderer.background.addChild(this.chrome);
-    this.buildChrome(room, tools);
+    this.layoutChrome();
 
-    // The hand cursor + red arm ride on top of everything.
     this.cursor = new PIXI.Container();
     this.cursor.eventMode = 'none';
     this.arm = new PIXI.Graphics();
     this.handSprite = new PIXI.Sprite(room.get('hand') ?? PIXI.Texture.WHITE);
-    this.handSprite.anchor.set(0.42, 0.2); // hotspot near the fingertip
-    this.handSprite.scale.set(0.9);
+    this.handSprite.anchor.set(0.5, 0.16); // hotspot near the fingertip
+    this.handSprite.scale.set(1.15);
     this.cursor.addChild(this.arm, this.handSprite);
     renderer.app.stage.addChild(this.cursor);
-    this.setHand(renderer.width * 0.45, renderer.height * 0.5);
+    this.setHand(renderer.width * 0.45, renderer.height * 0.45);
   }
 
-  /** Reposition the floor + chrome when the window resizes. */
   resize(): void {
     this.floor.width = this.renderer.width;
     this.floor.height = this.renderer.height;
     this.chrome.removeChildren().forEach((c) => c.destroy({ children: true }));
-    // Rebuild chrome at the new size (cheap; happens rarely).
-    // Note: textures are captured in buildChrome's closure via the fields below.
-    if (this.rebuild) this.rebuild();
+    this.layoutChrome();
   }
 
-  /** Move the hand so its fingertip points at (x, y); the arm trails to the floor. */
+  /** Move the hand so its fingertip points at (x, y); a coral arm trails down. */
   setHand(x: number, y: number): void {
     this.handSprite.position.set(x, y);
+    const w = this.handSprite.width;
     const h = this.handSprite.height;
-    const baseY = y + h * 0.55; // roughly where the wrist meets the sleeve
+    const wristY = y + h * 0.42; // where the hand meets the sleeve
     const bottom = this.renderer.height + 40;
-    const halfW = Math.max(22, h * 0.16);
+    const armW = w * 0.34;
     this.arm.clear();
     this.arm.beginFill(ARM_COLOR, 1);
-    // A simple tapered sleeve from the wrist down off-screen.
-    this.arm.drawPolygon([
-      x - halfW, baseY,
-      x + halfW, baseY,
-      x + halfW * 1.3, bottom,
-      x - halfW * 1.3, bottom,
-    ]);
+    // A rounded, near-constant-width sleeve down to off-screen.
+    this.arm.drawRoundedRect(x - armW / 2, wristY, armW, bottom - wristY, armW * 0.5);
     this.arm.endFill();
   }
 
-  private rebuild: (() => void) | null = null;
+  // --- chrome layout -------------------------------------------------------
 
-  private buildChrome(room: Map<string, PIXI.Texture>, tools: Map<string, PIXI.Texture>): void {
-    this.rebuild = () => this.layoutChrome(room, tools);
-    this.layoutChrome(room, tools);
-  }
-
-  private layoutChrome(room: Map<string, PIXI.Texture>, tools: Map<string, PIXI.Texture>): void {
+  private layoutChrome(): void {
     const W = this.renderer.width;
     const H = this.renderer.height;
 
-    // --- Open toolbox, top-right: a tray with a 2x4 grid of tool icons. ---
-    const toolbox = this.makeToolbox(tools);
-    toolbox.position.set(W - toolbox.width / 2 - 40, toolbox.height / 2 + 30);
+    const toolbox = this.makeToolbox();
+    toolbox.position.set(W - 170, 180);
     this.chrome.addChild(toolbox);
 
-    // --- Open notebook, bottom-centre. ---
-    const nb = this.makeNotebook(room.get('notebook'));
-    nb.position.set(W * 0.5, H - nb.height / 2 - 16);
+    const nb = this.makeNotebook();
+    nb.position.set(W * 0.5, H - nb.height / 2 - 14);
     this.chrome.addChild(nb);
 
-    // --- Wand (with mode 'C') and vacuum (with 'S') resting on the left. ---
-    const wand = this.makeTool(tools.get('wand') ?? room.get('wandbar'), 'C', 0x223040, 2.2);
+    const wand = this.makeTool('wandbar', 'wand', 'C', 2.0);
     wand.position.set(150, H * 0.5);
     this.chrome.addChild(wand);
 
-    const vac = this.makeTool(tools.get('dusty'), 'S', 0x223040, 1.0);
-    vac.position.set(120, H * 0.5 + 120);
+    const vac = this.makeTool('dusty', 'dusty', 'S', 1.0);
+    vac.position.set(120, H * 0.5 + 130);
     this.chrome.addChild(vac);
   }
 
-  private makeToolbox(tools: Map<string, PIXI.Texture>): PIXI.Container {
+  /** A studded grey lego panel (used for the toolbox lid). */
+  private studdedPanel(w: number, h: number): PIXI.Container {
+    const c = new PIXI.Container();
+    const g = new PIXI.Graphics();
+    g.lineStyle(2, 0x4a505a, 1);
+    g.beginFill(0x6b7280, 1);
+    g.drawRoundedRect(-w / 2, -h / 2, w, h, 6);
+    g.endFill();
+    const step = 18;
+    g.lineStyle(0);
+    for (let sx = -w / 2 + step; sx < w / 2 - 4; sx += step) {
+      for (let sy = -h / 2 + step; sy < h / 2 - 4; sy += step) {
+        g.beginFill(0x7c838d, 1);
+        g.drawCircle(sx, sy, 4);
+        g.endFill();
+        g.beginFill(0x595f68, 0.6);
+        g.drawCircle(sx + 1, sy + 2, 4);
+        g.endFill();
+      }
+    }
+    c.addChild(g);
+    return c;
+  }
+
+  private makeToolbox(): PIXI.Container {
     const box = new PIXI.Container();
     const cols = 2;
     const rows = 4;
-    const cell = 60;
-    const gap = 8;
-    const padding = 14;
-    const w = cols * cell + (cols - 1) * gap + padding * 2;
-    const h = rows * cell + (rows - 1) * gap + padding * 2;
+    const cell = 56;
+    const gap = 7;
+    const pad = 14;
+    const w = cols * cell + (cols - 1) * gap + pad * 2;
+    const h = rows * cell + (rows - 1) * gap + pad * 2;
 
+    // Open lid: a studded panel hinged up to the right and behind the tray.
+    const lid = this.studdedPanel(h * 0.95, h * 0.95);
+    lid.position.set(w / 2 + h * 0.34, -h * 0.16);
+    lid.rotation = 0.5;
+    lid.scale.set(0.92, 0.78); // slight foreshortening
+    box.addChild(lid);
+
+    // Charcoal lego tray with a bevelled rim.
     const tray = new PIXI.Graphics();
-    tray.beginFill(0x000000, 0.25);
-    tray.drawRoundedRect(-w / 2 + 5, -h / 2 + 6, w, h, 12);
+    tray.beginFill(0x20242a, 0.35);
+    tray.drawRoundedRect(-w / 2 + 6, -h / 2 + 8, w, h, 10);
     tray.endFill();
-    tray.lineStyle(3, 0x3a4350, 1);
-    tray.beginFill(0x515b68, 1);
-    tray.drawRoundedRect(-w / 2, -h / 2, w, h, 12);
+    tray.lineStyle(0);
+    tray.beginFill(0x2b3037, 1); // outer rim
+    tray.drawRoundedRect(-w / 2, -h / 2, w, h, 10);
+    tray.endFill();
+    tray.beginFill(0x474e57, 1); // inner face (lighter)
+    tray.drawRoundedRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10, 8);
     tray.endFill();
     box.addChild(tray);
 
-    // Tool layout matching the video (row-major, 2 columns).
-    const grid: Array<{ key?: string; label?: string; fill?: number }> = [
-      { label: '1', fill: 0xbff2c9 }, { label: 'A', fill: 0xf2ddc2 },
-      { key: 'box' }, { key: 'nest' },
-      { key: 'scale' }, { key: 'robot' },
-      { key: 'truck' }, { key: 'bomb' },
+    // 2x4 grid of recessed slots holding the tools.
+    const grid: Array<{ pick?: string; label?: string; fill?: number; icon?: string }> = [
+      { label: '1', fill: 0xbff2c9, pick: 'number' }, { label: 'A', fill: 0xf2ddc2, pick: 'text' },
+      { icon: 'box', pick: 'box' }, { icon: 'nest', pick: 'nest' },
+      { icon: 'scale', pick: 'scale' }, { icon: 'robot', pick: 'robot' },
+      { icon: 'truck' }, { icon: 'bomb', pick: 'bomb' },
     ];
-    const left = -w / 2 + padding;
-    const top = -h / 2 + padding;
+    const left = -w / 2 + pad;
+    const top = -h / 2 + pad;
     grid.forEach((item, i) => {
       const cx = left + (i % cols) * (cell + gap) + cell / 2;
       const cy = top + Math.floor(i / cols) * (cell + gap) + cell / 2;
+
       const slot = new PIXI.Graphics();
-      slot.lineStyle(1, 0x2c333d, 1);
-      slot.beginFill(0x3c4450, 1);
-      slot.drawRoundedRect(cx - cell / 2, cy - cell / 2, cell, cell, 6);
+      slot.beginFill(0x20242a, 1); // recessed dark
+      slot.drawRoundedRect(cx - cell / 2, cy - cell / 2, cell, cell, 5);
       slot.endFill();
+      slot.lineStyle(1, 0x565e69, 0.8); // top-left highlight rim
+      slot.moveTo(cx - cell / 2 + 2, cy + cell / 2 - 2);
+      slot.lineTo(cx - cell / 2 + 2, cy - cell / 2 + 2);
+      slot.lineTo(cx + cell / 2 - 2, cy - cell / 2 + 2);
       box.addChild(slot);
 
-      if (item.label) {
-        box.addChild(this.makeLabelPad(item.label, item.fill ?? 0xffffff, cx, cy));
-      } else if (item.key) {
-        const tex = tools.get(item.key);
-        if (tex && tex !== PIXI.Texture.WHITE) {
-          const s = new PIXI.Sprite(tex);
-          s.anchor.set(0.5);
-          const m = Math.max(s.width, s.height, 1);
-          s.scale.set((cell - 12) / m);
-          s.position.set(cx, cy);
-          box.addChild(s);
-        }
+      const iconNode = item.label
+        ? this.makeLabelPad(item.label, item.fill ?? 0xffffff)
+        : this.makeIcon(item.icon, cell - 12);
+      iconNode.position.set(cx, cy);
+      box.addChild(iconNode);
+
+      if (item.pick) {
+        const hit = new PIXI.Container();
+        hit.position.set(cx, cy);
+        hit.hitArea = new PIXI.Rectangle(-cell / 2, -cell / 2, cell, cell);
+        hit.eventMode = 'static';
+        const key = item.pick;
+        hit.on('pointertap', () => this.onPick(key));
+        box.addChild(hit);
       }
     });
     return box;
   }
 
-  private makeLabelPad(label: string, fill: number, cx: number, cy: number): PIXI.Container {
+  private makeIcon(key: string | undefined, size: number): PIXI.Container {
+    const c = new PIXI.Container();
+    const tex = key ? this.tools.get(key) : undefined;
+    if (tex && tex !== PIXI.Texture.WHITE) {
+      const s = new PIXI.Sprite(tex);
+      s.anchor.set(0.5);
+      const m = Math.max(s.width, s.height, 1);
+      s.scale.set(size / m);
+      c.addChild(s);
+    }
+    return c;
+  }
+
+  private makeLabelPad(label: string, fill: number): PIXI.Container {
     const c = new PIXI.Container();
     const pad = new PIXI.Graphics();
     pad.lineStyle(2, 0x4e9e63, 1);
     pad.beginFill(fill, 1);
-    pad.drawRoundedRect(-18, -22, 36, 44, 3);
+    pad.drawRoundedRect(-17, -21, 34, 42, 3);
     pad.endFill();
     const t = new PIXI.Text(label, {
       fontFamily: this.theme.fontFamily,
@@ -203,13 +244,12 @@ export class Room {
     });
     t.anchor.set(0.5);
     c.addChild(pad, t);
-    c.position.set(cx, cy);
     return c;
   }
 
-  private makeNotebook(tex: PIXI.Texture | undefined): PIXI.Container {
+  private makeNotebook(): PIXI.Container {
     const c = new PIXI.Container();
-    const s = new PIXI.Sprite(tex ?? PIXI.Texture.WHITE);
+    const s = new PIXI.Sprite(this.room.get('notebook') ?? PIXI.Texture.WHITE);
     s.anchor.set(0.5);
     s.scale.set(1.5);
     c.addChild(s);
@@ -225,21 +265,16 @@ export class Room {
     return c;
   }
 
-  private makeTool(
-    tex: PIXI.Texture | undefined,
-    mode: string,
-    badgeColor: number,
-    scale: number,
-  ): PIXI.Container {
+  private makeTool(texKey: string, pick: string, mode: string, scale: number): PIXI.Container {
     const c = new PIXI.Container();
-    const s = new PIXI.Sprite(tex ?? PIXI.Texture.WHITE);
+    const s = new PIXI.Sprite(this.tools.get(texKey) ?? this.room.get(texKey) ?? PIXI.Texture.WHITE);
     s.anchor.set(0.5);
     s.scale.set(scale);
     c.addChild(s);
 
     const badge = new PIXI.Graphics();
-    badge.beginFill(badgeColor, 0.9);
-    badge.drawRoundedRect(-s.width / 2 - 6, -14, 26, 28, 5);
+    badge.beginFill(0x223040, 0.92);
+    badge.drawRoundedRect(-s.width / 2 - 4, -14, 26, 28, 5);
     badge.endFill();
     const t = new PIXI.Text(mode, {
       fontFamily: this.theme.fontFamily,
@@ -248,8 +283,12 @@ export class Room {
       fontWeight: 'bold',
     });
     t.anchor.set(0.5);
-    t.position.set(-s.width / 2 + 7, 0);
+    t.position.set(-s.width / 2 + 9, 0);
     c.addChild(badge, t);
+
+    c.hitArea = new PIXI.Rectangle(-s.width / 2, -s.height / 2, s.width, s.height);
+    c.eventMode = 'static';
+    c.on('pointertap', () => this.onPick(pick));
     return c;
   }
 

@@ -47,8 +47,9 @@ async function start(): Promise<void> {
   const { textures } = await loadAssets(theme);
 
   // The ToonTalk room: tan floor, toolbox, notebook, tools, and the hand cursor.
+  // Clicking a toolbox/tool icon pulls a fresh element onto the floor.
   const roomTextures = await loadRoomTextures(theme);
-  const room = new Room(renderer, roomTextures, textures, theme);
+  const room = new Room(renderer, roomTextures, textures, theme, (key) => spawnTool(key));
   window.addEventListener('resize', () => room.resize());
 
   // Replace the OS cursor with ToonTalk's hand, which tracks the pointer.
@@ -132,6 +133,30 @@ async function start(): Promise<void> {
   });
 
   const STORAGE_KEY = 'toontalk-world-v1';
+
+  // Pull a fresh element out of the toolbox onto the floor (a toolbox click).
+  function spawnTool(key: string): void {
+    const x = 180 + Math.random() * 260;
+    const y = 340 + Math.random() * 120;
+    switch (key) {
+      case 'number': world.add(new NumberThing({ value: 1, x, y })); break;
+      case 'text': world.add(new TextThing({ value: 'a', x, y })); break;
+      case 'box': world.add(new Box({ size: 2, x, y })); break;
+      case 'nest': {
+        const nest = new Nest({ x, y });
+        world.add(nest);
+        world.add(new Bird({ nest, x: x - 90, y: y - 40 }));
+        break;
+      }
+      case 'scale': world.add(new Scale({ x, y })); break;
+      case 'robot': world.add(new Robot({ x, y })); break;
+      case 'bomb': world.add(new Bomb({ x, y })); break;
+      case 'wand': world.add(new Wand({ x, y })); break;
+      case 'dusty': world.add(new Dusty({ x, y })); break;
+      default: return;
+    }
+    updateHud('none');
+  }
 
   function seedDemo(): void {
     world.add(new NumberThing({ value: 5, x: 180, y: 140 }));
