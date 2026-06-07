@@ -154,6 +154,21 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   resize tool — modes big/wide/narrow/little/short/tall/good-size. Cosmetic;
   not consumed.
 
+## Room reconstruction (the desktop shell)
+
+`src/view/room.ts` (`Room`) reconstructs the original ToonTalk room as
+presentation-only chrome over the model: a tiled **tan floor** (`FLOORC`), the
+open **toolbox** top-right (a drawn tray with the tool icons), an open
+**notebook** bottom (`NBPAGE1`, "claude 1"), the **wand** (mode `C`) and
+**vacuum** (mode `S`) on the left, and the giant **hand cursor on a red arm**
+that follows the pointer (the OS cursor is hidden via `cursorStyles`). Room art
+is in `public/assets/room/` (`floor/toolbox/notebook/hand/wandbar/truck.png`),
+converted from M25 (toolbox+wand came from **M22** — missing from M25).
+Reference: a screen-capture video is at `C:\Users\toont\dev\*.mp4`; extract
+frames with the ffmpeg at `C:\Program Files\CEWE Creator\CEWE Creator\ffmpeg.exe`
+(PNG encoder disabled — output `.jpg`). ▢ The seeded *world* still has the busy
+feature-demo on the floor; the video's room was nearly empty.
+
 ## Status
 
 Phases 0–3 done. Phase 4 tools: **Dusty (erase/wildcard) ✅**, **bomb ✅**.

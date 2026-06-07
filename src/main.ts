@@ -7,7 +7,6 @@
  * stay in sync purely through World events.
  */
 
-import * as PIXI from 'pixi.js';
 import { World } from './model/world';
 import { NumberThing } from './model/number';
 import { TextThing } from './model/text';
@@ -26,6 +25,7 @@ import { Renderer } from './view/renderer';
 import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
 import { loadAssets } from './view/assets';
+import { Room, loadRoomTextures } from './view/room';
 import { DragController } from './input/drag-controller';
 import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
 
@@ -44,15 +44,21 @@ async function start(): Promise<void> {
   container.appendChild(renderer.view);
 
   setHud('Loading ToonTalk graphics…');
-  const { textures, background } = await loadAssets(theme);
+  const { textures } = await loadAssets(theme);
 
-  // Tiled city background.
-  const bg = new PIXI.TilingSprite(background, renderer.width, renderer.height);
-  renderer.background.addChild(bg);
-  window.addEventListener('resize', () => {
-    bg.width = renderer.width;
-    bg.height = renderer.height;
-  });
+  // The ToonTalk room: tan floor, toolbox, notebook, tools, and the hand cursor.
+  const roomTextures = await loadRoomTextures(theme);
+  const room = new Room(renderer, roomTextures, textures, theme);
+  window.addEventListener('resize', () => room.resize());
+
+  // Replace the OS cursor with ToonTalk's hand, which tracks the pointer.
+  const cursorStyles = renderer.app.renderer.events.cursorStyles;
+  cursorStyles.default = 'none';
+  cursorStyles.grab = 'none';
+  cursorStyles.grabbing = 'none';
+  cursorStyles.pointer = 'none';
+  renderer.view.style.cursor = 'none';
+  renderer.app.stage.on('pointermove', (e) => room.setHand(e.global.x, e.global.y));
 
   // Model <-> view bookkeeping.
   const world = new World();
