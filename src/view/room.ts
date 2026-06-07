@@ -13,7 +13,7 @@ import * as PIXI from 'pixi.js';
 import type { Renderer } from './renderer';
 import type { RenderTheme } from '../config/render-mode';
 
-const ROOM_KEYS = ['floor', 'toolbox', 'notebook', 'hand', 'wandbar', 'truck'] as const;
+const ROOM_KEYS = ['floor', 'toolbox', 'notebook', 'hand', 'hand-grab', 'wandbar', 'truck'] as const;
 
 export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, PIXI.Texture>> {
   const scaleMode =
@@ -37,10 +37,26 @@ export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, 
 export type PickHandler = (key: string) => void;
 
 const ARM_COLOR = 0xbb5d64; // sampled from the hand texture's wrist stub
-// The wrist stub in hand.png sits right-of-centre; the arm must continue it.
-const WRIST_CX = 0.18; // stub centre offset from sprite centre, as a fraction of width
-const WRIST_W = 0.32; // stub width as a fraction of sprite width
-const WRIST_TOP = 0.72; // where the sleeve starts, as a fraction of sprite height below the hotspot
+
+/**
+ * Per-pose cursor calibration. Each hand frame has its hotspot (anchor) and a
+ * red wrist stub the sleeve must continue — stub centre offset (`cx`, fraction
+ * of width from centre), width (`w`), and where it starts down the sprite
+ * (`top`), all measured from the bitmaps.
+ */
+type HandPose = 'open' | 'grab';
+interface PoseSpec {
+  key: string;
+  anchor: [number, number];
+  scale: number;
+  cx: number;
+  w: number;
+  top: number;
+}
+const HAND_POSES: Record<HandPose, PoseSpec> = {
+  open: { key: 'hand', anchor: [0.5, 0.16], scale: 1.15, cx: 0.18, w: 0.32, top: 0.72 },
+  grab: { key: 'hand-grab', anchor: [0.5, 0.2], scale: 1.2, cx: 0.24, w: 0.41, top: 0.62 },
+};
 
 export class Room {
   private readonly floor: PIXI.TilingSprite;
@@ -70,12 +86,35 @@ export class Room {
     this.cursor = new PIXI.Container();
     this.cursor.eventMode = 'none';
     this.arm = new PIXI.Graphics();
-    this.handSprite = new PIXI.Sprite(room.get('hand') ?? PIXI.Texture.WHITE);
-    this.handSprite.anchor.set(0.5, 0.16); // hotspot near the fingertip
-    this.handSprite.scale.set(1.15);
+    this.handSprite = new PIXI.Sprite();
     this.cursor.addChild(this.arm, this.handSprite);
     renderer.app.stage.addChild(this.cursor);
+    this.applyPose('open');
     this.setHand(renderer.width * 0.45, renderer.height * 0.45);
+
+    // The hand closes into a grab while the pointer is pressed.
+    const stage = renderer.app.stage;
+    stage.on('pointerdown', () => this.setPose('grab'));
+    stage.on('pointerup', () => this.setPose('open'));
+    stage.on('pointerupoutside', () => this.setPose('open'));
+  }
+
+  private pose: HandPose = 'open';
+  private handX = 0;
+  private handY = 0;
+
+  private applyPose(pose: HandPose): void {
+    this.pose = pose;
+    const spec = HAND_POSES[pose];
+    this.handSprite.texture = this.room.get(spec.key) ?? PIXI.Texture.WHITE;
+    this.handSprite.anchor.set(spec.anchor[0], spec.anchor[1]);
+    this.handSprite.scale.set(spec.scale);
+  }
+
+  setPose(pose: HandPose): void {
+    if (pose === this.pose) return;
+    this.applyPose(pose);
+    this.setHand(this.handX, this.handY);
   }
 
   resize(): void {
@@ -88,12 +127,15 @@ export class Room {
   /** Move the hand so its fingertip points at (x, y); the sleeve continues the
    * hand texture's wrist stub (same colour, position and width) down off-screen. */
   setHand(x: number, y: number): void {
+    this.handX = x;
+    this.handY = y;
     this.handSprite.position.set(x, y);
+    const spec = HAND_POSES[this.pose];
     const w = this.handSprite.width;
     const h = this.handSprite.height;
-    const armCx = x + w * WRIST_CX;
-    const armW = w * WRIST_W;
-    const wristY = y + h * WRIST_TOP; // starts inside the hand, emerges at the wrist
+    const armCx = x + w * spec.cx;
+    const armW = w * spec.w;
+    const wristY = y + h * spec.top; // starts inside the hand, emerges at the wrist
     const bottom = this.renderer.height + 40;
     this.arm.clear();
     this.arm.beginFill(ARM_COLOR, 1);

@@ -160,9 +160,12 @@ divergence/simplification in our current code, ▢ = not yet implemented.
 
 ToonTalk has **3 house types, each with a different floor colour** (tan `FLOORC`,
 blue `FLOORB`, green `FLOORD` — all 640×480 baseplates in M25). We render the tan
-floor; per-house floor colour is a later concern. The hand cursor's coral sleeve
-must continue `hand.png`'s **wrist stub**, which sits right-of-centre (~0.68w,
-~0.32w wide, colour `#bb5d64`) — see `WRIST_*` constants in room.ts.
+floor; per-house floor colour is a later concern. The hand cursor has **two poses** (`HAND_POSES` in room.ts): `open` (`hand.png`
+= HAND01, resting) and `grab` (`hand-grab.png` = HAND04, while the pointer is
+pressed). Each pose has its own wrist-stub calibration (`cx`/`w`/`top`) so the
+coral sleeve (`#bb5d64`) continues the stub — measured per frame from the
+bitmaps (HAND01 stub ~0.68w/0.32w; HAND04 ~0.74w/0.41w). Hand frames HAND01–07
+range open→closed.
 
 
 `src/view/room.ts` (`Room`) reconstructs the original ToonTalk room as
