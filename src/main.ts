@@ -17,6 +17,7 @@ import { Bird } from './model/bird';
 import { Wand } from './model/wand';
 import { Dusty } from './model/dusty';
 import { Bomb } from './model/bomb';
+import { Scale, recomputeScales } from './model/scale';
 import { Robot } from './model/robot';
 import { Trainer } from './model/trainer';
 import { resolveDrop } from './model/interactions';
@@ -162,6 +163,15 @@ async function start(): Promise<void> {
     world.add(
       new Box({ holes: [new NumberThing({ value: 6 }), new NumberThing({ value: 7 })], x: 820, y: 330 }),
     );
+
+    // A balance weighing 3 against 5: it tips toward the bigger number (right).
+    const scaleBox = new Box({
+      holes: [new NumberThing({ value: 3 }), new Scale(), new NumberThing({ value: 5 })],
+      x: 180,
+      y: 560,
+    });
+    recomputeScales(scaleBox);
+    world.add(scaleBox);
   }
 
   // Restore the last session if there is one; otherwise seed the demo world.
@@ -232,7 +242,8 @@ async function start(): Promise<void> {
         `things: ${world.size}\n` +
         `trained robot + 2-number box → it adds · UNtrained robot + filled box → train it\n` +
         `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty erases · bomb destroys\n` +
-        `hold a number, press + − ×(x) ÷(/) % ^ = to set its op · − negates · number on a blank text pad → digits` +
+        `hold a number, press + − ×(x) ÷(/) % ^ = to set its op · − negates · number on a blank text pad → digits\n` +
+        `a scale between two holes tips toward the bigger (robots can match the tilt) · drop a box on another box's edge to join` +
         (lastResult && lastResult !== 'none' && lastResult !== 'train'
           ? `\nlast drop: ${lastResult}`
           : ''),

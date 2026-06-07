@@ -10,6 +10,7 @@ import type { World } from './world';
 import type { Box } from './box';
 import type { Thing } from './thing';
 import { Robot, applyAction, type ConditionHole, type RobotAction } from './robot';
+import { recomputeScales } from './scale';
 
 interface Session {
   robot: Robot;
@@ -42,6 +43,7 @@ export class Trainer {
    * stay wildcards. So erase the things you want generalized before starting.
    */
   start(robot: Robot, box: Box): void {
+    recomputeScales(box); // capture each scale's current tilt as the guard
     this.session = {
       robot,
       box,

@@ -118,9 +118,15 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   tried front-to-back, first match runs, others step aside, no match passes
   along; if nothing matches it waits. ▢ negation via a team + marker. ▢ recursion
   via the wand's 'S' mode copying the robot+team.
-- **Scale** (`scale.htm`): ▢ not implemented. Balance tilts toward the bigger
-  number / later-alphabetical text; robots read the tilt as a condition (the
-  real path to `<`, `>`, `=` conditionals). Good candidate feature.
+- **Scale** (`scale.htm`): ✅ a `Scale` (model/scale.ts) sits in a box hole and
+  weighs its two neighbours: tilts `left`/`right` toward the bigger number or
+  later-alphabetical text, `balanced` when equal, `tottering` when a neighbour is
+  missing (matches nothing). An **erased** neighbour keeps the previous tilt (so
+  erasing operands generalises). Tilt is a robot guard (`Scale.equals` compares
+  tilt) → real `<`, `>`, `=` conditions. `recomputeScales(box)` is called at every
+  box-mutation point (interactions/extraction/robot actions/trainer/load/seed)
+  and before robot matching. View tips the sprite by tilt. ▢ TODO: a move/swap
+  RobotAction so the classic "swap if first<second" demo can run.
 - **Dusty / vacuum** (`dusty.htm`): ⚠ real Dusty has **three modes via the nose
   button — Suck (remove, stored in its stomach), Reverse (spit back out), Erase**.
   We model only Erase, as a *toggle*; authentic erase is a mode and restore is

@@ -17,6 +17,7 @@ import type { Box } from './box';
 import type { World } from './world';
 import { NumberThing, type NumberOp } from './number';
 import { TextThing } from './text';
+import { recomputeScales } from './scale';
 
 /** A demonstrated action, expressed in terms of hole positions so it generalizes. */
 export type RobotAction =
@@ -150,10 +151,12 @@ export function applyAction(box: Box, action: RobotAction): boolean {
 
 /** Run a robot on a box: if it matches, replay the actions. Returns whether it ran. */
 export function runRobot(world: World, robot: Robot, box: Box): boolean {
+  recomputeScales(box); // ensure any scale's tilt reflects the input before matching
   if (!robot.matches(box)) return false;
   for (const action of robot.actions) {
     applyAction(box, action);
   }
+  recomputeScales(box);
   world.notifyChanged(box);
   return true;
 }

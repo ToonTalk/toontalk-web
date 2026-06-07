@@ -17,6 +17,7 @@ import { Wand } from './wand';
 import { Dusty } from './dusty';
 import { Bomb } from './bomb';
 import { Robot, type RobotSnapshot } from './robot';
+import { Scale, type ScaleSnapshot, recomputeScales } from './scale';
 import { Rational } from './rational';
 
 export function serialize(world: World): string {
@@ -56,6 +57,8 @@ function buildByKind(s: ThingSnapshot): Thing {
       return new Dusty({ x: s.x, y: s.y });
     case 'bomb':
       return new Bomb({ x: s.x, y: s.y });
+    case 'scale':
+      return new Scale({ x: s.x, y: s.y, tilt: (s as ScaleSnapshot).tilt });
     case 'robot': {
       const r = s as RobotSnapshot;
       return new Robot({
@@ -95,4 +98,6 @@ export function loadWorld(world: World, json: string): void {
   const things = deserialize(json);
   world.clear();
   for (const t of things) world.add(t);
+  // Settle scale tilts from neighbours (erased neighbours keep the saved tilt).
+  for (const t of things) if (t instanceof Box) recomputeScales(t);
 }

@@ -18,6 +18,7 @@ import { Nest } from './nest';
 import { Robot, runRobot } from './robot';
 import { Dusty } from './dusty';
 import { Bomb } from './bomb';
+import { recomputeScales } from './scale';
 
 export interface DropContext {
   /** When dropping onto a box, the hole the cursor is over. */
@@ -71,6 +72,7 @@ export function resolveDrop(
     if (!victim) return 'none';
     victim.erased = !victim.erased;
     // Refresh the box (so an erased occupant re-renders) or the loose thing.
+    if (target instanceof Box) recomputeScales(target);
     world.notifyChanged(target);
     return 'erased';
   }
@@ -81,6 +83,7 @@ export function resolveDrop(
   if (dragged instanceof Bomb) {
     if (target instanceof Box && ctx.holeIndex != null && !target.isHoleEmpty(ctx.holeIndex)) {
       target.take(ctx.holeIndex);
+      recomputeScales(target);
       world.notifyChanged(target);
     } else {
       world.remove(target.id);
@@ -104,6 +107,7 @@ export function resolveDrop(
   // like text pads: the drop side decides which end the holes are added to.
   if (dragged instanceof Box && target instanceof Box && ctx.holeIndex == null) {
     target.join(dragged, ctx.side ?? 'right');
+    recomputeScales(target);
     world.remove(dragged.id);
     world.notifyChanged(target);
     return 'joined';
@@ -132,6 +136,7 @@ export function resolveDrop(
 
     if (target.isHoleEmpty(i)) {
       target.put(i, dragged);
+      recomputeScales(target);
       world.remove(dragged.id);
       world.notifyChanged(target);
       return 'filled';
@@ -139,6 +144,7 @@ export function resolveDrop(
 
     const occupant = target.contentsAt(i);
     if (occupant && combineInPlace(occupant, dragged, ctx)) {
+      recomputeScales(target);
       world.remove(dragged.id);
       world.notifyChanged(target);
       return 'combined';

@@ -121,6 +121,12 @@ export class Rational {
     return this.num === o.num && this.den === o.den;
   }
 
+  /** -1 if this < o, 0 if equal, 1 if this > o. */
+  compare(o: Rational): number {
+    const diff = this.num * o.den - o.num * this.den; // dens are positive
+    return diff < 0n ? -1 : diff > 0n ? 1 : 0;
+  }
+
   isInteger(): boolean {
     return this.den === 1n;
   }

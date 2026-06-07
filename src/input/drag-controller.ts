@@ -20,6 +20,7 @@ import { NumberThing } from '../model/number';
 import type { Renderer } from '../view/renderer';
 import type { ThingView } from '../view/thing-view';
 import type { RenderTheme } from '../config/render-mode';
+import { recomputeScales } from '../model/scale';
 import { BoxView } from '../view/box-view';
 import { NestView } from '../view/nest-view';
 import { renderThingDisplay } from '../view/display';
@@ -139,6 +140,7 @@ export class DragController {
           const occ = hit.take(i);
           if (occ) {
             occ.moveTo({ x, y });
+            recomputeScales(hit);
             this.world.add(occ);
             this.world.notifyChanged(hit);
             return occ;

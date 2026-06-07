@@ -11,6 +11,7 @@ import { TextView } from './text-view';
 import { BoxView } from './box-view';
 import { NestView } from './nest-view';
 import { RobotView } from './robot-view';
+import { ScaleView } from './scale-view';
 
 export function createThingView(
   thing: Thing,
@@ -28,6 +29,8 @@ export function createThingView(
       return new NestView(thing, textures, theme);
     case 'robot':
       return new RobotView(thing, textures, theme);
+    case 'scale':
+      return new ScaleView(thing, textures, theme);
     default:
       return new SpriteView(thing, textures, theme);
   }
