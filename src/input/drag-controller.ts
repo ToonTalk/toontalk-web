@@ -38,6 +38,8 @@ export class DragController {
   private pointer = { x: -1, y: -1 };
   /** The view currently wiggling as selection feedback. */
   private selectedView: ThingView | null = null;
+  /** Thing under the hand, recomputed only on pointer move (not per frame). */
+  private hoverView: ThingView | null = null;
 
   constructor(
     private readonly world: World,
@@ -66,25 +68,31 @@ export class DragController {
    * right → down → left → up every 100ms (sprite.cpp selection_delta_x/y).
    */
   private tickWiggle = (): void => {
-    let sel: ThingView | null = this.dragging;
-    if (!sel && !this.trainer.active && this.pointer.x >= 0) {
-      const hit = this.world.topAt(this.pointer, (thing, p) => {
-        const v = this.views.get(thing.id);
-        return v ? v.containsPoint(p.x, p.y) : false;
-      });
-      sel = hit ? this.views.get(hit.id) ?? null : null;
-    }
+    const sel: ThingView | null = this.dragging ?? this.hoverView;
     if (this.selectedView && this.selectedView !== sel && !this.selectedView.container.destroyed) {
       this.selectedView.syncPosition(); // settle the previous selection
     }
     this.selectedView = sel;
-    if (!sel) return;
+    if (!sel || sel.container.destroyed) return;
     const D = 2;
     const phase = Math.floor((performance.now() % 400) / 100);
     const dx = phase === 0 ? D : phase === 2 ? -D : 0;
     const dy = phase === 1 ? D : phase === 3 ? -D : 0;
     sel.container.position.set(sel.thing.x + dx, sel.thing.y + dy);
   };
+
+  /** Recompute the hovered thing (the wiggle target). Cheap per move, not per frame. */
+  private updateHover(): void {
+    if (this.dragging || this.trainer.active) {
+      this.hoverView = null;
+      return;
+    }
+    const hit = this.world.topAt(this.pointer, (thing, p) => {
+      const v = this.views.get(thing.id);
+      return v ? v.containsPoint(p.x, p.y) : false;
+    });
+    this.hoverView = hit ? this.views.get(hit.id) ?? null : null;
+  }
 
   /**
    * While holding a number, set its operation (applied when it's dropped) by
@@ -195,6 +203,7 @@ export class DragController {
 
   private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
     this.pointer = { x: e.global.x, y: e.global.y };
+    this.updateHover();
     if (this.trainer.active) {
       if (this.trainGhost) this.trainGhost.position.set(e.global.x, e.global.y);
       return;

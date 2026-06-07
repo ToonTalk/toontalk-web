@@ -26,6 +26,7 @@ import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
+import { loadAnimations } from './view/animation';
 import { DragController } from './input/drag-controller';
 import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
 
@@ -45,6 +46,7 @@ async function start(): Promise<void> {
 
   setHud('Loading ToonTalk graphics…');
   const { textures } = await loadAssets(theme);
+  await loadAnimations(theme);
 
   // The ToonTalk room: tan floor, toolbox, notebook, tools, and the hand cursor.
   // Clicking a toolbox/tool icon pulls a fresh element onto the floor.
@@ -60,6 +62,10 @@ async function start(): Promise<void> {
   cursorStyles.pointer = 'none';
   renderer.view.style.cursor = 'none';
   renderer.app.stage.on('pointermove', (e) => room.setHand(e.global.x, e.global.y));
+
+  // Debug hook: lets tools pause the render loop to capture a still of the
+  // (otherwise continuously animating) canvas. Harmless in production.
+  (window as unknown as { __ttApp?: unknown }).__ttApp = renderer.app;
 
   // Model <-> view bookkeeping.
   const world = new World();

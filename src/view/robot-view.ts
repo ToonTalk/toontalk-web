@@ -7,6 +7,7 @@ import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Robot } from '../model/robot';
 import { renderThingDisplay } from './display';
+import { makeIdleSprite } from './animation';
 
 export class RobotView extends ThingView {
   protected build(): void {
@@ -22,7 +23,8 @@ export class RobotView extends ThingView {
       this.container.addChild(shadow);
     }
 
-    const sprite = new PIXI.Sprite(tex);
+    // Prefer the animated "wait" fidget; fall back to a static frame.
+    const sprite = makeIdleSprite('robot-wait') ?? new PIXI.Sprite(tex);
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 

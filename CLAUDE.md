@@ -192,8 +192,24 @@ The thing under the hand (or being held) wiggles as selection feedback —
 `tickWiggle` in drag-controller.ts, on the PIXI ticker. Faithful to the original
 (`sprite.cpp` `selection_delta_x/y`): a **2px circular offset** stepping right →
 down → left → up every 100ms (400ms loop). The previous selection is settled via
-`syncPosition`. ▢ Frame-by-frame **sprite animation** (idle/work cycles from
-`tts-manifest.json` + M25 frames) is the remaining part of the animation work.
+`syncPosition`. The wiggle hit-test runs on pointer-move (cached in `hoverView`),
+not per frame.
+
+## Frame-based sprite animation
+
+`view/animation.ts`: loads cycle frames (converted from M25 to
+`public/assets/anim/<name>/NN.png`, timings from `tts-manifest.json`) and builds
+PIXI `AnimatedSprite`s on the shared ticker. `makeIdleSprite(name)` plays the
+cycle then rests on frame 0 for ~2.6s before fidgeting again (periodic idle, more
+faithful than a constant loop). Wired: **robot** uses `robot-wait` (ROBOT.TTS
+cycle 13, 12 frames @200ms). Add an element by converting its frames + adding a
+spec to `ANIMATIONS`. ▢ Remaining elements (bird flight, nest hatch, dusty suck,
+bomb fuse, hand/toolbox) are mechanical follow-ups.
+
+**Tooling note:** the preview screenshot tool can become unresponsive (30s
+timeouts) during long sessions even when the app is healthy (eval still works).
+`window.__ttApp` exposes the PIXI app — `__ttApp.ticker.stop()` freezes the
+render loop for a still capture if needed.
 
 ## Status
 
