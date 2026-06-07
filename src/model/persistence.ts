@@ -15,6 +15,7 @@ import { Nest, type NestSnapshot } from './nest';
 import { Bird, type BirdSnapshot } from './bird';
 import { Wand } from './wand';
 import { Dusty } from './dusty';
+import { Bomb } from './bomb';
 import { Robot, type RobotSnapshot } from './robot';
 import { Rational } from './rational';
 
@@ -53,6 +54,8 @@ function buildByKind(s: ThingSnapshot): Thing {
       return new Wand({ x: s.x, y: s.y });
     case 'dusty':
       return new Dusty({ x: s.x, y: s.y });
+    case 'bomb':
+      return new Bomb({ x: s.x, y: s.y });
     case 'robot': {
       const r = s as RobotSnapshot;
       return new Robot({

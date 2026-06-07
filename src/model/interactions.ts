@@ -17,6 +17,7 @@ import { Bird } from './bird';
 import { Nest } from './nest';
 import { Robot, runRobot } from './robot';
 import { Dusty } from './dusty';
+import { Bomb } from './bomb';
 
 export interface DropContext {
   /** When dropping onto a box, the hole the cursor is over. */
@@ -33,6 +34,7 @@ export type DropResult =
   | 'ran'
   | 'train'
   | 'erased'
+  | 'exploded'
   | 'none';
 
 export function resolveDrop(
@@ -70,6 +72,20 @@ export function resolveDrop(
     // Refresh the box (so an erased occupant re-renders) or the loose thing.
     world.notifyChanged(target);
     return 'erased';
+  }
+
+  // The bomb: detonate on the target, destroying it. If it lands on a filled
+  // box hole, just that hole's contents are blown up and the box survives;
+  // otherwise the whole target thing is destroyed. The bomb is consumed.
+  if (dragged instanceof Bomb) {
+    if (target instanceof Box && ctx.holeIndex != null && !target.isHoleEmpty(ctx.holeIndex)) {
+      target.take(ctx.holeIndex);
+      world.notifyChanged(target);
+    } else {
+      world.remove(target.id);
+    }
+    world.remove(dragged.id);
+    return 'exploded';
   }
 
   // A robot meets a box (either direction) → run the robot on the box.

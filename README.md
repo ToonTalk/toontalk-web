@@ -6,6 +6,16 @@ visual programming environment for children created by Ken Kahn (1992–2007).
 This is a clean rewrite (TypeScript + PixiJS), not a port of the original
 DirectX C++ — see `../TOONTALK_WEB_PLAN.md` for the rationale and roadmap.
 
+## Status: The bomb 💣 ✅
+
+- **Blow things up.** Drop the bomb on any thing and it's destroyed. Drop it on
+  a *filled* box hole and only that hole's contents are blown up — the box
+  itself survives. Drop it on a box (or an empty hole) and the whole box goes.
+- Unlike the wand and Dusty, the **bomb is consumed** when it detonates (a miss
+  with no target leaves it intact). Authentic art from `BOMB04`.
+- First step toward terminating *running processes* once trucks land. 60 unit
+  tests.
+
 ## Status: Dusty + erasing + thought bubbles ✅
 
 - **Real conditionals.** A trained robot now matches the **exact values** it was
@@ -124,8 +134,8 @@ test/                     rational + interactions + model tests
 
 ## Next
 
-- Phase 4 tools: the vacuum (Dusty) for erasing/wildcards, trucks (spawn running
-  processes), bombs (terminate). Erasing is what lets robots match by value vs.
-  by shape, turning conditions into real guards.
+- Phase 4 tools: the vacuum (Dusty, ✅) and the bomb (✅) are done. Still to
+  come: trucks (spawn running processes) — at which point the bomb also gains its
+  full meaning, terminating a running robot team.
 - Polish: visible bird flight and a brief robot run animation.
 ```

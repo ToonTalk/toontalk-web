@@ -105,7 +105,7 @@ manager + views when those features land:
 | `dusty.png` | `SUCK0.BMP` | Dusty the vacuum (erasing) |
 | `bubble.png` | `BUBBL10.BMP` | robot thought bubble (condition) |
 | `scale.png` | `SCALE01.BMP` | scale / comparison |
-| `bomb.png` | `BOMB04.BMP` | bomb (terminate) |
+| `bomb.png` | `BOMB04.BMP` | bomb (terminate) — ✅ wired |
 | `cubby.png` | `CUBBY1.BMP` | authentic box art (needs 9-slice) |
 
 ## Tooling

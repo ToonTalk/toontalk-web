@@ -18,6 +18,7 @@ export type ThingKind =
   | 'scale'
   | 'wand'
   | 'dusty'
+  | 'bomb'
   | 'placeholder';
 
 export interface Point {

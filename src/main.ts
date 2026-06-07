@@ -16,6 +16,7 @@ import { Nest } from './model/nest';
 import { Bird } from './model/bird';
 import { Wand } from './model/wand';
 import { Dusty } from './model/dusty';
+import { Bomb } from './model/bomb';
 import { Robot } from './model/robot';
 import { Trainer } from './model/trainer';
 import { resolveDrop } from './model/interactions';
@@ -136,6 +137,8 @@ async function start(): Promise<void> {
     world.add(new Wand({ x: 520, y: 460 }));
     // Dusty the vacuum: drop on a thing to erase it (→ wildcard for robots).
     world.add(new Dusty({ x: 410, y: 470 }));
+    // The bomb: drop on a thing to blow it up (the bomb is consumed).
+    world.add(new Bomb({ x: 300, y: 470 }));
 
     // Pre-trained "adder" robot + a ready box to run it on.
     world.add(
