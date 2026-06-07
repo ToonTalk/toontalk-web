@@ -1,0 +1,82 @@
+import { describe, it, expect } from 'vitest';
+import { World } from '../src/model/world';
+import { NumberThing } from '../src/model/number';
+import { TextThing } from '../src/model/text';
+import { Box } from '../src/model/box';
+import { Robot, runRobot, trainByExample } from '../src/model/robot';
+
+function twoNumberBox(a: number, b: number): Box {
+  return new Box({ holes: [new NumberThing({ value: a }), new NumberThing({ value: b })] });
+}
+
+describe('Robot.matches', () => {
+  it('matches a box of the same shape', () => {
+    const r = new Robot({ condition: ['number', 'number'], actions: [] });
+    expect(r.matches(twoNumberBox(1, 2))).toBe(true);
+  });
+
+  it('rejects a different arity or different kinds', () => {
+    const r = new Robot({ condition: ['number', 'number'], actions: [] });
+    expect(r.matches(new Box({ size: 3 }))).toBe(false);
+    expect(
+      r.matches(new Box({ holes: [new NumberThing({ value: 1 }), new TextThing({ value: 'x' })] })),
+    ).toBe(false);
+  });
+
+  it('honors empty-hole conditions', () => {
+    const r = new Robot({ condition: ['number', null], actions: [] });
+    expect(r.matches(new Box({ holes: [new NumberThing({ value: 1 }), null] }))).toBe(true);
+    expect(r.matches(twoNumberBox(1, 2))).toBe(false);
+  });
+});
+
+describe('runRobot', () => {
+  it('adds two numbers (the canonical adder) and empties the source hole', () => {
+    const w = new World();
+    const adder = new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] });
+    const box = twoNumberBox(4, 5);
+    expect(runRobot(w, adder, box)).toBe(true);
+    expect((box.contentsAt(0) as NumberThing).value.toString()).toBe('9');
+    expect(box.isHoleEmpty(1)).toBe(true);
+  });
+
+  it('generalizes to any matching box', () => {
+    const w = new World();
+    const adder = new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] });
+    const box = twoNumberBox(100, 23);
+    runRobot(w, adder, box);
+    expect((box.contentsAt(0) as NumberThing).value.toString()).toBe('123');
+  });
+
+  it('applies an operation override (multiplier robot)', () => {
+    const w = new World();
+    const mult = new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0, op: '*' }] });
+    const box = twoNumberBox(6, 7);
+    runRobot(w, mult, box);
+    expect((box.contentsAt(0) as NumberThing).value.toString()).toBe('42');
+  });
+
+  it('joins text', () => {
+    const w = new World();
+    const joiner = new Robot({ condition: ['text', 'text'], actions: [{ type: 'combine', from: 1, to: 0 }] });
+    const box = new Box({ holes: [new TextThing({ value: 'foo' }), new TextThing({ value: 'bar' })] });
+    runRobot(w, joiner, box);
+    expect((box.contentsAt(0) as TextThing).value).toBe('foobar');
+  });
+
+  it('does not run on a non-matching box', () => {
+    const w = new World();
+    const adder = new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] });
+    const box = new Box({ size: 2 }); // empty
+    expect(runRobot(w, adder, box)).toBe(false);
+  });
+});
+
+describe('trainByExample', () => {
+  it('derives the condition from the sample box shape', () => {
+    const sample = twoNumberBox(1, 1);
+    const robot = trainByExample(sample, [{ type: 'combine', from: 1, to: 0 }]);
+    expect(robot.condition).toEqual(['number', 'number']);
+    expect(robot.matches(twoNumberBox(8, 9))).toBe(true);
+  });
+});

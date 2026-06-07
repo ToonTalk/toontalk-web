@@ -1,0 +1,46 @@
+/**
+ * Loads the original ToonTalk sprite/background bitmaps (converted to PNG) and
+ * applies the render theme's scaling mode so the "faithful" mode stays crisp.
+ */
+
+import * as PIXI from 'pixi.js';
+import type { RenderTheme } from '../config/render-mode';
+
+const SPRITE_KEYS = [
+  'number', 'text', 'box', 'bird', 'nest', 'robot', 'scale', 'wand', 'pumpy',
+  'dusty', 'bubble', 'bomb',
+] as const;
+
+export interface LoadedAssets {
+  textures: Map<string, PIXI.Texture>;
+  background: PIXI.Texture;
+}
+
+export async function loadAssets(theme: RenderTheme): Promise<LoadedAssets> {
+  const scaleMode =
+    theme.scaleMode === 'nearest' ? PIXI.SCALE_MODES.NEAREST : PIXI.SCALE_MODES.LINEAR;
+
+  const textures = new Map<string, PIXI.Texture>();
+  await Promise.all(
+    SPRITE_KEYS.map(async (key) => {
+      try {
+        const tex = await PIXI.Assets.load(`/assets/sprites/${key}.png`);
+        tex.baseTexture.scaleMode = scaleMode;
+        textures.set(key, tex);
+      } catch {
+        // Missing asset: fall back to a visible swatch so the app still runs.
+        textures.set(key, PIXI.Texture.WHITE);
+      }
+    }),
+  );
+
+  let background: PIXI.Texture;
+  try {
+    background = await PIXI.Assets.load('/assets/backgrounds/city.png');
+    background.baseTexture.scaleMode = scaleMode;
+  } catch {
+    background = PIXI.Texture.WHITE;
+  }
+
+  return { textures, background };
+}

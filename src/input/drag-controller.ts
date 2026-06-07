@@ -1,0 +1,204 @@
+/**
+ * Pointer-based pick-up / drag / drop with touch support.
+ *
+ * Two modes:
+ *  - Normal: drag a thing; on drop, the dragged object's overlap + center decide
+ *    the target, and the pure model (resolveDrop) applies the rules.
+ *  - Training: while a Trainer session is active, drags happen *inside* the
+ *    training box — press over one hole, release over another, and that becomes
+ *    a recorded combine. Normal dragging is suspended.
+ */
+import * as PIXI from 'pixi.js';
+import type { World } from '../model/world';
+import type { Thing } from '../model/thing';
+import type { DropContext } from '../model/interactions';
+import type { Trainer } from '../model/trainer';
+import { Box } from '../model/box';
+import { Nest } from '../model/nest';
+import { Wand } from '../model/wand';
+import type { Renderer } from '../view/renderer';
+import type { ThingView } from '../view/thing-view';
+import { BoxView } from '../view/box-view';
+import { NestView } from '../view/nest-view';
+
+export type DropResolver = (dragged: Thing, target: Thing | undefined, ctx: DropContext) => void;
+export type TrainStep = (from: number, to: number) => void;
+
+export class DragController {
+  private dragging: ThingView | null = null;
+  private grabOffset = { x: 0, y: 0 };
+  private trainFrom: number | null = null;
+
+  constructor(
+    private readonly world: World,
+    renderer: Renderer,
+    private readonly views: Map<string, ThingView>,
+    private readonly resolve: DropResolver,
+    private readonly trainer: Trainer,
+    private readonly onTrainStep: TrainStep,
+  ) {
+    const stage = renderer.app.stage;
+    stage.eventMode = 'static';
+    stage.hitArea = renderer.app.screen;
+    stage.on('pointerdown', this.onPointerDown);
+    stage.on('pointermove', this.onPointerMove);
+    stage.on('pointerup', this.onPointerUp);
+    stage.on('pointerupoutside', this.onPointerUp);
+  }
+
+  private trainingBoxView(): BoxView | null {
+    const box = this.trainer.box;
+    if (!box) return null;
+    const view = this.views.get(box.id);
+    return view instanceof BoxView ? view : null;
+  }
+
+  private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
+    const { x, y } = e.global;
+
+    // Training: begin a hole-to-hole demonstration.
+    if (this.trainer.active) {
+      const bv = this.trainingBoxView();
+      this.trainFrom = bv ? bv.holeIndexAt(x, y) : null;
+      return;
+    }
+
+    const hit = this.world.topAt({ x, y }, (thing, p) => {
+      const view = this.views.get(thing.id);
+      return view ? view.containsPoint(p.x, p.y) : false;
+    });
+    if (!hit) return;
+
+    // If the press lands on a thing inside a box hole or on a nest, pull it out
+    // and drag *that* instead of the container.
+    const picked = this.tryExtract(hit, x, y) ?? hit;
+    const view = this.views.get(picked.id);
+    if (!view) return;
+
+    this.dragging = view;
+    this.grabOffset = { x: picked.x - x, y: picked.y - y };
+    view.container.zIndex = 1000;
+    view.setDragging(true);
+  };
+
+  /** Pull a thing out of a box hole or off a nest; returns it (now top-level). */
+  private tryExtract(hit: Thing, x: number, y: number): Thing | null {
+    if (hit instanceof Box) {
+      const bv = this.views.get(hit.id);
+      if (bv instanceof BoxView) {
+        const i = bv.holeIndexAt(x, y);
+        if (i != null && !hit.isHoleEmpty(i)) {
+          const occ = hit.take(i);
+          if (occ) {
+            occ.moveTo({ x, y });
+            this.world.add(occ);
+            this.world.notifyChanged(hit);
+            return occ;
+          }
+        }
+      }
+    } else if (hit instanceof Nest) {
+      const nv = this.views.get(hit.id);
+      if (nv instanceof NestView && nv.pressedOnItem(x, y)) {
+        const occ = hit.takeLatest();
+        if (occ) {
+          occ.moveTo({ x, y });
+          this.world.add(occ);
+          this.world.notifyChanged(hit);
+          return occ;
+        }
+      }
+    }
+    return null;
+  }
+
+  private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
+    if (this.trainer.active || !this.dragging) return;
+    const { x, y } = e.global;
+    this.world.moveThing(this.dragging.thing.id, {
+      x: x + this.grabOffset.x,
+      y: y + this.grabOffset.y,
+    });
+  };
+
+  private onPointerUp = (e: PIXI.FederatedPointerEvent): void => {
+    // Training: complete a hole-to-hole demonstration.
+    if (this.trainer.active) {
+      if (this.trainFrom != null) {
+        const bv = this.trainingBoxView();
+        const to = bv ? bv.holeIndexAt(e.global.x, e.global.y) : null;
+        if (to != null && to !== this.trainFrom) this.onTrainStep(this.trainFrom, to);
+        this.trainFrom = null;
+      }
+      return;
+    }
+
+    if (!this.dragging) return;
+    const dragged = this.dragging;
+
+    dragged.setDragging(false);
+    dragged.container.zIndex = 0;
+    this.dragging = null;
+
+    // The magic wand selects what its TIP touches (far end of the sprite),
+    // rather than its overall overlap.
+    if (dragged.thing instanceof Wand) {
+      const wb = dragged.container.getBounds();
+      const tipX = wb.x + wb.width * 0.04;
+      const tipY = wb.y + wb.height * 0.3;
+      const tipTarget = this.world.topAt({ x: tipX, y: tipY }, (thing, p) => {
+        if (thing.id === dragged.thing.id) return false;
+        const view = this.views.get(thing.id);
+        return view ? view.containsPoint(p.x, p.y) : false;
+      });
+      this.resolve(dragged.thing, tipTarget, {});
+      return;
+    }
+
+    // Use the dragged object's own geometry (not the cursor tip) to decide what
+    // it landed on, matching the original ToonTalk "drop it on the side" feel.
+    const draggedBounds = dragged.container.getBounds();
+    const cx = dragged.thing.x;
+    const cy = dragged.thing.y;
+
+    let target: Thing | undefined;
+    let bestArea = 0;
+    for (const thing of this.world.all()) {
+      if (thing.id === dragged.thing.id) continue;
+      const view = this.views.get(thing.id);
+      if (!view) continue;
+      const area = overlapArea(draggedBounds, view.container.getBounds());
+      if (area > bestArea) {
+        bestArea = area;
+        target = thing;
+      }
+    }
+    if (bestArea <= 0) target = undefined;
+
+    const ctx: DropContext = {};
+    if (target) {
+      const tv = this.views.get(target.id);
+      if (tv instanceof BoxView) {
+        const hole = tv.holeIndexAt(cx, cy);
+        if (hole != null) ctx.holeIndex = hole;
+      } else {
+        ctx.side = cx < target.x ? 'left' : 'right';
+      }
+    }
+
+    this.resolve(dragged.thing, target, ctx);
+  };
+}
+
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function overlapArea(a: Rect, b: Rect): number {
+  const w = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+  const h = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+  return w * h;
+}
