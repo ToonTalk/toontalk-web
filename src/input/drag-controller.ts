@@ -34,6 +34,10 @@ export class DragController {
   private trainFrom: number | null = null;
   /** Floating copy of a hole's contents, shown while demonstrating a combine. */
   private trainGhost: PIXI.Container | null = null;
+  /** Last known pointer position, for hover-selection feedback. */
+  private pointer = { x: -1, y: -1 };
+  /** The view currently wiggling as selection feedback. */
+  private selectedView: ThingView | null = null;
 
   constructor(
     private readonly world: World,
@@ -53,7 +57,34 @@ export class DragController {
     stage.on('pointerup', this.onPointerUp);
     stage.on('pointerupoutside', this.onPointerUp);
     window.addEventListener('keydown', this.onKeyDown);
+    this.renderer.app.ticker.add(this.tickWiggle);
   }
+
+  /**
+   * Selection feedback: the thing under the hand (or the one being held)
+   * wiggles. Matches the original's "circular movement" — a 2px offset stepping
+   * right → down → left → up every 100ms (sprite.cpp selection_delta_x/y).
+   */
+  private tickWiggle = (): void => {
+    let sel: ThingView | null = this.dragging;
+    if (!sel && !this.trainer.active && this.pointer.x >= 0) {
+      const hit = this.world.topAt(this.pointer, (thing, p) => {
+        const v = this.views.get(thing.id);
+        return v ? v.containsPoint(p.x, p.y) : false;
+      });
+      sel = hit ? this.views.get(hit.id) ?? null : null;
+    }
+    if (this.selectedView && this.selectedView !== sel && !this.selectedView.container.destroyed) {
+      this.selectedView.syncPosition(); // settle the previous selection
+    }
+    this.selectedView = sel;
+    if (!sel) return;
+    const D = 2;
+    const phase = Math.floor((performance.now() % 400) / 100);
+    const dx = phase === 0 ? D : phase === 2 ? -D : 0;
+    const dy = phase === 1 ? D : phase === 3 ? -D : 0;
+    sel.container.position.set(sel.thing.x + dx, sel.thing.y + dy);
+  };
 
   /**
    * While holding a number, set its operation (applied when it's dropped) by
@@ -163,6 +194,7 @@ export class DragController {
   }
 
   private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
+    this.pointer = { x: e.global.x, y: e.global.y };
     if (this.trainer.active) {
       if (this.trainGhost) this.trainGhost.position.set(e.global.x, e.global.y);
       return;

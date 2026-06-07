@@ -186,6 +186,15 @@ extract frames with the ffmpeg at
 output `.jpg`; crop frames with PIL for close study). ▢ The seeded *world* still
 has the busy feature-demo on the floor; the video's room was nearly empty.
 
+## Selection wiggle
+
+The thing under the hand (or being held) wiggles as selection feedback —
+`tickWiggle` in drag-controller.ts, on the PIXI ticker. Faithful to the original
+(`sprite.cpp` `selection_delta_x/y`): a **2px circular offset** stepping right →
+down → left → up every 100ms (400ms loop). The previous selection is settled via
+`syncPosition`. ▢ Frame-by-frame **sprite animation** (idle/work cycles from
+`tts-manifest.json` + M25 frames) is the remaining part of the animation work.
+
 ## Status
 
 Phases 0–3 done. Phase 4 tools: **Dusty (erase/wildcard) ✅**, **bomb ✅**.
