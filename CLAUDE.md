@@ -42,10 +42,19 @@ When in doubt, consult the per-element manual pages (URLs below).
 
 ## Assets
 
-- Original art lives in sibling folders **`M25/`** (~735 `.BMP` + 44 `.TTS`
-  sprite-definition files; the primary source) and **`M22/`** (a **low-res**
-  version of M25 — but it contains **a few images that are MISSING from M25**, so
-  check M22 when an M25 bitmap is absent). Neither folder is in the git repo.
+- Original art lives in sibling folders **`C:\Users\toont\dev\M25\`** (735 `.BMP`
+  + 44 `.TTS` sprite-definition files; the primary source — **present**) and
+  **`M22/`** (a **low-res** version of M25 — but it contains **a few images that
+  are MISSING from M25**, so check M22 when an M25 bitmap is absent). Neither
+  folder is in the git repo.
+- **`C:\Users\toont\dev\source\`** — the **original ToonTalk C++ source**
+  (present): per-element files (`number.cpp`, `text.cpp`, `pad.cpp`, `cubby.cpp`
+  = boxes, `bird.cpp`, `robot.cpp`, `bomb.cpp`, `truck.cpp`, `thought.cpp`),
+  `sprite.cpp`/`animate.cpp` (animation + the selection **wiggle** — selection
+  feedback IS a wiggle), `dragdrop.cpp`/`mouse.cpp`/`input.cpp` (interaction),
+  plus 19 `.tt` world files (the original save format → importable later) and
+  `.pzl` puzzles. **This is ground truth for exact behavior** — read it instead
+  of guessing. `ASSET_GUIDE.md` was derived from `sprite.cpp`.
 - Converted PNGs live in `public/assets/sprites/`. Black is the transparency key
   (see `ASSET_GUIDE.md` for the `.TTS` format, offsets, and per-asset exceptions
   like the green/magenta-keyed number/text plates).
