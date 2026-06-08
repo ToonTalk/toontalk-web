@@ -11,6 +11,11 @@ import { renderThingDisplay } from './display';
 export class NestView extends ThingView {
   private itemNode: PIXI.Container | null = null;
 
+  /** The delivered item's display node (centred at the nest), for wiggle. */
+  get item(): PIXI.Container | null {
+    return this.itemNode;
+  }
+
   /** True if a world-space point falls on the delivered item (for grabbing it). */
   pressedOnItem(worldX: number, worldY: number): boolean {
     if (!this.itemNode) return false;

@@ -28,6 +28,13 @@ import { renderThingDisplay } from '../view/display';
 export type DropResolver = (dragged: Thing, target: Thing | undefined, ctx: DropContext) => void;
 export type TrainStep = (from: number, to: number) => void;
 
+/** A node that's wiggling for selection feedback, plus its resting position. */
+interface WiggleTarget {
+  node: PIXI.Container;
+  bx: number;
+  by: number;
+}
+
 export class DragController {
   private dragging: ThingView | null = null;
   private grabOffset = { x: 0, y: 0 };
@@ -36,10 +43,10 @@ export class DragController {
   private trainGhost: PIXI.Container | null = null;
   /** Last known pointer position, for hover-selection feedback. */
   private pointer = { x: -1, y: -1 };
-  /** The view currently wiggling as selection feedback. */
-  private selectedView: ThingView | null = null;
-  /** Thing under the hand, recomputed only on pointer move (not per frame). */
-  private hoverView: ThingView | null = null;
+  /** The node currently wiggling + its base position, for settling. */
+  private activeTarget: WiggleTarget | null = null;
+  /** Hover wiggle target, recomputed on pointer move (not per frame). */
+  private hoverTarget: WiggleTarget | null = null;
 
   constructor(
     private readonly world: World,
@@ -68,30 +75,54 @@ export class DragController {
    * right → down → left → up every 100ms (sprite.cpp selection_delta_x/y).
    */
   private tickWiggle = (): void => {
-    const sel: ThingView | null = this.dragging ?? this.hoverView;
-    if (this.selectedView && this.selectedView !== sel && !this.selectedView.container.destroyed) {
-      this.selectedView.syncPosition(); // settle the previous selection
+    const target: WiggleTarget | null = this.dragging
+      ? { node: this.dragging.container, bx: this.dragging.thing.x, by: this.dragging.thing.y }
+      : this.hoverTarget;
+    const prev = this.activeTarget;
+    if (prev && prev.node !== target?.node && !prev.node.destroyed) {
+      prev.node.position.set(prev.bx, prev.by); // settle the previous selection
     }
-    this.selectedView = sel;
-    if (!sel || sel.container.destroyed) return;
+    this.activeTarget = target;
+    if (!target || target.node.destroyed) return;
     const D = 2;
     const phase = Math.floor((performance.now() % 400) / 100);
     const dx = phase === 0 ? D : phase === 2 ? -D : 0;
     const dy = phase === 1 ? D : phase === 3 ? -D : 0;
-    sel.container.position.set(sel.thing.x + dx, sel.thing.y + dy);
+    target.node.position.set(target.bx + dx, target.by + dy);
   };
 
-  /** Recompute the hovered thing (the wiggle target). Cheap per move, not per frame. */
-  private updateHover(): void {
+  /** Recompute the hovered wiggle target. Cheap per move, not per frame. */
+  private updateHoverTarget(): void {
     if (this.dragging || this.trainer.active) {
-      this.hoverView = null;
+      this.hoverTarget = null;
       return;
     }
     const hit = this.world.topAt(this.pointer, (thing, p) => {
       const v = this.views.get(thing.id);
       return v ? v.containsPoint(p.x, p.y) : false;
     });
-    this.hoverView = hit ? this.views.get(hit.id) ?? null : null;
+    this.hoverTarget = hit ? this.computeTarget(hit) : null;
+  }
+
+  /**
+   * The wiggle target for a hovered thing: a number inside a box hole (or an
+   * item on a nest) wiggles on its own, not the whole container.
+   */
+  private computeTarget(hit: Thing): WiggleTarget | null {
+    const view = this.views.get(hit.id);
+    if (!view) return null;
+    if (hit instanceof Box && view instanceof BoxView) {
+      const i = view.holeIndexAt(this.pointer.x, this.pointer.y);
+      if (i != null && !hit.isHoleEmpty(i)) {
+        const hn = view.holeNode(i);
+        if (hn) return { node: hn.node, bx: hn.x, by: hn.y };
+      }
+    } else if (hit instanceof Nest && view instanceof NestView) {
+      if (view.pressedOnItem(this.pointer.x, this.pointer.y) && view.item) {
+        return { node: view.item, bx: 0, by: 0 };
+      }
+    }
+    return { node: view.container, bx: hit.x, by: hit.y };
   }
 
   /**
@@ -203,7 +234,7 @@ export class DragController {
 
   private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
     this.pointer = { x: e.global.x, y: e.global.y };
-    this.updateHover();
+    this.updateHoverTarget();
     if (this.trainer.active) {
       if (this.trainGhost) this.trainGhost.position.set(e.global.x, e.global.y);
       return;

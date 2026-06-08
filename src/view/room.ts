@@ -54,7 +54,9 @@ interface PoseSpec {
   top: number;
 }
 const HAND_POSES: Record<HandPose, PoseSpec> = {
-  open: { key: 'hand', anchor: [0.5, 0.16], scale: 1.15, cx: 0.18, w: 0.32, top: 0.72 },
+  // Default: point with the leftmost finger — hotspot at that fingertip (0.24w,
+  // 0.17h). The wrist stub is at ~0.68w, so the sleeve sits 0.44w right of it.
+  open: { key: 'hand', anchor: [0.24, 0.17], scale: 1.15, cx: 0.44, w: 0.32, top: 0.74 },
   grab: { key: 'hand-grab', anchor: [0.5, 0.2], scale: 1.2, cx: 0.24, w: 0.41, top: 0.62 },
 };
 
@@ -97,6 +99,10 @@ export class Room {
     stage.on('pointerdown', () => this.setPose('grab'));
     stage.on('pointerup', () => this.setPose('open'));
     stage.on('pointerupoutside', () => this.setPose('open'));
+
+    // Keep the floor + chrome covering the whole canvas on any renderer resize
+    // (fires on the initial auto-resize too, so the floor always fills the tab).
+    renderer.app.renderer.on('resize', () => this.resize());
   }
 
   private pose: HandPose = 'open';

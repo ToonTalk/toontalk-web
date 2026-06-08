@@ -12,9 +12,13 @@ const CELL = 64;
 const GAP = 8;
 
 export class BoxView extends ThingView {
+  /** Per-hole content node + its layout position, for selection wiggle. */
+  private holeNodes: Array<{ node: PIXI.Container; x: number; y: number } | null> = [];
+
   protected build(): void {
     const box = this.thing as Box;
     const n = box.size;
+    this.holeNodes = new Array(n).fill(null);
     const totalW = n * CELL + (n - 1) * GAP;
     const left = -totalW / 2;
 
@@ -58,8 +62,14 @@ export class BoxView extends ThingView {
         const node = renderThingDisplay(occupant, this.textures, this.theme, CELL - 12);
         node.position.set(cx, 0);
         this.container.addChild(node);
+        this.holeNodes[i] = { node, x: cx, y: 0 };
       }
     }
+  }
+
+  /** The content node of a filled hole + its base position (for wiggle), or null. */
+  holeNode(i: number): { node: PIXI.Container; x: number; y: number } | null {
+    return this.holeNodes[i] ?? null;
   }
 
   /** Index of the hole under a world-space point, or null if none. */

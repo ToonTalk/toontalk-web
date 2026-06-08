@@ -118,7 +118,9 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   labels, fine).
 - **Birds & nests** (`bird.htm`): ⚠ a bird **stacks** deliveries on the nest (we
   show latest + count). ✅ a delivered thing now **fully covers** the nest
-  (centered, scaled up via `renderThingDisplay(..., { scaleUp: true })`). ▢ copying a *nest* makes the bird copy itself to deliver
+  (centered, scaled up via `renderThingDisplay(..., { scaleUp: true })`). The
+  resting bird is **MORP01** (standing) — `bird.png`; FLY* frames are flight only.
+  ▢ copying a *nest* makes the bird copy itself to deliver
   to both nests; ▢ combining nests (drop nest on nest); ▢ eggs hatch into birds;
   ▢ a nest saved without its bird reloads as a fresh egg → new bird. Birds/nests
   are ToonTalk's inter-process channel (a robot waits for a bird to fill a nest).
@@ -192,8 +194,10 @@ The thing under the hand (or being held) wiggles as selection feedback —
 `tickWiggle` in drag-controller.ts, on the PIXI ticker. Faithful to the original
 (`sprite.cpp` `selection_delta_x/y`): a **2px circular offset** stepping right →
 down → left → up every 100ms (400ms loop). The previous selection is settled via
-`syncPosition`. The wiggle hit-test runs on pointer-move (cached in `hoverView`),
-not per frame.
+`syncPosition`. The hit-test runs on pointer-move (not per frame). The wiggle
+targets the **specific node** under the hand — a number inside a box hole, or an
+item on a nest, wiggles on its own (BoxView.holeNode / NestView.item), not the
+whole container.
 
 ## Frame-based sprite animation
 
@@ -203,8 +207,11 @@ PIXI `AnimatedSprite`s on the shared ticker. `makeIdleSprite(name)` plays the
 cycle then rests on frame 0 for ~2.6s before fidgeting again (periodic idle, more
 faithful than a constant loop). Wired: **robot** uses `robot-wait` (ROBOT.TTS
 cycle 13, 12 frames @200ms). Add an element by converting its frames + adding a
-spec to `ANIMATIONS`. ▢ Remaining elements (bird flight, nest hatch, dusty suck,
-bomb fuse, hand/toolbox) are mechanical follow-ups.
+spec to `ANIMATIONS`. **Frames are baked pre-aligned** to a uniform canvas using
+each frame's registration offset (`-ox,-oy` from the manifest) so the element
+doesn't shift/scale during the cycle — the spec stores the resulting `anchor`.
+▢ Remaining elements (bird flight, nest hatch, dusty suck, bomb fuse) are
+mechanical follow-ups.
 
 **Tooling note:** the preview screenshot tool can become unresponsive (30s
 timeouts) during long sessions even when the app is healthy (eval still works).

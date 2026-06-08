@@ -15,10 +15,13 @@ interface AnimSpec {
   frames: number;
   /** Milliseconds per frame (from the .TTS cycle). */
   frameMs: number;
+  /** Centre/registration anchor (frames are baked pre-aligned to this). */
+  anchor: [number, number];
 }
 
 const ANIMATIONS: AnimSpec[] = [
-  { name: 'robot-wait', frames: 12, frameMs: 200 }, // ROBOT.TTS cycle 13 (idle fidget)
+  // ROBOT.TTS cycle 13 (idle fidget); frames baked to a uniform 161x207 canvas.
+  { name: 'robot-wait', frames: 12, frameMs: 200, anchor: [0.416, 0.406] },
 ];
 
 const specs = new Map<string, AnimSpec>(ANIMATIONS.map((a) => [a.name, a]));
@@ -58,7 +61,7 @@ export function makeIdleSprite(name: string, restMs = 2600): PIXI.AnimatedSprite
   const spec = specs.get(name);
   if (!texs || texs.length === 0 || !spec) return null;
   const sprite = new PIXI.AnimatedSprite(texs);
-  sprite.anchor.set(0.5);
+  sprite.anchor.set(spec.anchor[0], spec.anchor[1]);
   // PIXI advances `animationSpeed` frames per shared-ticker tick (~60fps).
   sprite.animationSpeed = 1000 / spec.frameMs / 60;
   sprite.loop = false;
