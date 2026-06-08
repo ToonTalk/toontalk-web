@@ -57,6 +57,8 @@ export class DragController {
     private readonly onTrainStep: TrainStep,
     private readonly textures: Map<string, PIXI.Texture>,
     private readonly theme: RenderTheme,
+    /** Notified when a thing is picked up (the thing) or dropped (null). */
+    private readonly onGrab: (thing: Thing | null) => void,
   ) {
     const stage = this.renderer.app.stage;
     stage.eventMode = 'static';
@@ -198,6 +200,7 @@ export class DragController {
     this.grabOffset = { x: picked.x - x, y: picked.y - y };
     view.container.zIndex = 1000;
     view.setDragging(true);
+    this.onGrab(picked);
   };
 
   /** Pull a thing out of a box hole or off a nest; returns it (now top-level). */
@@ -286,6 +289,7 @@ export class DragController {
         return view ? view.containsPoint(p.x, p.y) : false;
       });
       this.resolve(dragged.thing, tipTarget, {});
+      this.onGrab(null);
       return;
     }
 
@@ -324,6 +328,7 @@ export class DragController {
     }
 
     this.resolve(dragged.thing, target, ctx);
+    this.onGrab(null);
   };
 }
 

@@ -162,12 +162,15 @@ divergence/simplification in our current code, ▢ = not yet implemented.
 
 ToonTalk has **3 house types, each with a different floor colour** (tan `FLOORC`,
 blue `FLOORB`, green `FLOORD` — all 640×480 baseplates in M25). We render the tan
-floor; per-house floor colour is a later concern. The hand cursor has **two poses** (`HAND_POSES` in room.ts): `open` (`hand.png`
-= HAND01, resting) and `grab` (`hand-grab.png` = HAND04, while the pointer is
-pressed). Each pose has its own wrist-stub calibration (`cx`/`w`/`top`) so the
-coral sleeve (`#bb5d64`) continues the stub — measured per frame from the
-bitmaps (HAND01 stub ~0.68w/0.32w; HAND04 ~0.74w/0.41w). Hand frames HAND01–07
-range open→closed.
+floor; per-house floor colour is a later concern. The hand cursor has **context poses** (`HAND_POSES` in room.ts), driven by the
+drag controller's `onGrab(thing)` callback (not Room's own press handler):
+`open` (HAND01, point — **hotspot at the leftmost fingertip, 0.24w/0.17h**),
+`grab` (HAND04, while carrying a thing), and `holdwand` (USEWAND1, while carrying
+the **wand** — the floor wand is alpha-hidden since it's "in" the cursor). Each
+pose has its own wrist calibration (`cx`/`w`/`top`/anchor/scale) so the coral
+sleeve (`#bb5d64`) continues the stub. ⚠ `holdwand` is a wide sprite with
+estimated anchors — **may need visual tuning**. Hand frames HAND01–07 run
+open→closed.
 
 
 `src/view/room.ts` (`Room`) reconstructs the original ToonTalk room as

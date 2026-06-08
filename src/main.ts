@@ -8,6 +8,7 @@
  */
 
 import { World } from './model/world';
+import type { Thing } from './model/thing';
 import { NumberThing } from './model/number';
 import { TextThing } from './model/text';
 import { Box } from './model/box';
@@ -26,7 +27,7 @@ import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
-import { loadAnimations, playOnce } from './view/animation';
+import { loadAnimations, playOnce, flyBird } from './view/animation';
 import { DragController } from './input/drag-controller';
 import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
 
@@ -98,6 +99,23 @@ async function start(): Promise<void> {
 
   const trainer = new Trainer(world);
 
+  // Drive the hand cursor's pose by what it's holding: the wand → holding-wand
+  // (and the floor wand is hidden, since it's now in the cursor), any other
+  // thing → grab, nothing → point.
+  let carriedWand: ThingView | undefined;
+  const onGrab = (thing: Thing | null): void => {
+    if (thing instanceof Wand) {
+      room.setPose('holdwand');
+      carriedWand = views.get(thing.id);
+      if (carriedWand) carriedWand.container.alpha = 0;
+    } else if (thing) {
+      room.setPose('grab');
+    } else {
+      room.setPose('open');
+      carriedWand = undefined; // its alpha is restored by setDragging(false)
+    }
+  };
+
   new DragController(
     world,
     renderer,
@@ -110,6 +128,10 @@ async function start(): Promise<void> {
       } else if (result === 'erased') {
         const at = target ?? dragged;
         playOnce('dusty-suck', renderer.thingLayer, at.x, at.y);
+      } else if (result === 'delivered' && target instanceof Bird && target.nest) {
+        // The bird flies the gift to its nest and back.
+        flyBird(renderer.thingLayer, target.x, target.y, target.nest.x, target.nest.y,
+          views.get(target.id)?.container);
       }
       if (result === 'train') {
         const robot = (dragged instanceof Robot ? dragged : target) as Robot;
@@ -127,6 +149,7 @@ async function start(): Promise<void> {
     },
     textures,
     theme,
+    onGrab,
   );
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels

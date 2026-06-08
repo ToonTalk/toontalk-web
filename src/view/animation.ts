@@ -25,6 +25,7 @@ const ANIMATIONS: AnimSpec[] = [
   // One-shot effects (centered):
   { name: 'explode', frames: 5, frameMs: 80, anchor: [0.5, 0.5] }, // EXPLODE.TTS
   { name: 'dusty-suck', frames: 7, frameMs: 70, anchor: [0.5, 0.5] }, // SUCK0–7
+  { name: 'bird-fly', frames: 6, frameMs: 90, anchor: [0.5, 0.5] }, // BIRD.TTS flight
 ];
 
 const specs = new Map<string, AnimSpec>(ANIMATIONS.map((a) => [a.name, a]));
@@ -52,6 +53,47 @@ export async function loadAnimations(theme: RenderTheme): Promise<void> {
 
 export function hasAnimation(name: string): boolean {
   return loaded.has(name);
+}
+
+/**
+ * A bird flaps from (fromX,fromY) to (toX,toY) and back (a delivery run), then
+ * removes itself. The resting bird sprite is hidden for the trip.
+ */
+export function flyBird(
+  parent: PIXI.Container,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  hide?: PIXI.Container,
+): void {
+  const texs = loaded.get('bird-fly');
+  const spec = specs.get('bird-fly');
+  if (!texs || texs.length === 0 || !spec) return;
+  const sprite = new PIXI.AnimatedSprite(texs);
+  sprite.anchor.set(0.5);
+  sprite.scale.set(0.8);
+  sprite.animationSpeed = 1000 / spec.frameMs / 60;
+  sprite.loop = true;
+  sprite.zIndex = 9998;
+  sprite.position.set(fromX, fromY);
+  parent.addChild(sprite);
+  sprite.play();
+  if (hide) hide.visible = false;
+
+  const durationMs = 950;
+  const start = performance.now();
+  const step = (): void => {
+    const t = Math.min(1, (performance.now() - start) / durationMs);
+    const p = t < 0.5 ? t * 2 : (1 - t) * 2; // out (0→1) then back (1→0)
+    sprite.position.set(fromX + (toX - fromX) * p, fromY + (toY - fromY) * p);
+    if (t >= 1) {
+      PIXI.Ticker.shared.remove(step);
+      sprite.destroy();
+      if (hide && !hide.destroyed) hide.visible = true;
+    }
+  };
+  PIXI.Ticker.shared.add(step);
 }
 
 /** Play a named cycle once at (x, y) on `parent`, removing it when finished. */

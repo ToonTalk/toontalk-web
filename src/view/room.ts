@@ -13,7 +13,7 @@ import * as PIXI from 'pixi.js';
 import type { Renderer } from './renderer';
 import type { RenderTheme } from '../config/render-mode';
 
-const ROOM_KEYS = ['floor', 'toolbox', 'notebook', 'hand', 'hand-grab', 'truck'] as const;
+const ROOM_KEYS = ['floor', 'toolbox', 'notebook', 'hand', 'hand-grab', 'hand-wand', 'truck'] as const;
 
 export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, PIXI.Texture>> {
   const scaleMode =
@@ -44,7 +44,7 @@ const ARM_COLOR = 0xbb5d64; // sampled from the hand texture's wrist stub
  * of width from centre), width (`w`), and where it starts down the sprite
  * (`top`), all measured from the bitmaps.
  */
-type HandPose = 'open' | 'grab';
+type HandPose = 'open' | 'grab' | 'holdwand';
 interface PoseSpec {
   key: string;
   anchor: [number, number];
@@ -58,6 +58,9 @@ const HAND_POSES: Record<HandPose, PoseSpec> = {
   // 0.17h). The wrist stub is at ~0.68w, so the sleeve sits 0.44w right of it.
   open: { key: 'hand', anchor: [0.24, 0.17], scale: 1.15, cx: 0.44, w: 0.32, top: 0.74 },
   grab: { key: 'hand-grab', anchor: [0.5, 0.2], scale: 1.2, cx: 0.24, w: 0.41, top: 0.62 },
+  // Holding the wand: the hand grips it on the right, tip points left (hotspot);
+  // wrist is far right (~0.83w). Wide sprite, so scaled down. (May need tuning.)
+  holdwand: { key: 'hand-wand', anchor: [0.06, 0.42], scale: 0.85, cx: 0.77, w: 0.33, top: 0.16 },
 };
 
 export class Room {
@@ -94,11 +97,8 @@ export class Room {
     this.applyPose('open');
     this.setHand(renderer.width * 0.45, renderer.height * 0.45);
 
-    // The hand closes into a grab while the pointer is pressed.
-    const stage = renderer.app.stage;
-    stage.on('pointerdown', () => this.setPose('grab'));
-    stage.on('pointerup', () => this.setPose('open'));
-    stage.on('pointerupoutside', () => this.setPose('open'));
+    // (Cursor pose is driven by the drag controller via setPose, based on what
+    // the hand is holding.)
 
     // Keep the floor + chrome covering the whole canvas on any renderer resize
     // (fires on the initial auto-resize too, so the floor always fills the tab).
