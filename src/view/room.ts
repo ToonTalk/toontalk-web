@@ -13,7 +13,7 @@ import * as PIXI from 'pixi.js';
 import type { Renderer } from './renderer';
 import type { RenderTheme } from '../config/render-mode';
 
-const ROOM_KEYS = ['floor', 'toolbox', 'notebook', 'hand', 'hand-grab', 'wandbar', 'truck'] as const;
+const ROOM_KEYS = ['floor', 'toolbox', 'notebook', 'hand', 'hand-grab', 'truck'] as const;
 
 export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, PIXI.Texture>> {
   const scaleMode =
@@ -163,13 +163,66 @@ export class Room {
     nb.position.set(W * 0.5, H - nb.height / 2 - 14);
     this.chrome.addChild(nb);
 
-    const wand = this.makeTool('wandbar', 'wand', 'C', 2.0);
-    wand.position.set(150, H * 0.5);
+    const wand = this.makeWand();
+    wand.position.set(160, H * 0.5);
     this.chrome.addChild(wand);
 
     const vac = this.makeTool('dusty', 'dusty', 'S', 1.0);
     vac.position.set(120, H * 0.5 + 130);
     this.chrome.addChild(vac);
+  }
+
+  /** The magic wand resting on the floor: a dark rod with a star tip and mode badge. */
+  private makeWand(): PIXI.Container {
+    const c = new PIXI.Container();
+    const len = 150;
+    const th = 13;
+
+    const rod = new PIXI.Graphics();
+    rod.beginFill(0x000000, 0.25);
+    rod.drawRoundedRect(-len / 2 + 3, -th / 2 + 4, len, th, th / 2);
+    rod.endFill();
+    rod.lineStyle(2, 0x101216, 1);
+    rod.beginFill(0x2c2f36, 1);
+    rod.drawRoundedRect(-len / 2, -th / 2, len, th, th / 2);
+    rod.endFill();
+    rod.lineStyle(0);
+    rod.beginFill(0x515761, 0.85); // top highlight
+    rod.drawRoundedRect(-len / 2 + 7, -th / 2 + 3, len - 14, 3, 1.5);
+    rod.endFill();
+    c.addChild(rod);
+
+    // White knob/ball at the left end (the wand's tip).
+    const tip = new PIXI.Graphics();
+    tip.lineStyle(2, 0xccc6ba, 1);
+    tip.beginFill(0xfdfcf5, 1);
+    tip.drawCircle(-len / 2 - 2, 0, 13);
+    tip.endFill();
+    tip.lineStyle(0);
+    tip.beginFill(0xffffff, 0.85); // glint
+    tip.drawCircle(-len / 2 - 6, -4, 4);
+    tip.endFill();
+    c.addChild(tip);
+
+    // Mode badge ('C' = copy) near the right end.
+    const badge = new PIXI.Graphics();
+    badge.beginFill(0x223040, 0.92);
+    badge.drawRoundedRect(len / 2 - 24, -13, 26, 26, 5);
+    badge.endFill();
+    const t = new PIXI.Text('C', {
+      fontFamily: this.theme.fontFamily,
+      fontSize: 16,
+      fill: 0xffffff,
+      fontWeight: 'bold',
+    });
+    t.anchor.set(0.5);
+    t.position.set(len / 2 - 11, 0);
+    c.addChild(badge, t);
+
+    c.hitArea = new PIXI.Rectangle(-len / 2 - 20, -22, len + 44, 44);
+    c.eventMode = 'static';
+    c.on('pointertap', () => this.onPick('wand'));
+    return c;
   }
 
   /** A studded grey lego panel (used for the toolbox lid). */
