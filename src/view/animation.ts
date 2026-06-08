@@ -22,6 +22,9 @@ interface AnimSpec {
 const ANIMATIONS: AnimSpec[] = [
   // ROBOT.TTS cycle 13 (idle fidget); frames baked to a uniform 161x207 canvas.
   { name: 'robot-wait', frames: 12, frameMs: 200, anchor: [0.416, 0.406] },
+  // One-shot effects (centered):
+  { name: 'explode', frames: 5, frameMs: 80, anchor: [0.5, 0.5] }, // EXPLODE.TTS
+  { name: 'dusty-suck', frames: 7, frameMs: 70, anchor: [0.5, 0.5] }, // SUCK0–7
 ];
 
 const specs = new Map<string, AnimSpec>(ANIMATIONS.map((a) => [a.name, a]));
@@ -49,6 +52,22 @@ export async function loadAnimations(theme: RenderTheme): Promise<void> {
 
 export function hasAnimation(name: string): boolean {
   return loaded.has(name);
+}
+
+/** Play a named cycle once at (x, y) on `parent`, removing it when finished. */
+export function playOnce(name: string, parent: PIXI.Container, x: number, y: number): void {
+  const texs = loaded.get(name);
+  const spec = specs.get(name);
+  if (!texs || texs.length === 0 || !spec) return;
+  const sprite = new PIXI.AnimatedSprite(texs);
+  sprite.anchor.set(spec.anchor[0], spec.anchor[1]);
+  sprite.position.set(x, y);
+  sprite.zIndex = 9999;
+  sprite.animationSpeed = 1000 / spec.frameMs / 60;
+  sprite.loop = false;
+  sprite.onComplete = () => sprite.destroy();
+  parent.addChild(sprite);
+  sprite.play();
 }
 
 /**

@@ -26,7 +26,7 @@ import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
-import { loadAnimations } from './view/animation';
+import { loadAnimations, playOnce } from './view/animation';
 import { DragController } from './input/drag-controller';
 import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
 
@@ -104,6 +104,13 @@ async function start(): Promise<void> {
     views,
     (dragged, target, ctx) => {
       const result = resolveDrop(world, dragged, target, ctx);
+      // One-shot effects at the action site.
+      if (result === 'exploded') {
+        playOnce('explode', renderer.thingLayer, dragged.x, dragged.y);
+      } else if (result === 'erased') {
+        const at = target ?? dragged;
+        playOnce('dusty-suck', renderer.thingLayer, at.x, at.y);
+      }
       if (result === 'train') {
         const robot = (dragged instanceof Robot ? dragged : target) as Robot;
         const box = dragged instanceof Box ? dragged : (target as Box);

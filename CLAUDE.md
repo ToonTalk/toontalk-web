@@ -210,8 +210,10 @@ cycle 13, 12 frames @200ms). Add an element by converting its frames + adding a
 spec to `ANIMATIONS`. **Frames are baked pre-aligned** to a uniform canvas using
 each frame's registration offset (`-ox,-oy` from the manifest) so the element
 doesn't shift/scale during the cycle — the spec stores the resulting `anchor`.
-▢ Remaining elements (bird flight, nest hatch, dusty suck, bomb fuse) are
-mechanical follow-ups.
+`playOnce(name, parent, x, y)` plays a cycle once and self-removes — used for
+one-shot effects: **bomb explosion** (`explode`, EXPLODE.TTS) on a detonation,
+and **Dusty suck** (`dusty-suck`, SUCK0–7) on an erase, both fired from main's
+drop resolver by `DropResult`. ▢ Remaining: bird flight on delivery, nest hatch.
 
 **Tooling note:** the preview screenshot tool can become unresponsive (30s
 timeouts) during long sessions even when the app is healthy (eval still works).
