@@ -40,6 +40,8 @@ export interface ThingSnapshot {
   /** Pumpy resize factors (omitted when 1). */
   scaleX?: number;
   scaleY?: number;
+  /** Set when this number/text pad is a live sensor (see model/sensor.ts). */
+  sensorType?: string;
 }
 
 let nextId = 1;

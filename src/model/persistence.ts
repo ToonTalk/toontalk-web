@@ -22,6 +22,7 @@ import { House, type HouseSnapshot } from './house';
 import { Notebook, type NotebookSnapshot } from './notebook';
 import { Pumpy, type PumpySnapshot } from './pumpy';
 import { Scale, type ScaleSnapshot, recomputeScales } from './scale';
+import { makeSensor, type SensorType } from './sensor';
 import { Rational } from './rational';
 
 export function serialize(world: World): string {
@@ -41,10 +42,16 @@ function buildByKind(s: ThingSnapshot): Thing {
   switch (s.kind) {
     case 'number': {
       const n = s as NumberSnapshot;
+      if (s.sensorType) {
+        return makeSensor(s.sensorType as SensorType, { x: s.x, y: s.y, value: Rational.parse(n.value) });
+      }
       return new NumberThing({ x: s.x, y: s.y, value: Rational.parse(n.value), operation: n.operation });
     }
     case 'text': {
       const t = s as TextSnapshot;
+      if (s.sensorType) {
+        return makeSensor(s.sensorType as SensorType, { x: s.x, y: s.y, value: t.value });
+      }
       return new TextThing({ x: s.x, y: s.y, value: t.value });
     }
     case 'box': {

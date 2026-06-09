@@ -7,8 +7,10 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { NumberThing } from '../model/number';
+import { isSensor, SENSORS, type Sensor } from '../model/sensor';
 import { drawPad } from './pad';
 import { drawPlate } from './plate';
+import { addSensorTag } from './sensor-tag';
 
 const OP_GLYPH: Record<string, string> = {
   '+': '+', '*': '×', '/': '÷', '%': '%', '^': '^', '=': '=',
@@ -46,5 +48,10 @@ export class NumberView extends ThingView {
     badge.anchor.set(0.5);
     badge.position.set(-width / 2 + 12, -height / 2 + 12);
     this.container.addChild(badge);
+
+    // Live-sensor tag (antenna + label) so it reads as a sensor, not a plain number.
+    if (isSensor(n)) {
+      addSensorTag(this.container, SENSORS[(n as Sensor).sensorType].label, width, height, this.theme);
+    }
   }
 }

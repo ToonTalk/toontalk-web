@@ -34,8 +34,12 @@ import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
 import { loadAnimations, playOnce, flyBird } from './view/animation';
 import { DragController } from './input/drag-controller';
+import { InputTracker } from './input/input-state';
+import { updateSensors } from './model/sensor-runtime';
+import { makeSensor, SENSOR_TYPES } from './model/sensor';
 import { CityScene } from './city/city-scene';
 import { loadCityAssets } from './city/city-sprites';
+import { BLOCK } from './city/city-model';
 import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
 
 function setHud(text: string): void {
@@ -183,6 +187,18 @@ async function start(): Promise<void> {
   const city = new CityScene(renderer, cityAssets);
   (window as unknown as { __ttCity?: unknown }).__ttCity = city;
 
+  // Sensors: one input tracker feeds a per-frame snapshot to every sensor pad in
+  // the world. handVisible follows the room hand (hidden while flying the city);
+  // the address comes from the current city block.
+  const input = new InputTracker(renderer.view, () => renderer.width, () => renderer.height);
+  input.handVisible = () => !city.isActive;
+  input.address = () => ({
+    road: Math.max(0, Math.floor(city.model.cx / BLOCK)),
+    street: Math.max(0, Math.floor(city.model.cy / BLOCK)),
+  });
+  (window as unknown as { __ttInput?: unknown }).__ttInput = input;
+  renderer.app.ticker.add(() => updateSensors(world, input.sample(renderer.app.ticker.deltaMS)));
+
   function setCity(on: boolean): void {
     city.setActive(on);
     room.setVisible(!on);
@@ -274,6 +290,15 @@ async function start(): Promise<void> {
     notebook.store(new NumberThing({ value: 42 }));
     notebook.store(new TextThing({ value: 'hi' }));
     world.add(notebook);
+
+    // A notebook full of sensors (like page 4 of the original first notebook):
+    // drag a page off to pull out a *live* sensor pad. Plus two loose sensors on
+    // the floor so the live updating is visible right away.
+    const sensors = new Notebook({ x: 760, y: 580 });
+    for (const t of SENSOR_TYPES) sensors.store(makeSensor(t));
+    world.add(sensors);
+    world.add(makeSensor('random', { x: 120, y: 360 }));
+    world.add(makeSensor('mouse-vx', { x: 120, y: 470 }));
 
     // Pre-trained "adder" robot + a ready box to run it on.
     world.add(
