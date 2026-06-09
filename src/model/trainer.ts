@@ -53,13 +53,20 @@ export class Trainer {
     };
   }
 
-  /** Demonstrate a combine; applies it live and records it. Returns success. */
+  /**
+   * Demonstrate dragging a hole's thing onto another hole; applies it live and
+   * records it. Dropping onto an *empty* hole is a **move**; onto a *filled*
+   * hole it **combines** (numbers add, text joins, …). Returns success.
+   */
   recordCombine(from: number, to: number): boolean {
     if (!this.session) return false;
-    const action: RobotAction = { type: 'combine', from, to };
-    if (!applyAction(this.session.box, action)) return false;
+    const box = this.session.box;
+    const action: RobotAction = box.isHoleEmpty(to)
+      ? { type: 'move', from, to }
+      : { type: 'combine', from, to };
+    if (!applyAction(box, action)) return false;
     this.session.actions.push(action);
-    this.world.notifyChanged(this.session.box);
+    this.world.notifyChanged(box);
     return true;
   }
 

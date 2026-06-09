@@ -248,6 +248,26 @@ async function start(): Promise<void> {
     });
     recomputeScales(scaleBox);
     world.add(scaleBox);
+
+    // "Swap if the first is less than the second": a scale-guarded robot that
+    // swaps the two numbers when the balance tips right (first < second). Drop
+    // it on the box to run it.
+    world.add(
+      new Robot({
+        condition: ['number', 'scale', 'number'],
+        exactValues: [null, new Scale({ tilt: 'right' }), null],
+        actions: [{ type: 'swap', a: 0, b: 2 }],
+        x: 1000,
+        y: 470,
+      }),
+    );
+    const swapBox = new Box({
+      holes: [new NumberThing({ value: 3 }), new Scale(), new NumberThing({ value: 8 })],
+      x: 1000,
+      y: 330,
+    });
+    recomputeScales(swapBox);
+    world.add(swapBox);
   }
 
   // Restore the last session if there is one; otherwise seed the demo world.

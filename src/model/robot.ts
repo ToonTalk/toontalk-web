@@ -34,6 +34,19 @@ export type RobotAction =
       type: 'remove';
       /** Hole to empty. */
       hole: number;
+    }
+  | {
+      type: 'move';
+      /** Hole whose thing relocates… */
+      from: number;
+      /** …to this (empty) hole. */
+      to: number;
+    }
+  | {
+      type: 'swap';
+      /** Exchange the contents of these two holes. */
+      a: number;
+      b: number;
     };
 
 /** A condition hole: null = must be empty; a kind = must hold a thing of that kind. */
@@ -146,6 +159,22 @@ export function applyAction(box: Box, action: RobotAction): boolean {
     if (box.isHoleEmpty(action.hole)) return false;
     box.take(action.hole);
     return true;
+  }
+
+  if (action.type === 'move') {
+    const thing = box.contentsAt(action.from);
+    if (!thing || !box.isHoleEmpty(action.to)) return false;
+    box.take(action.from);
+    box.put(action.to, thing);
+    return true;
+  }
+
+  if (action.type === 'swap') {
+    const thingA = box.take(action.a);
+    const thingB = box.take(action.b);
+    if (thingA) box.put(action.b, thingA);
+    if (thingB) box.put(action.a, thingB);
+    return thingA !== null || thingB !== null;
   }
 
   const from = box.contentsAt(action.from);

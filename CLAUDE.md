@@ -149,8 +149,8 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   erasing operands generalises). Tilt is a robot guard (`Scale.equals` compares
   tilt) → real `<`, `>`, `=` conditions. `recomputeScales(box)` is called at every
   box-mutation point (interactions/extraction/robot actions/trainer/load/seed)
-  and before robot matching. View tips the sprite by tilt. ▢ TODO: a move/swap
-  RobotAction so the classic "swap if first<second" demo can run.
+  and before robot matching. View tips the sprite by tilt. ✅ the classic "swap if
+  first<second" demo runs (a scale-guarded robot with a `swap` action; seeded).
 - **Dusty / vacuum** (`dusty.htm`): ⚠ real Dusty has **three modes via the nose
   button — Suck (remove, stored in its stomach), Reverse (spit back out), Erase**.
   We model only Erase, as a *toggle*; authentic erase is a mode and restore is
