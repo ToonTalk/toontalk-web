@@ -142,8 +142,10 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   ✅ **a bird feeds multiple nests** (`Bird.nests`): **copying a nest** (wand)
   adds the copy to its bird's nests, so giving to the bird delivers a copy to
   **every** nest — keeping copied channels in sync (the manual's "deliver to
-  both"). ▢ further: copying
-  to both nests; ▢ combining nests (drop nest on nest); ▢ eggs hatch into birds;
+  both"). ✅ **combine** — drop a nest on a nest: deliveries merge into the target
+  and any feeding bird is re-pointed to it (one channel). ✅ **hatch** —
+  `hatchFromNest`: pressing an empty nest with no bird gives a fresh bird that
+  feeds it (an egg hatching), wired into the drag controller's `tryExtract`.
   ▢ a nest saved without its bird reloads as a fresh egg → new bird. Birds/nests
   are ToonTalk's inter-process channel (a robot waits for a bird to fill a nest).
 - **Robots** (`robot.htm`): ✅ train by example; condition = box shape; erasing
