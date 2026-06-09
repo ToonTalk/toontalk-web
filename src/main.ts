@@ -454,6 +454,9 @@ async function start(): Promise<void> {
 
   // Boot into the outdoor city (flying the helicopter).
   setCity(true);
+
+  // Signals tools (tools/verify/snap.mjs) that boot is fully complete.
+  (window as unknown as { __ttReady?: boolean }).__ttReady = true;
 }
 
 start().catch((err) => {

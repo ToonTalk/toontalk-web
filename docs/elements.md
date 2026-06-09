@@ -1,0 +1,226 @@
+# Element behavior digest (manual + original C++ vs. our implementation)
+
+This is the **fidelity ledger**. Read the relevant entry before changing an
+element; update it (honestly) after. Legend: ✅ matches our impl · ⚠
+divergence/simplification in our current code · ▢ not yet implemented.
+Read 2026-06 from the per-element manual pages (player's guide at
+https://toontalk.com/English/doc.htm). Note the first 7 menu items — puzzle
+game, demos, free play, options, help, WebLabs, Playground — are app-launcher
+options, not element behavior.
+
+## Pad editing (`pad.cpp`)
+
+✅ select a pad (hover it / hold it) and **type to edit** — numbers: digits
+append (sign preserved), Backspace drops a digit; text: characters append,
+Backspace deletes. Handled in `drag-controller` `onKeyDown` →
+`editNumber`/`editText` against the hovered/held thing. (`window.__ttWorld`
+exposes the world for debugging, like `__ttApp`.)
+▢ no insertion-point/cursor editing or decimal/fraction typing yet.
+
+## Numbers (`newnum.htm`)
+
+✅ **op set by a keypress while holding the pad**, default `+` — `+` add,
+`x`/`*` multiply, `/` divide, `%` remainder, `^` power, `=` replace; `-`
+**negates** the pad (the manual has no binary minus — subtraction is
+negate-then-add). ✅ dropping a number on a **blank** text pad converts it to
+its digits as text. ✅ exact BigInt rationals (division → exact fractions;
+integer powers exact, non-integer powers approximated). Keyboard handling
+lives in `input/drag-controller.ts`.
+
+## Text (`text.htm`)
+
+✅ drop side decides order (left=prepend, right=append).
+▢ a **blank pad acts as a wildcard** in robot conditions (like erased);
+▢ dropping a number on a blank pad converts it to text; ▢ editing.
+
+## Boxes (`box.htm`)
+
+✅ holes fill / combine-in-place. ✅ **join** — drop a box on another box's
+*edge* (not over a hole) → holes merge, side decides order (`Box.join`);
+dropping *over a hole* still nests/fills. ▢ **split** (drop box on a number N
+→ splits into N and remainder), ▢ text on an (erased/empty) box explodes into
+one hole per character, ▢ set hole count by typing a digit. Robots ignore hole
+labels — only hole count + contents matter (we have no labels, fine).
+
+## Birds & nests (`bird.cpp`)
+
+✅ a nest is a **FIFO queue** — birds deliver to the back (`receive`), things
+are read from the **front** (`front`/`takeFront`, oldest first), and the nest
+displays the front item. ✅ a delivered thing **fully covers** the nest
+(`renderThingDisplay(..., { scaleUp: true })`). ✅ resting bird is **MORP01**
+(standing); FLY* frames are flight only. ✅ **a bird feeds multiple nests**
+(`Bird.nests`): **copying a nest** (wand) adds the copy to its bird's nests,
+so giving to the bird delivers a copy to **every** nest — keeping copied
+channels in sync (the manual's "deliver to both"). ✅ **combine** — drop a
+nest on a nest: deliveries merge into the target and any feeding bird is
+re-pointed to it (one channel). ✅ **hatch** — `hatchFromNest`: pressing an
+empty nest with no bird gives a fresh bird that feeds it (an egg hatching),
+wired into the drag controller's `tryExtract`.
+▢ a nest saved without its bird reloads as a fresh egg → new bird.
+Birds/nests are ToonTalk's inter-process channel (a robot waits for a bird to
+fill a nest).
+
+## Robots (`robot.htm`)
+
+✅ train by example; condition = box shape; erasing generalizes; thought
+bubble shows the condition. ✅ **finish key**: Escape finishes training
+(matches the manual; Backspace cancels as a web-only helper since the manual
+has no cancel gesture). ✅ **teams** (robot.cpp `next_robot`): drop robot on
+robot → the dragged robot (+ its team) lines up behind the target
+(`Robot.team`); a box is offered front-to-back via `runRobot` → `lineup()`,
+first trained matching robot runs, else nothing (waits). Teammates aren't
+world things; the view stacks them behind the lead.
+▢ negation via a team + marker. ▢ recursion via the wand's 'S' mode copying
+the robot+team.
+
+## Scale (`scale.htm`)
+
+✅ a `Scale` (model/scale.ts) sits in a box hole and weighs its two
+neighbours: tilts `left`/`right` toward the bigger number or
+later-alphabetical text, `balanced` when equal, `tottering` when a neighbour
+is missing (matches nothing). An **erased** neighbour keeps the previous tilt
+(so erasing operands generalises). Tilt is a robot guard (`Scale.equals`
+compares tilt) → real `<`, `>`, `=` conditions. `recomputeScales(box)` is
+called at every box-mutation point (interactions/extraction/robot
+actions/trainer/load/seed) and before robot matching. View tips the sprite by
+tilt. ✅ the classic "swap if first<second" demo runs (a scale-guarded robot
+with a `swap` action; seeded).
+
+## Dusty / vacuum (`dusty.htm`, `dusty.ts`) ✅
+
+**Held tool** (see *Tools are held* below). Has the **three modes** (set with
+the nose button — **E/S/R** keys; **Tab** cycles): **erase** (toggle erased /
+generalize a robot — default), **suck** (vacuum a thing or a box hole's
+contents into its `stomach`), **reverse** (spit the last sucked thing back
+out, into an empty hole or beside Dusty). `DustyView` shows the mode badge +
+stomach count. We default to **erase** (our wildcard workflow leans on it)
+though the original's default is suck.
+Manual note: the real Dusty has three modes via the nose button — Suck
+(remove, stored in its stomach), Reverse (spit back out), Erase. Authentic
+erase is a mode and restore is via Dusty-reverse or the wand's 'O' mode, not
+a toggle. **Suck (remove, restorable) is distinct from the Bomb (destroy,
+permanent)**.
+
+## Wand (`wand.ts`) ✅
+
+**Held tool** (see *Tools are held* below); copies via the **tip**, not
+consumed, with **three modes** (press C/O/S to set, Tab cycles; `WandView`
+shows the badge): **C** copy + restore (un-erased — default); **O**
+"original" copies preserving the erased/wildcard state (per `picture.cpp`:
+original mode doesn't restore); **S** copy-self copies a robot *with its
+team* (C/O copy just the lead). Mode persists.
+
+## Pumpy (`pumpy.ts`) ✅
+
+The resize **held tool** (see *Tools are held* below). `Thing` has
+`scaleX`/`scaleY` (applied by ThingView, persisted, omitted from snapshots
+when 1); applying Pumpy to the thing under its hose tip resizes it by its
+mode (bigger/smaller/wider/narrower/taller/shorter/good; clamp 0.4–3×). Mode
+keys: `+`/`b` bigger · `-` smaller · `w` wider · `n` narrower · `t` taller ·
+`s` shorter · `g` good (revert); **Tab** cycles. `PumpyView` shows a badge
+and scales the 800×600 art down to tool size.
+▢ in-hole things ignore Pumpy size (the cubby fit-scale dominates); copies
+and box-fit don't carry Pumpy size.
+
+## Tools are held, not dropped
+
+Pumpy, Dusty and the wand are **not** drag-and-drop. You pick a tool up (it
+rides the cursor with its tip/hose at the pointer, offset up-and-right), move
+the tip over a thing, then **click or press space** to apply the tool's
+*current default* to that thing — the tool **stays in hand**. A click/space
+over empty floor **puts the tool down**. Mode keys (above) change the current
+default while held. Implemented in `drag-controller.ts`: `heldTool` field,
+`onPointerDown` picks a tool into hand (vs. normal drag for everything else),
+`applyHeldTool` runs the normal `resolveDrop` rules against the thing under
+the tip, `onKeyDown` routes space→apply and letters→`setToolMode`. This
+matches the original (`pumpy.htm` etc.): "move the end of the hose over the
+thing, then click/space".
+
+## Notebook (`notebook.ts`/`notebook-view.ts`) ✅
+
+A page store + the **real save model**. Drop a thing → filed as a new page;
+drop a **number** → flip to that 1-based page; drop a **text** → flip to the
+first page whose text *starts with* it ("ma"→"mat"), else file; **drag a page
+off → a copy**; **only Dusty removes** the current page. Page-turn arrow cues;
+←/→ (and Backspace→last) turn pages while pointing at it.
+
+**Main notebook = persistence (strictly faithful):** `Notebook.isMain` marks
+the one toolbox notebook that survives between sessions (`notebook-store.ts` ↔
+`localStorage`, via `thingToJson`/`thingFromJson`); the **floor is
+transient**, reseeded each load. Saving = filing onto the main notebook (saved
+on its change, identity-checked so sensor ticks don't thrash it). Secondary
+notebooks are transient unless filed onto a main page. (`★` marks the main
+notebook.)
+
+**Modules:** a notebook dropped on a **truck** → `Truck.module`, carried into
+`House.module` (persisted). Robot action `fromModule {page,to}` copies a
+module page into an empty hole (threaded via `applyAction(ctx)`/`runHouse`) —
+the runtime module-use / **recursion primitive**; demo house counts up by
+pulling a copy of its module's page each tick.
+
+▢ not yet: training-by-example of `fromModule`; full self-replicating-house
+recursion + result-return via birds/nests; per-user named notebooks; the
+picture/sound/options sub-notebooks (media deferred); dropping a notebook on
+an erased box → a box with one hole per page; page-turn animation.
+
+## Bomb
+
+In real ToonTalk a bomb blows up the **house/room you're in** — it terminates
+a whole running process (a robot team working in a house); its stated purpose
+is *recycling* (deallocating finished houses). It is consumed. Our current
+impl simplifies this to "destroy the target thing/box" because we started
+with no houses. ✅ a bomb now **terminates a house** (the running process):
+`world.remove(target)` already covers it. ▢ still simplified for loose
+objects.
+
+## Truck / House ✅
+
+(`truck.cpp` fill_house/initial_contents; `truck.ts`, `house.ts`): drop a
+**robot (team) + a box** into a `Truck` (the truck is the target) — with both
+aboard it drives off (truck removed) and builds a **House**, a running
+process. A periodic step in main.ts (`setInterval` 800ms → `runHouse`) offers
+the house's box to its team front-to-back; the first matching robot runs, so
+the house keeps reacting (e.g. to a bird feeding a nest in its box). The
+house is also shown in place on the floor (drawn house + its box + the lead
+robot peeking; `house-view.ts`). A **notebook dropped on the truck** becomes
+the house's **module** (see Notebook above). ▢ later: truck extras (house
+picture, address); dropping an **address** on a truck → build near there.
+NOTE: houses run on a real 800ms interval — verify them with the verify-app
+skill (`tools/verify/snap.mjs --settle 3000 …`) or tests, not the preview
+screenshot tool.
+
+## Sensors ✅ (live pads)
+
+Sensors are pads that report **live system state** (the original ships a
+notebook full of them; `source/.../doc/sensor.htm`, `sensors.rc`). The manual
+says a sensor "works much like a control for a picture" and *is* a number or
+text/yes-no pad whose value refreshes every frame — so we model it exactly
+that way and reuse the whole interaction engine with zero special cases.
+
+- **`src/model/sensor.ts`** — `NumberSensor extends NumberThing` and
+  `TextSensor extends TextThing` (same `kind`, so robots match them, numbers
+  combine with them, they sit on scales). Each adds `sensorType` +
+  `update(input)` / `copy()` / `snapshot()`. `SENSORS` catalog +
+  `makeSensor(type)` factory. Implemented (non-media): `mouse-vx`/`mouse-vy`
+  (velocity, 1000 = screen/sec), `ms-per-frame` (clock/timer), `random`
+  (0–1000), `address-road`/`-street` (from the city block),
+  `click-left|middle|right` (momentary), `down-…` (held), `key-just`
+  (momentary) / `key-last` (held), `shift-down`, `ctrl-down`, `hand-visible`.
+- **`src/input/input-state.ts`** — `InputState` + `InputTracker`:
+  mouse/keyboard listeners; `sample(dt)` builds a per-frame snapshot
+  (velocity from accumulated pointer movement; momentary click/key **edges**
+  true for one sample) then clears the edges. Pluggable `handVisible` +
+  `address` providers.
+- **`src/model/sensor-runtime.ts`** — `updateSensors(world, input)` each
+  frame (on the render ticker in `main.ts`), notifying the view only on
+  change.
+- **Views**: number/text pads draw a sensor tag (antenna + label;
+  `src/view/sensor-tag.ts`). **Persistence**: sensors round-trip via
+  `sensorType` on the number/text snapshot. Seeded: a 17-page **sensor
+  notebook** + two loose sensors in the demo room.
+- ▢ **Media sensors deferred** (with the rest of media): file→picture/sound,
+  MCI, text→speech, wall/house/roof decorations, clipboard. ▢ joystick; the
+  sensor "remote control" state-cycling UI.
+- Sensors update on the render ticker, so the verify-app harness's manual
+  ticker pump drives them; `__ttInput.sample()` + manual `sensor.update()`
+  also work in `--eval` snippets.
