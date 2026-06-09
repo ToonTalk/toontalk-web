@@ -178,9 +178,11 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   We model only Erase, as a *toggle*; authentic erase is a mode and restore is
   via Dusty-reverse or the wand's 'O' mode, not a toggle. Note **Suck (remove,
   restorable) is distinct from the Bomb (destroy, permanent)**.
-- **Wand** (`wand.htm`): ✅ copies via the **tip**, not consumed. ⚠ we only do
-  mode 'C'. ▢ mode 'O' = copy and restore an erased original; ▢ mode 'S' = copy
-  self / copy a robot+team (the only way to make another wand; enables recursion).
+- **Wand** ✅ (`wand.ts`): copies via the **tip**, not consumed, with **three
+  modes** (hover/hold + press C/O/S or space; `WandView` shows the badge): **C**
+  copy + restore (un-erased — default); **O** "original" copies preserving the
+  erased/wildcard state (per `picture.cpp`: original mode doesn't restore); **S**
+  copy-self copies a robot *with its team* (C/O copy just the lead). Mode persists.
 - **Notebook** ✅ (`notebook.ts`/`notebook-view.ts`): a page store. Drop a thing
   on it → filed as a new page (turned to it); drop a **number** → flips to that
   1-based page; **drag the page off → a copy** comes out (the notebook keeps its

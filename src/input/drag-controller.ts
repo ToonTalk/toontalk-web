@@ -153,7 +153,9 @@ export class DragController {
           ? this.editText(thing, e.key)
           : thing instanceof Dusty
             ? this.editDusty(thing, e.key)
-            : false;
+            : thing instanceof Wand
+              ? this.editWand(thing, e.key)
+              : false;
     if (handled) {
       e.preventDefault();
       this.world.notifyChanged(thing as Thing);
@@ -182,6 +184,17 @@ export class DragController {
       mag = mag.multiply(Rational.fromInt(10)).add(Rational.fromInt(Number(key)));
       n.value = neg ? mag.negate() : mag;
       return true;
+    }
+    return false;
+  }
+
+  /** The wand's button: C copy · O original · S copy-self · space cycles. */
+  private editWand(w: Wand, key: string): boolean {
+    switch (key.toLowerCase()) {
+      case 'c': w.mode = 'C'; return true;
+      case 'o': w.mode = 'O'; return true;
+      case 's': w.mode = 'S'; return true;
+      case ' ': w.cycleMode(); return true;
     }
     return false;
   }

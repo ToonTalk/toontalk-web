@@ -60,6 +60,10 @@ export function resolveDrop(
   // Magic wand: drop it on a thing to copy that thing. Wand is not consumed.
   if (dragged instanceof Wand) {
     const copy = target.copy();
+    // C/O copy just the lead robot; S ("copy self") keeps the whole team.
+    if (copy instanceof Robot && dragged.mode !== 'S') copy.team = [];
+    // O ("original") preserves the erased/wildcard state; C/S restore (un-erase).
+    if (dragged.mode === 'O') copy.erased = target.erased;
     copy.moveTo({ x: target.x + 36, y: target.y + 28 });
     world.add(copy);
     // Copying a nest makes its bird feed the copy too, so both stay in sync.
