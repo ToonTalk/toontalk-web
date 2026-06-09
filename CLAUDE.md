@@ -99,12 +99,50 @@ Playground — are app-launcher options, not element behavior.)
   a running process. A periodic step in main.ts (`setInterval` 800ms →
   `runHouse`) offers the house's box to its team front-to-back; the first
   matching robot runs, so the house keeps reacting (e.g. to a bird feeding a nest
-  in its box). **City postponed** — the house is shown in place on the floor
-  (drawn house + its box + the lead robot peeking; `house-view.ts`). ▢ later: the
-  city with houses on lots + helicopter navigation; truck extras (house picture,
-  address, notebook module). NOTE: the 800ms interval + animations make the
-  preview screenshot tool time out — verify trucks/houses via tests or a real
+  in its box). The house is also shown in place on the floor (drawn house + its
+  box + the lead robot peeking; `house-view.ts`). ▢ later: truck extras (house
+  picture, address, notebook module). NOTE: the 800ms interval + animations make
+  the preview screenshot tool time out — verify trucks/houses via tests or a real
   browser, not screenshots.
+
+## The outdoor city ✅ (fly / land / walk)
+ToonTalk's world isn't just one room: you fly a **helicopter** over a **city** of
+houses, **land** on a street, get out, and **walk around**. Faithful to the
+original outdoor "programmer" state machine (`source/prgrmmr.cpp`
+`Programmer_City_Flying` / `_Landing` / `_Walking`) and city ground (`city.cpp`).
+- **`src/city/city-model.ts`** — pure, no rendering. 12×12 block grid,
+  checkerboard houses + scattered trees (deterministic). `Direction` 0..7 in the
+  enum order **E,SE,S,SW,W,NW,N,NE** (= sprite cycle index). `scale` is flying
+  altitude/zoom (1 = ground, higher = higher up): `nextScale` takes 0.75 s to
+  double/halve (source), clamped `[MIN_FLYING_SCALE 1.25, MAX 16]`; descend to
+  the minimum → land. `CityModel.fly/land/walk/callHelicopter` are the four
+  transitions; `LIFTOFF_SCALE` (3) is the altitude on takeoff so returning to
+  flying doesn't instantly re-land.
+- **`src/city/city-sprites.ts`** — loads the baked frame sets + a
+  `DirectionalSprite` (8 headings; animates only while moving).
+- **`src/city/city-scene.ts`** — renders the model in three looks: **flying**
+  (top-down green city — street grid + house tops + trees — scrolls under a
+  centred helicopter; pointer offset pans, faster the higher you are; Up/right-
+  button climb, Down/left-button descend), **landing** (side elevation, copter
+  sinks to a street; Down lands → walking with the empty copter left behind, Up
+  flies again), **walking** (top-down at ground level; lego person walks where
+  you point; **H** calls the helicopter back). Avatar stays screen-centred; the
+  world scrolls under it.
+- **Art**: `tools/bake-city.py` bakes `HELIOFLY`/`HELIOLND`/`MANWALK8` .TTS into
+  `public/assets/city/{heli-fly,heli-land,person}/<dir>/NN.png` + `house-*/tree`,
+  black-keyed and aligned via each frame's (ox,oy); M22 frames upscaled 2× to the
+  M25 space (`city-sprites.json` carries sizes/anchors/frame counts).
+- **Integration**: `main.ts` boots into the city. **Backquote (`` ` ``)** is a
+  dev seam to flip city ⇄ room (`Room.setVisible` + `DragController.setEnabled`
+  gate the room/World while the city is on top). `window.__ttCity` exposes the
+  scene for debugging.
+- ▢ **Out of scope (next):** walking up to a house and **entering it** (switch
+  into the room/`World` floor view) + recalling the copter from inside; a toolbox
+  following the walker; trucks driving the city; authentic `.tt` city save/load;
+  helicopter/step audio.
+- NOTE: verify via `__ttCity` + manual `tick()` calls in `preview_eval` — the
+  preview tab is backgrounded so `requestAnimationFrame` (and the PIXI ticker) is
+  paused; screenshots time out. The logic is correct; a real visible tab animates.
 
 ## Element behavior digest (from the manual) — incl. divergences to fix
 
