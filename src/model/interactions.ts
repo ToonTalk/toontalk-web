@@ -45,6 +45,8 @@ export type DropResult =
   | 'built'
   | 'stored'
   | 'flipped'
+  | 'sucked'
+  | 'spat'
   | 'none';
 
 export function resolveDrop(
@@ -69,11 +71,43 @@ export function resolveDrop(
     return 'copied';
   }
 
-  // Dusty the vacuum: touch a thing to erase it (toggle). Erased things act as
-  // wildcards in a robot's condition. Dusty is not consumed.
+  // Dusty the vacuum (not consumed). Behaviour depends on its mode.
   if (dragged instanceof Dusty) {
-    // On a trained robot, Dusty generalizes it: clear its exact-value guards so
-    // it accepts any values of the right shape.
+    const dusty = dragged;
+
+    // SUCK: vacuum the target (or a box hole's contents) into the stomach.
+    if (dusty.mode === 'suck') {
+      if (target instanceof Box && ctx.holeIndex != null) {
+        const v = target.contentsAt(ctx.holeIndex);
+        if (!v) return 'none';
+        target.take(ctx.holeIndex);
+        recomputeScales(target);
+        world.notifyChanged(target);
+        dusty.stomach.push(v);
+      } else {
+        dusty.stomach.push(target);
+        world.remove(target.id);
+      }
+      return 'sucked';
+    }
+
+    // REVERSE: spit the last sucked thing back out (into an empty hole, or by Dusty).
+    if (dusty.mode === 'reverse') {
+      const spat = dusty.stomach.pop();
+      if (!spat) return 'none';
+      if (target instanceof Box && ctx.holeIndex != null && target.isHoleEmpty(ctx.holeIndex)) {
+        target.put(ctx.holeIndex, spat);
+        recomputeScales(target);
+        world.notifyChanged(target);
+      } else {
+        spat.moveTo({ x: dusty.x + 30, y: dusty.y - 30 });
+        world.add(spat);
+      }
+      return 'spat';
+    }
+
+    // ERASE (default): on a trained robot, clear its value guards (generalize);
+    // otherwise toggle the touched thing's erased flag (a wildcard).
     if (target instanceof Robot) {
       target.exactValues = target.condition.map(() => null);
       world.notifyChanged(target);
@@ -85,7 +119,6 @@ export function resolveDrop(
     }
     if (!victim) return 'none';
     victim.erased = !victim.erased;
-    // Refresh the box (so an erased occupant re-renders) or the loose thing.
     if (target instanceof Box) recomputeScales(target);
     world.notifyChanged(target);
     return 'erased';

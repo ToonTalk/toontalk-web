@@ -14,7 +14,7 @@ import { Box, type BoxSnapshot } from './box';
 import { Nest, type NestSnapshot } from './nest';
 import { Bird, type BirdSnapshot } from './bird';
 import { Wand } from './wand';
-import { Dusty } from './dusty';
+import { Dusty, type DustySnapshot } from './dusty';
 import { Bomb } from './bomb';
 import { Robot, type RobotSnapshot } from './robot';
 import { Truck } from './truck';
@@ -56,8 +56,10 @@ function buildByKind(s: ThingSnapshot): Thing {
       return new Bird({ x: s.x, y: s.y, nests: [] }); // nests relinked after build
     case 'wand':
       return new Wand({ x: s.x, y: s.y });
-    case 'dusty':
-      return new Dusty({ x: s.x, y: s.y });
+    case 'dusty': {
+      const d = s as DustySnapshot;
+      return new Dusty({ x: s.x, y: s.y, mode: d.mode, stomach: (d.stomach ?? []).map(buildThing) });
+    }
     case 'bomb':
       return new Bomb({ x: s.x, y: s.y });
     case 'scale':

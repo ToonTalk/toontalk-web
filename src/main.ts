@@ -130,7 +130,7 @@ async function start(): Promise<void> {
       // One-shot effects at the action site.
       if (result === 'exploded') {
         playOnce('explode', renderer.thingLayer, dragged.x, dragged.y);
-      } else if (result === 'erased') {
+      } else if (result === 'erased' || result === 'sucked') {
         const at = target ?? dragged;
         playOnce('dusty-suck', renderer.thingLayer, at.x, at.y);
       } else if ((result === 'filled' || result === 'combined') && target instanceof Box && ctx.holeIndex != null) {

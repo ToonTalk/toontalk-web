@@ -20,6 +20,7 @@ import { Notebook } from '../model/notebook';
 import { Wand } from '../model/wand';
 import { NumberThing } from '../model/number';
 import { TextThing } from '../model/text';
+import { Dusty } from '../model/dusty';
 import { Rational } from '../model/rational';
 import type { Renderer } from '../view/renderer';
 import type { ThingView } from '../view/thing-view';
@@ -150,7 +151,9 @@ export class DragController {
         ? this.editNumber(thing, e.key)
         : thing instanceof TextThing
           ? this.editText(thing, e.key)
-          : false;
+          : thing instanceof Dusty
+            ? this.editDusty(thing, e.key)
+            : false;
     if (handled) {
       e.preventDefault();
       this.world.notifyChanged(thing as Thing);
@@ -179,6 +182,17 @@ export class DragController {
       mag = mag.multiply(Rational.fromInt(10)).add(Rational.fromInt(Number(key)));
       n.value = neg ? mag.negate() : mag;
       return true;
+    }
+    return false;
+  }
+
+  /** Dusty's nose button: E erase · S suck · R reverse · space cycles. */
+  private editDusty(d: Dusty, key: string): boolean {
+    switch (key.toLowerCase()) {
+      case 'e': d.mode = 'erase'; return true;
+      case 's': d.mode = 'suck'; return true;
+      case 'r': d.mode = 'reverse'; return true;
+      case ' ': d.cycleMode(); return true;
     }
     return false;
   }

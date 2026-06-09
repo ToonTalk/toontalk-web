@@ -166,7 +166,14 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   box-mutation point (interactions/extraction/robot actions/trainer/load/seed)
   and before robot matching. View tips the sprite by tilt. ✅ the classic "swap if
   first<second" demo runs (a scale-guarded robot with a `swap` action; seeded).
-- **Dusty / vacuum** (`dusty.htm`): ⚠ real Dusty has **three modes via the nose
+- **Dusty / vacuum** ✅ (`dusty.ts`): now has the **three modes** (cycle with the
+  nose button — hover/hold Dusty and press **E/S/R** or **space**): **erase**
+  (toggle erased / generalize a robot — default), **suck** (vacuum a thing or a
+  box hole's contents into its `stomach`), **reverse** (spit the last sucked
+  thing back out, into an empty hole or beside Dusty). `DustyView` shows the mode
+  badge + stomach count. We default to **erase** (our wildcard workflow leans on
+  it) though the original's default is suck. Original-manual note below:
+- **Dusty / vacuum** (`dusty.htm`): the real Dusty has **three modes via the nose
   button — Suck (remove, stored in its stomach), Reverse (spit back out), Erase**.
   We model only Erase, as a *toggle*; authentic erase is a mode and restore is
   via Dusty-reverse or the wand's 'O' mode, not a toggle. Note **Suck (remove,
