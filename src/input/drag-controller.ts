@@ -62,6 +62,13 @@ export class DragController {
   private hoveredThing: Thing | null = null;
   /** A tool (wand/Dusty/Pumpy) held on the cursor; click/space applies it. */
   private heldTool: ThingView | null = null;
+  /** When false (e.g. the city scene is on top), ignore all pointer/key input. */
+  private enabled = true;
+
+  /** Enable/disable the whole controller (city scene takes over input). */
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+  }
 
   constructor(
     private readonly world: World,
@@ -151,7 +158,7 @@ export class DragController {
    * Backspace deletes.
    */
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (this.trainer.active || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!this.enabled || this.trainer.active || e.ctrlKey || e.metaKey || e.altKey) return;
 
     // Holding a tool: space applies it (like a click); letters set its mode.
     if (this.heldTool) {
@@ -278,6 +285,7 @@ export class DragController {
   }
 
   private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
+    if (!this.enabled) return;
     const { x, y } = e.global;
 
     // Training: begin a hole-to-hole demonstration, lifting a visible copy of
@@ -429,6 +437,7 @@ export class DragController {
   }
 
   private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
+    if (!this.enabled) return;
     this.pointer = { x: e.global.x, y: e.global.y };
     this.updateHoverTarget();
     // A held tool follows the cursor (it's in hand), even with no button down.
@@ -459,6 +468,7 @@ export class DragController {
   }
 
   private onPointerUp = (e: PIXI.FederatedPointerEvent): void => {
+    if (!this.enabled) return;
     // Training: complete a hole-to-hole demonstration.
     if (this.trainer.active) {
       this.clearTrainGhost();

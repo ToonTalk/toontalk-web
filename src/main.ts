@@ -34,6 +34,8 @@ import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
 import { loadAnimations, playOnce, flyBird } from './view/animation';
 import { DragController } from './input/drag-controller';
+import { CityScene } from './city/city-scene';
+import { loadCityAssets } from './city/city-sprites';
 import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
 
 function setHud(text: string): void {
@@ -122,7 +124,7 @@ async function start(): Promise<void> {
     }
   };
 
-  new DragController(
+  const dragController = new DragController(
     world,
     renderer,
     views,
@@ -171,6 +173,36 @@ async function start(): Promise<void> {
   setInterval(() => {
     for (const t of world.all()) if (t instanceof House) runHouse(world, t);
   }, 800);
+
+  // The outdoor city: fly the helicopter, land it, walk around. The app boots
+  // into the city; the room (inside a house) is the existing World view.
+  // Walking up to a house and entering it is a later step — for now the
+  // backquote (`) key is a dev seam to flip between the city and the room so
+  // both stay reachable and testable.
+  const cityAssets = await loadCityAssets(theme);
+  const city = new CityScene(renderer, cityAssets);
+  (window as unknown as { __ttCity?: unknown }).__ttCity = city;
+
+  function setCity(on: boolean): void {
+    city.setActive(on);
+    room.setVisible(!on);
+    renderer.thingLayer.visible = !on;
+    dragController.setEnabled(!on);
+    if (on) {
+      setHud(
+        `ToonTalk City — fly · land · walk\n` +
+          `move the mouse to fly where you point (farther = faster)\n` +
+          `↓ / left-button = descend · ↑ / right-button = climb · descend to land\n` +
+          `landed: ↓ steps out to walk · ↑ flies again · while walking press H to call the helicopter\n` +
+          `\` (backquote) = switch to the room`,
+      );
+    } else {
+      updateHud('none');
+    }
+  }
+  window.addEventListener('keydown', (ev) => {
+    if (ev.key === '`') setCity(!city.isActive);
+  });
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
   // — there's no "cancel training" in the manual, so this is a web-only helper.
@@ -368,6 +400,9 @@ async function start(): Promise<void> {
     );
   }
   updateHud();
+
+  // Boot into the outdoor city (flying the helicopter).
+  setCity(true);
 }
 
 start().catch((err) => {

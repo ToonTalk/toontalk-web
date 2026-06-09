@@ -32,6 +32,7 @@ export const GROUND_SCALE = 1; // 1:1, on the ground
 export const MIN_FLYING_SCALE = 1.25; // descend to here → land (source: min_flying_scale)
 export const MAX_FLYING_SCALE = 16; // can't fly so high the city is sub-pixel
 export const START_SCALE = 6; // initial altitude when flying begins
+export const LIFTOFF_SCALE = 3; // altitude when the copter takes off again (clear of landing)
 const SCALE_DOUBLE_MS = 750; // 3/4 second to double / halve (source)
 
 // --- landing (normalized helicopter height: 1 = top of view, 0 = ground) --
@@ -141,7 +142,7 @@ export class CityModel {
     this.landY = this.landY + dir * LAND_SPEED_PER_S * (dtMs / 1000);
     if (this.landY >= 1 && dir > 0) {
       this.mode = 'flying';
-      this.scale = MIN_FLYING_SCALE; // just back up off the ground
+      this.scale = LIFTOFF_SCALE; // climb clear of the landing threshold
       this.landY = 1;
     } else if (this.landY <= 0) {
       this.landY = 0;
@@ -162,6 +163,6 @@ export class CityModel {
   callHelicopter(): void {
     if (this.mode !== 'walking') return;
     this.mode = 'flying';
-    this.scale = MIN_FLYING_SCALE;
+    this.scale = LIFTOFF_SCALE;
   }
 }

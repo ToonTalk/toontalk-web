@@ -131,6 +131,14 @@ export class Room {
     this.layoutChrome();
   }
 
+  /** Show/hide the whole room (floor, chrome, hand cursor) — used when the
+   * city scene is on top. Presentation only. */
+  setVisible(v: boolean): void {
+    this.floor.visible = v;
+    this.chrome.visible = v;
+    this.cursor.visible = v;
+  }
+
   /** Move the hand so its fingertip points at (x, y); the sleeve continues the
    * hand texture's wrist stub (same colour, position and width) down off-screen. */
   setHand(x: number, y: number): void {

@@ -9,6 +9,7 @@ import {
   MAX_FLYING_SCALE,
   GROUND_SCALE,
   START_SCALE,
+  LIFTOFF_SCALE,
   CITY_MIN,
   CITY_MAX,
 } from '../src/city/city-model';
@@ -108,7 +109,7 @@ describe('CityModel state machine', () => {
     let guard = 0;
     while (m.mode === 'landing' && guard++ < 1000) m.land(1, 100);
     expect(m.mode).toBe('flying');
-    expect(m.scale).toBe(MIN_FLYING_SCALE);
+    expect(m.scale).toBe(LIFTOFF_SCALE);
   });
 
   it('walking moves 1:1, faces heading, and clamps to the city extent', () => {
@@ -126,7 +127,7 @@ describe('CityModel state machine', () => {
     m.mode = 'walking';
     m.callHelicopter();
     expect(m.mode).toBe('flying');
-    expect(m.scale).toBe(MIN_FLYING_SCALE);
+    expect(m.scale).toBe(LIFTOFF_SCALE);
   });
 
   it('mode guards: walk/land/fly only act in their own mode', () => {
