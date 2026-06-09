@@ -222,18 +222,27 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   copy + restore (un-erased — default); **O** "original" copies preserving the
   erased/wildcard state (per `picture.cpp`: original mode doesn't restore); **S**
   copy-self copies a robot *with its team* (C/O copy just the lead). Mode persists.
-- **Notebook** ✅ (`notebook.ts`/`notebook-view.ts`): a page store. Drop a thing
-  on it → filed as a new page (turned to it); drop a **number** → flips to that
-  1-based page; **drag the page off → a copy** comes out (the notebook keeps its
-  own). Pages + current index persist. ▢ not yet: the **main** notebook as the
-  real save model, modules-in-trucks, page-turn arrows/animation, number-format
-  pages. (Older manual note below.)
-- **Notebook** (`notebook.htm`): ▢ original: pages indexed by number;
-  number→page, text→matching page. The **main notebook persists across
-  sessions** (this is the real save/load model); secondary notebooks are
-  transient unless dropped on a main-notebook page. Used as a **module** when
-  given to a truck. Dropping a notebook on an erased box → a box with one hole
-  holding every page.
+- **Notebook** ✅ (`notebook.ts`/`notebook-view.ts`): a page store + the **real
+  save model**. Drop a thing → filed as a new page; drop a **number** → flip to
+  that 1-based page; drop a **text** → flip to the first page whose text *starts
+  with* it ("ma"→"mat"), else file; **drag a page off → a copy**; **only Dusty
+  removes** the current page. Page-turn arrow cues; ←/→ (and Backspace→last) turn
+  pages while pointing at it.
+  **Main notebook = persistence (strictly faithful):** `Notebook.isMain` marks the
+  one toolbox notebook that survives between sessions (`notebook-store.ts` ↔
+  `localStorage`, via `thingToJson`/`thingFromJson`); the **floor is transient**,
+  reseeded each load. Saving = filing onto the main notebook (saved on its change,
+  identity-checked so sensor ticks don't thrash it). Secondary notebooks are
+  transient unless filed onto a main page. (`★` marks the main notebook.)
+  **Modules:** a notebook dropped on a **truck** → `Truck.module`, carried into
+  `House.module` (persisted). Robot action `fromModule {page,to}` copies a module
+  page into an empty hole (threaded via `applyAction(ctx)`/`runHouse`) — the
+  runtime module-use / **recursion primitive**; demo house counts up by pulling a
+  copy of its module's page each tick.
+  ▢ not yet: training-by-example of `fromModule`; full self-replicating-house
+  recursion + result-return via birds/nests; per-user named notebooks; the
+  picture/sound/options sub-notebooks (media deferred); dropping a notebook on an
+  erased box → a box with one hole per page; page-turn animation.
 - **Pumpy** ✅ (`pumpy.ts`): the resize **held tool** (see *Tools are held*
   below). `Thing` has `scaleX`/`scaleY` (applied by ThingView, persisted, omitted
   from snapshots when 1); applying Pumpy to the thing under its hose tip resizes
