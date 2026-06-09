@@ -22,6 +22,7 @@ export type ThingKind =
   | 'truck'
   | 'house'
   | 'notebook'
+  | 'pumpy'
   | 'placeholder';
 
 export interface Point {
@@ -36,6 +37,9 @@ export interface ThingSnapshot {
   x: number;
   y: number;
   erased?: boolean;
+  /** Pumpy resize factors (omitted when 1). */
+  scaleX?: number;
+  scaleY?: number;
 }
 
 let nextId = 1;
@@ -50,6 +54,9 @@ export abstract class Thing {
   y: number;
   /** Erased (by Dusty) → acts as a wildcard in a robot's condition. */
   erased: boolean;
+  /** Resize factors set by Pumpy (1 = natural size); applied by the view. */
+  scaleX = 1;
+  scaleY = 1;
 
   constructor(opts: { id?: string; x?: number; y?: number; erased?: boolean } = {}) {
     this.id = opts.id ?? freshId(this.kindForId());
@@ -78,7 +85,10 @@ export abstract class Thing {
   abstract describe(): string;
 
   snapshot(): ThingSnapshot {
-    return { id: this.id, kind: this.kind, x: this.x, y: this.y, erased: this.erased };
+    const s: ThingSnapshot = { id: this.id, kind: this.kind, x: this.x, y: this.y, erased: this.erased };
+    if (this.scaleX !== 1) s.scaleX = this.scaleX;
+    if (this.scaleY !== 1) s.scaleY = this.scaleY;
+    return s;
   }
 }
 

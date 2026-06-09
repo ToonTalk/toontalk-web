@@ -20,6 +20,7 @@ import { Robot, type RobotSnapshot } from './robot';
 import { Truck } from './truck';
 import { House, type HouseSnapshot } from './house';
 import { Notebook, type NotebookSnapshot } from './notebook';
+import { Pumpy, type PumpySnapshot } from './pumpy';
 import { Scale, type ScaleSnapshot, recomputeScales } from './scale';
 import { Rational } from './rational';
 
@@ -31,6 +32,8 @@ export function serialize(world: World): string {
 function buildThing(s: ThingSnapshot): Thing {
   const t = buildByKind(s);
   t.erased = s.erased ?? false;
+  t.scaleX = s.scaleX ?? 1;
+  t.scaleY = s.scaleY ?? 1;
   return t;
 }
 
@@ -56,6 +59,8 @@ function buildByKind(s: ThingSnapshot): Thing {
       return new Bird({ x: s.x, y: s.y, nests: [] }); // nests relinked after build
     case 'wand':
       return new Wand({ x: s.x, y: s.y, mode: (s as WandSnapshot).mode });
+    case 'pumpy':
+      return new Pumpy({ x: s.x, y: s.y, mode: (s as PumpySnapshot).mode });
     case 'dusty': {
       const d = s as DustySnapshot;
       return new Dusty({ x: s.x, y: s.y, mode: d.mode, stomach: (d.stomach ?? []).map(buildThing) });

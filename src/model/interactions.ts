@@ -21,6 +21,7 @@ import { Bomb } from './bomb';
 import { Truck } from './truck';
 import { House } from './house';
 import { Notebook } from './notebook';
+import { Pumpy, resizeThing } from './pumpy';
 import { recomputeScales } from './scale';
 
 export interface DropContext {
@@ -47,6 +48,7 @@ export type DropResult =
   | 'flipped'
   | 'sucked'
   | 'spat'
+  | 'resized'
   | 'none';
 
 export function resolveDrop(
@@ -126,6 +128,14 @@ export function resolveDrop(
     if (target instanceof Box) recomputeScales(target);
     world.notifyChanged(target);
     return 'erased';
+  }
+
+  // Pumpy the resize tool: drop it on a thing to change its size by its current
+  // mode (bigger/smaller/wider/narrower/taller/shorter/good). Not consumed.
+  if (dragged instanceof Pumpy) {
+    resizeThing(target, dragged.mode);
+    world.notifyChanged(target);
+    return 'resized';
   }
 
   // The bomb: detonate on the target, destroying it. If it lands on a filled

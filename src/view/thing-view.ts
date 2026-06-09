@@ -27,6 +27,7 @@ export abstract class ThingView {
     this.container.cursor = 'grab';
     this.build();
     this.container.alpha = this.baseAlpha();
+    this.container.scale.set(this.thing.scaleX, this.thing.scaleY); // Pumpy resize
     this.syncPosition();
   }
 
@@ -44,6 +45,7 @@ export abstract class ThingView {
     this.container.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.build();
     this.container.alpha = this.baseAlpha();
+    this.container.scale.set(this.thing.scaleX, this.thing.scaleY); // Pumpy resize
   }
 
   syncPosition(): void {

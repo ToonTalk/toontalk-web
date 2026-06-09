@@ -21,6 +21,7 @@ import { Wand } from '../model/wand';
 import { NumberThing } from '../model/number';
 import { TextThing } from '../model/text';
 import { Dusty } from '../model/dusty';
+import { Pumpy } from '../model/pumpy';
 import { Rational } from '../model/rational';
 import type { Renderer } from '../view/renderer';
 import type { ThingView } from '../view/thing-view';
@@ -155,7 +156,9 @@ export class DragController {
             ? this.editDusty(thing, e.key)
             : thing instanceof Wand
               ? this.editWand(thing, e.key)
-              : false;
+              : thing instanceof Pumpy
+                ? this.editPumpy(thing, e.key)
+                : false;
     if (handled) {
       e.preventDefault();
       this.world.notifyChanged(thing as Thing);
@@ -184,6 +187,16 @@ export class DragController {
       mag = mag.multiply(Rational.fromInt(10)).add(Rational.fromInt(Number(key)));
       n.value = neg ? mag.negate() : mag;
       return true;
+    }
+    return false;
+  }
+
+  /** Pumpy's button: space cycles modes; + bigger, - smaller. */
+  private editPumpy(p: Pumpy, key: string): boolean {
+    switch (key) {
+      case ' ': p.cycleMode(); return true;
+      case '+': p.mode = 'bigger'; return true;
+      case '-': p.mode = 'smaller'; return true;
     }
     return false;
   }

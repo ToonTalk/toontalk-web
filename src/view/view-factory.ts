@@ -17,6 +17,7 @@ import { HouseView } from './house-view';
 import { NotebookView } from './notebook-view';
 import { DustyView } from './dusty-view';
 import { WandView } from './wand-view';
+import { PumpyView } from './pumpy-view';
 
 export function createThingView(
   thing: Thing,
@@ -46,6 +47,8 @@ export function createThingView(
       return new DustyView(thing, textures, theme);
     case 'wand':
       return new WandView(thing, textures, theme);
+    case 'pumpy':
+      return new PumpyView(thing, textures, theme);
     default:
       return new SpriteView(thing, textures, theme);
   }
