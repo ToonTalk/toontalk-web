@@ -9,8 +9,10 @@ import type { RenderTheme } from '../config/render-mode';
 const SPRITE_KEYS = [
   'number', 'text', 'box', 'bird', 'nest', 'robot', 'scale', 'wand', 'pumpy',
   'dusty', 'bubble', 'bomb',
-  // Authentic lego plates / cubby (used as 9-slice backgrounds):
-  'numplat', 'textplat', 'cubby',
+  // Authentic lego plates / cubby pieces:
+  'numplat', 'textplat', 'cubby', 'cubby1', 'cubbyr', 'cubbyb',
+  // Scale tilt images (level / left-heavier / right-heavier):
+  'scale-level', 'scale-left', 'scale-right',
 ] as const;
 
 export interface LoadedAssets {

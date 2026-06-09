@@ -66,11 +66,16 @@ When in doubt, consult the per-element manual pages (URLs below).
   glow, smoothed textures, clean sans. Driven by theme fields (`cornerRadius`,
   `borderWidth`, `fontFamily`, `dropShadow`, `scaleMode`, `dragHighlight`).
   ✅ **Authentic plates done:** numbers use `numplat.png` (NUMBPLAT, green lego
-  plate), text uses `textplat.png` (TEXTPLT1, pink), boxes use `cubby.png`
-  (CUBBY0, cyan) — all rendered as **nine-slice** via `view/plate.ts`
-  (`drawPlate`) so the studded border stays crisp while the centre fits the
-  label. Chroma keys (green/magenta) are NOT keyed out — the plates are
-  rectangular, used whole. Insets are in number-view/text-view/box-view.
+  plate) and text uses `textplat.png` (TEXTPLT1, pink) — nine-slice via
+  `view/plate.ts` (`drawPlate`). Chroma keys (green/magenta) are NOT keyed out.
+  ✅ **Boxes** (box-view.ts) follow cubby.cpp: tiled lego pieces — `cubby1.png`
+  (CUBBY1, first hole = wall·hole·wall) + `cubbyr.png` (CUBBYR, each further hole
+  = hole·wall) abutted, **no outer frame**; empty holes show the recessed hole,
+  contents drawn on top. (`cubbyb.png` = CUBBYB blank, for erased boxes — not yet
+  used.) ✅ **Scale** uses distinct tilt bitmaps (scale-view.ts), **centred, never
+  rotated**: `scale-level` (SCALE01), `scale-left` (SCALE04, left pan down =
+  left heavier), `scale-right` (SCALE02, right pan down). tottering → level,
+  faded.
 
 ## Reference: the original manual
 
