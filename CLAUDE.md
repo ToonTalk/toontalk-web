@@ -121,11 +121,15 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   explodes into one hole per character, ▢ set hole count by typing a digit.
   Robots ignore hole labels — only hole count + contents matter (we have no
   labels, fine).
-- **Birds & nests** (`bird.htm`): ⚠ a bird **stacks** deliveries on the nest (we
-  show latest + count). ✅ a delivered thing now **fully covers** the nest
-  (centered, scaled up via `renderThingDisplay(..., { scaleUp: true })`). The
-  resting bird is **MORP01** (standing) — `bird.png`; FLY* frames are flight only.
-  ▢ copying a *nest* makes the bird copy itself to deliver
+- **Birds & nests** (`bird.cpp`): ✅ a nest is a **FIFO queue** — birds deliver to
+  the back (`receive`), things are read from the **front** (`front`/`takeFront`,
+  oldest first), and the nest displays the front item. ✅ a delivered thing
+  **fully covers** the nest (`renderThingDisplay(..., { scaleUp: true })`).
+  ✅ resting bird is **MORP01** (standing); FLY* frames are flight only.
+  ✅ **a bird feeds multiple nests** (`Bird.nests`): **copying a nest** (wand)
+  adds the copy to its bird's nests, so giving to the bird delivers a copy to
+  **every** nest — keeping copied channels in sync (the manual's "deliver to
+  both"). ▢ further: copying
   to both nests; ▢ combining nests (drop nest on nest); ▢ eggs hatch into birds;
   ▢ a nest saved without its bird reloads as a fresh egg → new bird. Birds/nests
   are ToonTalk's inter-process channel (a robot waits for a bird to fill a nest).

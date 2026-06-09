@@ -133,10 +133,14 @@ async function start(): Promise<void> {
         // The dropped item shrinks to fit the hole.
         const bv = views.get(target.id);
         if (bv instanceof BoxView) bv.popHole(ctx.holeIndex);
-      } else if (result === 'delivered' && target instanceof Bird && target.nest) {
-        // The bird flies the gift to its nest and back.
-        flyBird(renderer.thingLayer, target.x, target.y, target.nest.x, target.nest.y,
+      } else if (result === 'delivered' && target instanceof Bird && target.nests.length > 0) {
+        // The bird flies the gift to its nest(s) and back.
+        const nest0 = target.nests[0]!;
+        flyBird(renderer.thingLayer, target.x, target.y, nest0.x, nest0.y,
           views.get(target.id)?.container);
+        for (const nest of target.nests.slice(1)) {
+          flyBird(renderer.thingLayer, target.x, target.y, nest.x, nest.y);
+        }
       }
       if (result === 'train') {
         const robot = (dragged instanceof Robot ? dragged : target) as Robot;
@@ -186,7 +190,7 @@ async function start(): Promise<void> {
       case 'nest': {
         const nest = new Nest({ x, y });
         world.add(nest);
-        world.add(new Bird({ nest, x: x - 90, y: y - 40 }));
+        world.add(new Bird({ nests: [nest], x: x - 90, y: y - 40 }));
         break;
       }
       case 'scale': world.add(new Scale({ x, y })); break;
@@ -209,7 +213,7 @@ async function start(): Promise<void> {
 
     const nest = new Nest({ x: 700, y: 380 });
     world.add(nest);
-    world.add(new Bird({ nest, x: 560, y: 300 }));
+    world.add(new Bird({ nests: [nest], x: 560, y: 300 }));
 
     world.add(new Wand({ x: 520, y: 460 }));
     // Dusty the vacuum: drop on a thing to erase it (→ wildcard for robots).

@@ -15,7 +15,7 @@ function makeWorld(): World {
   w.add(new Box({ holes: [new NumberThing({ value: 4 }), new NumberThing({ value: 5 })], x: 50, y: 60 }));
   const nest = new Nest({ x: 70, y: 80 });
   w.add(nest);
-  w.add(new Bird({ nest, x: 90, y: 100 }));
+  w.add(new Bird({ nests: [nest], x: 90, y: 100 }));
   w.add(new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] }));
   return w;
 }
@@ -47,9 +47,10 @@ describe('persistence round-trip', () => {
     const w2 = new World();
     loadWorld(w2, json);
     const bird = w2.all().find((t) => t instanceof Bird) as Bird;
-    expect(bird.nest).toBeInstanceOf(Nest);
+    expect(bird.nests).toHaveLength(1);
+    expect(bird.nests[0]).toBeInstanceOf(Nest);
     // The relinked nest is one of the world's actual nests.
-    expect(w2.all()).toContain(bird.nest);
+    expect(w2.all()).toContain(bird.nests[0]);
   });
 
   it('restores robot condition and actions', () => {

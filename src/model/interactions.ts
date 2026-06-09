@@ -53,6 +53,12 @@ export function resolveDrop(
     const copy = target.copy();
     copy.moveTo({ x: target.x + 36, y: target.y + 28 });
     world.add(copy);
+    // Copying a nest makes its bird feed the copy too, so both stay in sync.
+    if (target instanceof Nest && copy instanceof Nest) {
+      for (const t of world.all()) {
+        if (t instanceof Bird && t.nests.includes(target)) t.nests.push(copy);
+      }
+    }
     return 'copied';
   }
 
@@ -125,11 +131,11 @@ export function resolveDrop(
     return 'joined';
   }
 
-  // Give a thing to a bird → it delivers to its nest.
-  if (target instanceof Bird && target.nest) {
-    target.nest.receive(dragged);
+  // Give a thing to a bird → it carries a copy to each of its nests.
+  if (target instanceof Bird && target.nests.length > 0) {
+    for (const nest of target.nests) nest.receive(dragged.copy());
     world.remove(dragged.id);
-    world.notifyChanged(target.nest);
+    for (const nest of target.nests) world.notifyChanged(nest);
     return 'delivered';
   }
 

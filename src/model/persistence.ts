@@ -50,7 +50,7 @@ function buildByKind(s: ThingSnapshot): Thing {
       return new Nest({ x: s.x, y: s.y, contents: ns.contents.map(buildThing) });
     }
     case 'bird':
-      return new Bird({ x: s.x, y: s.y, nest: null });
+      return new Bird({ x: s.x, y: s.y, nests: [] }); // nests relinked after build
     case 'wand':
       return new Wand({ x: s.x, y: s.y });
     case 'dusty':
@@ -85,9 +85,8 @@ export function deserialize(json: string): Thing[] {
   snap.things.forEach((s, i) => {
     if (s.kind === 'bird') {
       const bird = things[i] as Bird;
-      const nestId = (s as BirdSnapshot).nestId;
-      const nest = nestId ? byOldId.get(nestId) : null;
-      bird.nest = nest instanceof Nest ? nest : null;
+      const ids = (s as BirdSnapshot).nestIds ?? [];
+      bird.nests = ids.map((id) => byOldId.get(id)).filter((n): n is Nest => n instanceof Nest);
     }
   });
 

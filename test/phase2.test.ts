@@ -39,22 +39,22 @@ describe('bird + nest', () => {
   it('delivers a thing dropped on a bird to its nest', () => {
     const w = new World();
     const nest = w.add(new Nest()) as Nest;
-    const bird = w.add(new Bird({ nest })) as Bird;
+    const bird = w.add(new Bird({ nests: [nest] })) as Bird;
     const gift = w.add(new NumberThing({ value: 1 })) as NumberThing;
     const result = resolveDrop(w, gift, bird);
     expect(result).toBe('delivered');
     expect(nest.contents).toHaveLength(1);
-    expect(nest.latest()).toBe(gift);
+    expect((nest.front() as NumberThing).value.toString()).toBe('1'); // a copy is delivered
     expect(w.get(gift.id)).toBeUndefined();
   });
 
-  it('accepts things dropped directly on a nest and stacks them', () => {
+  it('reads a nest oldest-first (FIFO queue)', () => {
     const w = new World();
     const nest = w.add(new Nest()) as Nest;
     resolveDrop(w, w.add(new TextThing({ value: 'a' })), nest);
     resolveDrop(w, w.add(new TextThing({ value: 'b' })), nest);
     expect(nest.contents).toHaveLength(2);
-    expect((nest.latest() as TextThing).value).toBe('b');
+    expect((nest.front() as TextThing).value).toBe('a'); // oldest is read next
   });
 
   it('does nothing when a bird has no nest', () => {

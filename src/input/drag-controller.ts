@@ -227,7 +227,7 @@ export class DragController {
     } else if (hit instanceof Nest) {
       const nv = this.views.get(hit.id);
       if (nv instanceof NestView && nv.pressedOnItem(x, y)) {
-        const occ = hit.takeLatest();
+        const occ = hit.takeFront();
         if (occ) {
           occ.moveTo({ x, y });
           this.world.add(occ);

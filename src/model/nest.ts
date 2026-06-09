@@ -1,7 +1,8 @@
 /**
- * A nest. Birds deliver things to their nest; whatever is delivered piles up
- * here. (In full ToonTalk a nest also acts as a communication channel for
- * running robots; Phase 2 models the basic delivery + display.)
+ * A nest — ToonTalk's message queue. A bird delivers to the *back* of the nest
+ * (`insert_at_end_of_contents` in bird.cpp) and things are read from the *front*
+ * (oldest first), so it's a FIFO channel. The nest displays the front item (the
+ * next to be read).
  */
 import { Thing, type ThingKind, type ThingSnapshot } from './thing';
 
@@ -22,17 +23,19 @@ export class Nest extends Thing {
     return 'nest';
   }
 
+  /** A bird delivers to the back of the queue. */
   receive(thing: Thing): void {
     this.contents.push(thing);
   }
 
-  latest(): Thing | null {
-    return this.contents.length > 0 ? this.contents[this.contents.length - 1]! : null;
+  /** The oldest delivery — the one shown and read next (FIFO). */
+  front(): Thing | null {
+    return this.contents[0] ?? null;
   }
 
-  /** Remove and return the most recently delivered thing, if any. */
-  takeLatest(): Thing | null {
-    return this.contents.pop() ?? null;
+  /** Remove and return the oldest delivery, if any (read from the front). */
+  takeFront(): Thing | null {
+    return this.contents.shift() ?? null;
   }
 
   copy(): Nest {

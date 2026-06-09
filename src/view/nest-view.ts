@@ -41,7 +41,7 @@ export class NestView extends ThingView {
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
-    const latest = nest.latest();
+    const latest = nest.front();
     if (latest) {
       // A delivered thing fully covers the nest (the egg disappears beneath it),
       // centered and scaled up to the nest's footprint, and is grabbable.

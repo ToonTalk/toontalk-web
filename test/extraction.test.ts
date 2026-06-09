@@ -14,15 +14,15 @@ describe('removing things from containers', () => {
     expect(box.isHoleEmpty(0)).toBe(true);
   });
 
-  it('Nest.takeLatest pops the most recent delivery', () => {
+  it('Nest.takeFront reads oldest-first (FIFO)', () => {
     const nest = new Nest();
     const a = new NumberThing({ value: 1 });
     const b = new NumberThing({ value: 2 });
     nest.receive(a);
     nest.receive(b);
-    expect(nest.takeLatest()).toBe(b);
-    expect(nest.takeLatest()).toBe(a);
-    expect(nest.takeLatest()).toBeNull();
+    expect(nest.takeFront()).toBe(a);
+    expect(nest.takeFront()).toBe(b);
+    expect(nest.takeFront()).toBeNull();
   });
 });
 
