@@ -1,6 +1,8 @@
 /**
- * Draws Pumpy the resize tool with a badge for its current mode. Hover/hold
- * Pumpy and press space to cycle modes (+ / - also do bigger / smaller).
+ * Draws Pumpy the resize tool with a badge for its current mode. Hold Pumpy on
+ * the cursor, move its hose tip over a thing, then click/space to apply the
+ * current default. Mode keys: + bigger · - smaller · w wider · n narrower ·
+ * t taller · s shorter · g good (revert); Tab cycles.
  */
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';

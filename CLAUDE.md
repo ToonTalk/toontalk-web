@@ -166,20 +166,21 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   box-mutation point (interactions/extraction/robot actions/trainer/load/seed)
   and before robot matching. View tips the sprite by tilt. ✅ the classic "swap if
   first<second" demo runs (a scale-guarded robot with a `swap` action; seeded).
-- **Dusty / vacuum** ✅ (`dusty.ts`): now has the **three modes** (cycle with the
-  nose button — hover/hold Dusty and press **E/S/R** or **space**): **erase**
-  (toggle erased / generalize a robot — default), **suck** (vacuum a thing or a
-  box hole's contents into its `stomach`), **reverse** (spit the last sucked
-  thing back out, into an empty hole or beside Dusty). `DustyView` shows the mode
-  badge + stomach count. We default to **erase** (our wildcard workflow leans on
-  it) though the original's default is suck. Original-manual note below:
+- **Dusty / vacuum** ✅ (`dusty.ts`): **held tool** (see *Tools are held* below).
+  Has the **three modes** (set with the nose button — **E/S/R** keys; **Tab**
+  cycles): **erase** (toggle erased / generalize a robot — default), **suck**
+  (vacuum a thing or a box hole's contents into its `stomach`), **reverse** (spit
+  the last sucked thing back out, into an empty hole or beside Dusty). `DustyView`
+  shows the mode badge + stomach count. We default to **erase** (our wildcard
+  workflow leans on it) though the original's default is suck. Manual note below:
 - **Dusty / vacuum** (`dusty.htm`): the real Dusty has **three modes via the nose
   button — Suck (remove, stored in its stomach), Reverse (spit back out), Erase**.
   We model only Erase, as a *toggle*; authentic erase is a mode and restore is
   via Dusty-reverse or the wand's 'O' mode, not a toggle. Note **Suck (remove,
   restorable) is distinct from the Bomb (destroy, permanent)**.
-- **Wand** ✅ (`wand.ts`): copies via the **tip**, not consumed, with **three
-  modes** (hover/hold + press C/O/S or space; `WandView` shows the badge): **C**
+- **Wand** ✅ (`wand.ts`): **held tool** (see *Tools are held* below); copies via
+  the **tip**, not consumed, with **three modes** (press C/O/S to set, Tab
+  cycles; `WandView` shows the badge): **C**
   copy + restore (un-erased — default); **O** "original" copies preserving the
   erased/wildcard state (per `picture.cpp`: original mode doesn't restore); **S**
   copy-self copies a robot *with its team* (C/O copy just the lead). Mode persists.
@@ -195,13 +196,27 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   transient unless dropped on a main-notebook page. Used as a **module** when
   given to a truck. Dropping a notebook on an erased box → a box with one hole
   holding every page.
-- **Pumpy** ✅ (`pumpy.ts`): the resize tool. `Thing` has `scaleX`/`scaleY`
-  (applied by ThingView, persisted, omitted from snapshots when 1); dropping
-  Pumpy on a thing resizes it by its mode (bigger/smaller/wider/narrower/taller/
-  shorter/good; clamp 0.4–3×). Modes via hover/hold + space (`+`/`-` too);
-  `PumpyView` shows a badge and scales the 800×600 art down to tool size.
+- **Pumpy** ✅ (`pumpy.ts`): the resize **held tool** (see *Tools are held*
+  below). `Thing` has `scaleX`/`scaleY` (applied by ThingView, persisted, omitted
+  from snapshots when 1); applying Pumpy to the thing under its hose tip resizes
+  it by its mode (bigger/smaller/wider/narrower/taller/shorter/good; clamp
+  0.4–3×). Mode keys: `+`/`b` bigger · `-` smaller · `w` wider · `n` narrower ·
+  `t` taller · `s` shorter · `g` good (revert); **Tab** cycles. `PumpyView` shows
+  a badge and scales the 800×600 art down to tool size.
   ▢ in-hole things ignore Pumpy size (the cubby fit-scale dominates); copies and
   box-fit don't carry Pumpy size.
+
+### Tools are held, not dropped
+Pumpy, Dusty and the wand are **not** drag-and-drop. You pick a tool up (it rides
+the cursor with its tip/hose at the pointer, offset up-and-right), move the tip
+over a thing, then **click or press space** to apply the tool's *current default*
+to that thing — the tool **stays in hand**. A click/space over empty floor
+**puts the tool down**. Mode keys (above) change the current default while held.
+Implemented in `drag-controller.ts`: `heldTool` field, `onPointerDown` picks a
+tool into hand (vs. normal drag for everything else), `applyHeldTool` runs the
+normal `resolveDrop` rules against the thing under the tip, `onKeyDown` routes
+space→apply and letters→`setToolMode`. This matches the original (`pumpy.htm`
+etc.): "move the end of the hose over the thing, then click/space".
 
 ## Room reconstruction (the desktop shell)
 

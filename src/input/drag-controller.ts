@@ -43,6 +43,9 @@ interface WiggleTarget {
   by: number;
 }
 
+/** A held tool is drawn up-and-right of the pointer, so its tip is at the cursor. */
+const HELD_OFFSET = { x: 40, y: -34 };
+
 export class DragController {
   private dragging: ThingView | null = null;
   private grabOffset = { x: 0, y: 0 };
@@ -57,6 +60,8 @@ export class DragController {
   private hoverTarget: WiggleTarget | null = null;
   /** Thing under the hand, for keyboard editing of the selected pad. */
   private hoveredThing: Thing | null = null;
+  /** A tool (wand/Dusty/Pumpy) held on the cursor; click/space applies it. */
+  private heldTool: ThingView | null = null;
 
   constructor(
     private readonly world: World,
@@ -110,6 +115,7 @@ export class DragController {
       return;
     }
     const hit = this.world.topAt(this.pointer, (thing, p) => {
+      if (this.heldTool && thing.id === this.heldTool.thing.id) return false; // not the tool itself
       const v = this.views.get(thing.id);
       return v ? v.containsPoint(p.x, p.y) : false;
     });
@@ -146,24 +152,43 @@ export class DragController {
    */
   private onKeyDown = (e: KeyboardEvent): void => {
     if (this.trainer.active || e.ctrlKey || e.metaKey || e.altKey) return;
+
+    // Holding a tool: space applies it (like a click); letters set its mode.
+    if (this.heldTool) {
+      if (e.key === ' ') {
+        e.preventDefault();
+        this.applyHeldTool(this.pointer.x, this.pointer.y);
+        return;
+      }
+      if (this.setToolMode(this.heldTool.thing, e.key)) {
+        e.preventDefault();
+        this.world.notifyChanged(this.heldTool.thing);
+      }
+      return;
+    }
+
+    // Otherwise: edit the hovered/held pad, or set a hovered tool's mode.
     const thing = this.dragging?.thing ?? this.hoveredThing;
+    if (!thing) return;
     const handled =
       thing instanceof NumberThing
         ? this.editNumber(thing, e.key)
         : thing instanceof TextThing
           ? this.editText(thing, e.key)
-          : thing instanceof Dusty
-            ? this.editDusty(thing, e.key)
-            : thing instanceof Wand
-              ? this.editWand(thing, e.key)
-              : thing instanceof Pumpy
-                ? this.editPumpy(thing, e.key)
-                : false;
+          : this.setToolMode(thing, e.key);
     if (handled) {
       e.preventDefault();
-      this.world.notifyChanged(thing as Thing);
+      this.world.notifyChanged(thing);
     }
   };
+
+  /** Set a tool's current mode/default from a key (the tool's button). */
+  private setToolMode(thing: Thing, key: string): boolean {
+    if (thing instanceof Pumpy) return this.editPumpy(thing, key);
+    if (thing instanceof Dusty) return this.editDusty(thing, key);
+    if (thing instanceof Wand) return this.editWand(thing, key);
+    return false;
+  }
 
   private editNumber(n: NumberThing, key: string): boolean {
     switch (key) {
@@ -191,34 +216,44 @@ export class DragController {
     return false;
   }
 
-  /** Pumpy's button: space cycles modes; + bigger, - smaller. */
+  /**
+   * Pumpy's mode keys (space applies it to the thing under the hose tip).
+   * + / b bigger · - smaller · w wider · n narrower · t taller · s shorter ·
+   * g good (revert to normal). Tab cycles through the defaults in order.
+   */
   private editPumpy(p: Pumpy, key: string): boolean {
     switch (key) {
-      case ' ': p.cycleMode(); return true;
-      case '+': p.mode = 'bigger'; return true;
+      case '+':
+      case 'b': p.mode = 'bigger'; return true;
       case '-': p.mode = 'smaller'; return true;
+      case 'w': p.mode = 'wider'; return true;
+      case 'n': p.mode = 'narrower'; return true;
+      case 't': p.mode = 'taller'; return true;
+      case 's': p.mode = 'shorter'; return true;
+      case 'g': p.mode = 'good'; return true;
+      case 'Tab': p.cycleMode(); return true;
     }
     return false;
   }
 
-  /** The wand's button: C copy · O original · S copy-self · space cycles. */
+  /** The wand's mode keys: C copy · O original · S copy-self · Tab cycles. */
   private editWand(w: Wand, key: string): boolean {
     switch (key.toLowerCase()) {
       case 'c': w.mode = 'C'; return true;
       case 'o': w.mode = 'O'; return true;
       case 's': w.mode = 'S'; return true;
-      case ' ': w.cycleMode(); return true;
+      case 'tab': w.cycleMode(); return true;
     }
     return false;
   }
 
-  /** Dusty's nose button: E erase · S suck · R reverse · space cycles. */
+  /** Dusty's mode keys: E erase · S suck · R reverse · Tab cycles. */
   private editDusty(d: Dusty, key: string): boolean {
     switch (key.toLowerCase()) {
       case 'e': d.mode = 'erase'; return true;
       case 's': d.mode = 'suck'; return true;
       case 'r': d.mode = 'reverse'; return true;
-      case ' ': d.cycleMode(); return true;
+      case 'tab': d.cycleMode(); return true;
     }
     return false;
   }
@@ -264,6 +299,13 @@ export class DragController {
       return;
     }
 
+    // Holding a tool: this click applies it to the thing under the tip, or puts
+    // the tool down on empty floor. (Space does the same — see onKeyDown.)
+    if (this.heldTool) {
+      this.applyHeldTool(x, y);
+      return;
+    }
+
     const hit = this.world.topAt({ x, y }, (thing, p) => {
       const view = this.views.get(thing.id);
       return view ? view.containsPoint(p.x, p.y) : false;
@@ -276,12 +318,62 @@ export class DragController {
     const view = this.views.get(picked.id);
     if (!view) return;
 
+    // A tool (wand/Dusty/Pumpy) is taken *into hand* — you then move it over a
+    // thing and click/space to apply it — rather than dragged-and-dropped.
+    if (this.isTool(picked)) {
+      this.heldTool = view;
+      view.container.zIndex = 1000;
+      this.world.moveThing(picked.id, { x: x + HELD_OFFSET.x, y: y + HELD_OFFSET.y });
+      this.onGrab(picked);
+      return;
+    }
+
     this.dragging = view;
     this.grabOffset = { x: picked.x - x, y: picked.y - y };
     view.container.zIndex = 1000;
     view.setDragging(true);
     this.onGrab(picked);
   };
+
+  private isTool(thing: Thing): boolean {
+    return thing instanceof Wand || thing instanceof Dusty || thing instanceof Pumpy;
+  }
+
+  /**
+   * Apply the held tool to the thing under the tip (the pointer), via the normal
+   * drop rules (wand copies, Dusty erases/sucks/spits, Pumpy resizes); the tool
+   * stays in hand. Clicking empty floor instead puts the tool down.
+   */
+  private applyHeldTool(x: number, y: number): void {
+    const tool = this.heldTool;
+    if (!tool) return;
+    const target = this.world.topAt({ x, y }, (thing, p) => {
+      if (thing.id === tool.thing.id) return false;
+      const view = this.views.get(thing.id);
+      return view ? view.containsPoint(p.x, p.y) : false;
+    });
+    if (!target) {
+      tool.container.zIndex = 0;
+      this.heldTool = null;
+      this.onGrab(null);
+      return;
+    }
+    this.resolve(tool.thing, target, this.contextFor(target, x, y));
+  }
+
+  /** Which box hole / which side a reference point (px,py) lands on, for a drop. */
+  private contextFor(target: Thing, px: number, py: number): DropContext {
+    const ctx: DropContext = {};
+    const tv = this.views.get(target.id);
+    if (tv instanceof BoxView) {
+      const hole = tv.holeIndexAt(px, py);
+      if (hole != null) ctx.holeIndex = hole;
+      else ctx.side = px < target.x ? 'left' : 'right';
+    } else {
+      ctx.side = px < target.x ? 'left' : 'right';
+    }
+    return ctx;
+  }
 
   /** Pull a thing out of a box hole or off a nest; returns it (now top-level). */
   private tryExtract(hit: Thing, x: number, y: number): Thing | null {
@@ -339,6 +431,14 @@ export class DragController {
   private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
     this.pointer = { x: e.global.x, y: e.global.y };
     this.updateHoverTarget();
+    // A held tool follows the cursor (it's in hand), even with no button down.
+    if (this.heldTool) {
+      this.world.moveThing(this.heldTool.thing.id, {
+        x: e.global.x + HELD_OFFSET.x,
+        y: e.global.y + HELD_OFFSET.y,
+      });
+      return;
+    }
     if (this.trainer.active) {
       if (this.trainGhost) this.trainGhost.position.set(e.global.x, e.global.y);
       return;
@@ -371,28 +471,13 @@ export class DragController {
       return;
     }
 
+    if (this.heldTool) return; // a tool stays in hand; clicks apply, release doesn't
     if (!this.dragging) return;
     const dragged = this.dragging;
 
     dragged.setDragging(false);
     dragged.container.zIndex = 0;
     this.dragging = null;
-
-    // The magic wand selects what its TIP touches (far end of the sprite),
-    // rather than its overall overlap.
-    if (dragged.thing instanceof Wand) {
-      const wb = dragged.container.getBounds();
-      const tipX = wb.x + wb.width * 0.04;
-      const tipY = wb.y + wb.height * 0.3;
-      const tipTarget = this.world.topAt({ x: tipX, y: tipY }, (thing, p) => {
-        if (thing.id === dragged.thing.id) return false;
-        const view = this.views.get(thing.id);
-        return view ? view.containsPoint(p.x, p.y) : false;
-      });
-      this.resolve(dragged.thing, tipTarget, {});
-      this.onGrab(null);
-      return;
-    }
 
     // Use the dragged object's own geometry (not the cursor tip) to decide what
     // it landed on, matching the original ToonTalk "drop it on the side" feel.
@@ -414,21 +499,7 @@ export class DragController {
     }
     if (bestArea <= 0) target = undefined;
 
-    const ctx: DropContext = {};
-    if (target) {
-      const tv = this.views.get(target.id);
-      if (tv instanceof BoxView) {
-        const hole = tv.holeIndexAt(cx, cy);
-        if (hole != null) ctx.holeIndex = hole;
-        // Dropped on the box's edge (not over a hole) → record a side so two
-        // boxes can join.
-        else ctx.side = cx < target.x ? 'left' : 'right';
-      } else {
-        ctx.side = cx < target.x ? 'left' : 'right';
-      }
-    }
-
-    this.resolve(dragged.thing, target, ctx);
+    this.resolve(dragged.thing, target, target ? this.contextFor(target, cx, cy) : {});
     this.onGrab(null);
   };
 }
