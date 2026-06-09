@@ -17,6 +17,8 @@ import { Box } from '../model/box';
 import { Nest } from '../model/nest';
 import { Wand } from '../model/wand';
 import { NumberThing } from '../model/number';
+import { TextThing } from '../model/text';
+import { Rational } from '../model/rational';
 import type { Renderer } from '../view/renderer';
 import type { ThingView } from '../view/thing-view';
 import type { RenderTheme } from '../config/render-mode';
@@ -48,6 +50,8 @@ export class DragController {
   private activeTarget: WiggleTarget | null = null;
   /** Hover wiggle target, recomputed on pointer move (not per frame). */
   private hoverTarget: WiggleTarget | null = null;
+  /** Thing under the hand, for keyboard editing of the selected pad. */
+  private hoveredThing: Thing | null = null;
 
   constructor(
     private readonly world: World,
@@ -104,6 +108,7 @@ export class DragController {
       const v = this.views.get(thing.id);
       return v ? v.containsPoint(p.x, p.y) : false;
     });
+    this.hoveredThing = hit ?? null;
     this.hoverTarget = hit ? this.computeTarget(hit) : null;
   }
 
@@ -129,32 +134,63 @@ export class DragController {
   }
 
   /**
-   * While holding a number, set its operation (applied when it's dropped) by
-   * pressing a key, matching the original: + add · x/* multiply · / divide ·
-   * % remainder · ^ power · = replace · - negate (subtraction is negate-then-add).
+   * Keyboard edits the **selected pad** (the one held, or hovered under the
+   * hand). Numbers: digits append, Backspace deletes a digit, `-` negates, and
+   * `+ x/* / % ^ =` set the operation applied on drop. Text: characters append,
+   * Backspace deletes.
    */
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (this.trainer.active) return;
-    const thing = this.dragging?.thing;
-    if (!(thing instanceof NumberThing)) return;
-    let handled = true;
-    switch (e.key) {
-      case '+': thing.operation = '+'; break;
-      case '*':
-      case 'x':
-      case 'X': thing.operation = '*'; break;
-      case '/': thing.operation = '/'; break;
-      case '%': thing.operation = '%'; break;
-      case '^': thing.operation = '^'; break;
-      case '=': thing.operation = '='; break;
-      case '-': thing.negate(); break;
-      default: handled = false;
-    }
+    if (this.trainer.active || e.ctrlKey || e.metaKey || e.altKey) return;
+    const thing = this.dragging?.thing ?? this.hoveredThing;
+    const handled =
+      thing instanceof NumberThing
+        ? this.editNumber(thing, e.key)
+        : thing instanceof TextThing
+          ? this.editText(thing, e.key)
+          : false;
     if (handled) {
       e.preventDefault();
-      this.world.notifyChanged(thing);
+      this.world.notifyChanged(thing as Thing);
     }
   };
+
+  private editNumber(n: NumberThing, key: string): boolean {
+    switch (key) {
+      case '+': n.operation = '+'; return true;
+      case '*':
+      case 'x':
+      case 'X': n.operation = '*'; return true;
+      case '/': n.operation = '/'; return true;
+      case '%': n.operation = '%'; return true;
+      case '^': n.operation = '^'; return true;
+      case '=': n.operation = '='; return true;
+      case '-': n.negate(); return true;
+      case 'Backspace': // drop the last digit (toward zero)
+        n.value = n.value.divide(Rational.fromInt(10)).truncate();
+        return true;
+    }
+    if (key.length === 1 && key >= '0' && key <= '9') {
+      // Append a digit, preserving sign.
+      const neg = n.value.num < 0n;
+      let mag = neg ? n.value.negate() : n.value;
+      mag = mag.multiply(Rational.fromInt(10)).add(Rational.fromInt(Number(key)));
+      n.value = neg ? mag.negate() : mag;
+      return true;
+    }
+    return false;
+  }
+
+  private editText(t: TextThing, key: string): boolean {
+    if (key === 'Backspace') {
+      t.value = t.value.slice(0, -1);
+      return true;
+    }
+    if (key.length === 1) {
+      t.value += key;
+      return true;
+    }
+    return false;
+  }
 
   private trainingBoxView(): BoxView | null {
     const box = this.trainer.box;

@@ -111,6 +111,12 @@ Playground — are app-launcher options, not element behavior.)
 Read 2026-06 from the per-element pages above. ✅ = matches our impl, ⚠ =
 divergence/simplification in our current code, ▢ = not yet implemented.
 
+- **Pad editing** (`pad.cpp`): ✅ select a pad (hover it / hold it) and **type to
+  edit** — numbers: digits append (sign preserved), Backspace drops a digit;
+  text: characters append, Backspace deletes. Handled in `drag-controller`
+  `onKeyDown` → `editNumber`/`editText` against the hovered/held thing.
+  (`window.__ttWorld` exposes the world for debugging, like `__ttApp`.)
+  ▢ no insertion-point/cursor editing or decimal/fraction typing yet.
 - **Numbers** (`newnum.htm`): ✅ **op set by a keypress while holding the pad**,
   default `+` — `+` add, `x`/`*` multiply, `/` divide, `%` remainder, `^` power,
   `=` replace; `-` **negates** the pad (the manual has no binary minus —

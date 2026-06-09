@@ -73,6 +73,7 @@ async function start(): Promise<void> {
 
   // Model <-> view bookkeeping.
   const world = new World();
+  (window as unknown as { __ttWorld?: unknown }).__ttWorld = world;
   const views = new Map<string, ThingView>();
 
   world.subscribe((event) => {
