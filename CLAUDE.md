@@ -195,9 +195,13 @@ divergence/simplification in our current code, ▢ = not yet implemented.
   transient unless dropped on a main-notebook page. Used as a **module** when
   given to a truck. Dropping a notebook on an erased box → a box with one hole
   holding every page.
-- **Pumpy** (`pumpy.htm`): ▢ not implemented (art staged as `pumpy.png`). A
-  resize tool — modes big/wide/narrow/little/short/tall/good-size. Cosmetic;
-  not consumed.
+- **Pumpy** ✅ (`pumpy.ts`): the resize tool. `Thing` has `scaleX`/`scaleY`
+  (applied by ThingView, persisted, omitted from snapshots when 1); dropping
+  Pumpy on a thing resizes it by its mode (bigger/smaller/wider/narrower/taller/
+  shorter/good; clamp 0.4–3×). Modes via hover/hold + space (`+`/`-` too);
+  `PumpyView` shows a badge and scales the 800×600 art down to tool size.
+  ▢ in-hole things ignore Pumpy size (the cubby fit-scale dominates); copies and
+  box-fit don't carry Pumpy size.
 
 ## Room reconstruction (the desktop shell)
 
