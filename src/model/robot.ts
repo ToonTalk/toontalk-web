@@ -43,6 +43,7 @@ export interface RobotSnapshot extends ThingSnapshot {
   condition: ConditionHole[];
   actions: RobotAction[];
   exactValues?: (ThingSnapshot | null)[];
+  team?: RobotSnapshot[];
 }
 
 export class Robot extends Thing {
@@ -56,6 +57,12 @@ export class Robot extends Thing {
    * (i.e. the hole was erased by Dusty, or never value-guarded).
    */
   exactValues: (Thing | null)[];
+  /**
+   * Robots behind this one in a team (front-to-back order). A box given to the
+   * team is tried by this robot first, then each teammate; the first whose
+   * condition matches runs. Teammates are not separate world things.
+   */
+  team: Robot[];
 
   constructor(opts: {
     id?: string;
@@ -64,11 +71,18 @@ export class Robot extends Thing {
     condition?: ConditionHole[];
     actions?: RobotAction[];
     exactValues?: (Thing | null)[];
+    team?: Robot[];
   } = {}) {
     super(opts);
     this.condition = opts.condition ?? [];
     this.actions = opts.actions ?? [];
     this.exactValues = opts.exactValues ?? [];
+    this.team = opts.team ?? [];
+  }
+
+  /** This robot followed by its teammates, in the order a box is offered to them. */
+  lineup(): Robot[] {
+    return [this, ...this.team];
   }
 
   protected override kindForId(): ThingKind {
@@ -94,6 +108,7 @@ export class Robot extends Thing {
       condition: [...this.condition],
       actions: this.actions.map((a) => ({ ...a })),
       exactValues: this.exactValues.map((v) => (v ? v.copy() : null)),
+      team: this.team.map((r) => r.copy()),
     });
   }
 
@@ -111,6 +126,7 @@ export class Robot extends Thing {
       condition: [...this.condition],
       actions: this.actions.map((a) => ({ ...a })),
       exactValues: this.exactValues.map((v) => (v ? v.snapshot() : null)),
+      team: this.team.map((r) => r.snapshot()),
     };
   }
 }
@@ -149,11 +165,16 @@ export function applyAction(box: Box, action: RobotAction): boolean {
   return false;
 }
 
-/** Run a robot on a box: if it matches, replay the actions. Returns whether it ran. */
+/**
+ * Run a team on a box: the front robot is offered the box, then each teammate;
+ * the first trained robot whose condition matches replays its actions. Returns
+ * whether any robot ran (false = nothing matched, the box is left untouched).
+ */
 export function runRobot(world: World, robot: Robot, box: Box): boolean {
   recomputeScales(box); // ensure any scale's tilt reflects the input before matching
-  if (!robot.matches(box)) return false;
-  for (const action of robot.actions) {
+  const runner = robot.lineup().find((r) => r.actions.length > 0 && r.matches(box));
+  if (!runner) return false;
+  for (const action of runner.actions) {
     applyAction(box, action);
   }
   recomputeScales(box);

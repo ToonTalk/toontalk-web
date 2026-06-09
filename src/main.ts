@@ -313,7 +313,7 @@ async function start(): Promise<void> {
         `render mode: ${mode}\n` +
         `things: ${world.size}\n` +
         `trained robot + 2-number box → it adds · UNtrained robot + filled box → train it\n` +
-        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty erases · bomb destroys\n` +
+        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty erases · bomb destroys · robot on robot → team\n` +
         `hold a number, press + − ×(x) ÷(/) % ^ = to set its op · − negates · number on a blank text pad → digits\n` +
         `a scale between two holes tips toward the bigger (robots can match the tilt) · drop a box on another box's edge to join` +
         (lastResult && lastResult !== 'none' && lastResult !== 'train'

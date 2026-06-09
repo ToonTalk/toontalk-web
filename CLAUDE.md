@@ -132,9 +132,11 @@ divergence/simplification in our current code, ▢ = not yet implemented.
 - **Robots** (`robot.htm`): ✅ train by example; condition = box shape; erasing
   generalizes; thought bubble shows the condition. ✅ **finish key**: Escape
   finishes training (matches the manual; Backspace cancels as a web-only helper
-  since the manual has no cancel gesture). ▢ **teams**: drop robot on robot →
-  tried front-to-back, first match runs, others step aside, no match passes
-  along; if nothing matches it waits. ▢ negation via a team + marker. ▢ recursion
+  since the manual has no cancel gesture). ✅ **teams** (robot.cpp `next_robot`):
+  drop robot on robot → the dragged robot (+ its team) lines up behind the
+  target (`Robot.team`); a box is offered front-to-back via `runRobot` →
+  `lineup()`, first trained matching robot runs, else nothing (waits).
+  Teammates aren't world things; the view stacks them behind the lead. ▢ negation via a team + marker. ▢ recursion
   via the wand's 'S' mode copying the robot+team.
 - **Scale** (`scale.htm`): ✅ a `Scale` (model/scale.ts) sits in a box hole and
   weighs its two neighbours: tilts `left`/`right` toward the bigger number or

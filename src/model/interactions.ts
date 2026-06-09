@@ -37,6 +37,7 @@ export type DropResult =
   | 'erased'
   | 'exploded'
   | 'joined'
+  | 'teamed'
   | 'none';
 
 export function resolveDrop(
@@ -92,13 +93,24 @@ export function resolveDrop(
     return 'exploded';
   }
 
-  // A robot meets a box (either direction) → run the robot on the box.
+  // Drop a robot on a robot → they form a team: the dragged robot (and its own
+  // teammates) line up behind the target, which leads. A box given to the team
+  // is offered front-to-back; the first matching robot runs.
+  if (dragged instanceof Robot && target instanceof Robot) {
+    target.team.push(dragged, ...dragged.team);
+    dragged.team = [];
+    world.remove(dragged.id);
+    world.notifyChanged(target);
+    return 'teamed';
+  }
+
+  // A robot (team) meets a box (either direction) → run on the box.
   {
     const robot = dragged instanceof Robot ? dragged : target instanceof Robot ? target : null;
     const box = dragged instanceof Box ? dragged : target instanceof Box ? target : null;
     if (robot && box) {
-      // An untrained robot learns from the box; a trained one runs on it.
-      if (robot.actions.length === 0) return 'train';
+      // A lone untrained robot learns from the box; otherwise the team runs.
+      if (robot.actions.length === 0 && robot.team.length === 0) return 'train';
       return runRobot(world, robot, box) ? 'ran' : 'none';
     }
   }

@@ -14,6 +14,15 @@ export class RobotView extends ThingView {
     const robot = this.thing as Robot;
     const tex = this.textures.get('robot') ?? PIXI.Texture.WHITE;
 
+    // Teammates peek out behind the lead (front-to-back order).
+    for (let i = robot.team.length; i >= 1; i--) {
+      const mate = new PIXI.Sprite(tex);
+      mate.anchor.set(0.5);
+      mate.scale.set(0.8);
+      mate.position.set(i * 14, -i * 9);
+      this.container.addChild(mate);
+    }
+
     if (this.theme.dropShadow) {
       const shadow = new PIXI.Sprite(tex);
       shadow.anchor.set(0.5);
