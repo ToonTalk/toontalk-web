@@ -34,7 +34,8 @@ export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, 
 }
 
 /** Called when a toolbox/tool icon is clicked; spawns that element in the world. */
-export type PickHandler = (key: string) => void;
+/** Take a fresh copy of a toolbox element out at (x, y) — an infinite stack. */
+export type PickHandler = (key: string, x: number, y: number) => void;
 
 const ARM_COLOR = 0xbb5d64; // sampled from the hand texture's wrist stub
 
@@ -221,7 +222,7 @@ export class Room {
 
     c.hitArea = new PIXI.Rectangle(-len / 2 - 20, -22, len + 44, 44);
     c.eventMode = 'static';
-    c.on('pointertap', () => this.onPick('wand'));
+    c.on('pointerdown', (e) => this.onPick('wand', e.global.x, e.global.y));
     return c;
   }
 
@@ -315,7 +316,7 @@ export class Room {
         hit.hitArea = new PIXI.Rectangle(-cell / 2, -cell / 2, cell, cell);
         hit.eventMode = 'static';
         const key = item.pick;
-        hit.on('pointertap', () => this.onPick(key));
+        hit.on('pointerdown', (e) => this.onPick(key, e.global.x, e.global.y));
         box.addChild(hit);
       }
     });
@@ -394,7 +395,7 @@ export class Room {
 
     c.hitArea = new PIXI.Rectangle(-s.width / 2, -s.height / 2, s.width, s.height);
     c.eventMode = 'static';
-    c.on('pointertap', () => this.onPick(pick));
+    c.on('pointerdown', (e) => this.onPick(pick, e.global.x, e.global.y));
     return c;
   }
 

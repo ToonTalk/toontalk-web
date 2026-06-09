@@ -52,7 +52,7 @@ async function start(): Promise<void> {
   // The ToonTalk room: tan floor, toolbox, notebook, tools, and the hand cursor.
   // Clicking a toolbox/tool icon pulls a fresh element onto the floor.
   const roomTextures = await loadRoomTextures(theme);
-  const room = new Room(renderer, roomTextures, textures, theme, (key) => spawnTool(key));
+  const room = new Room(renderer, roomTextures, textures, theme, (key, x, y) => spawnTool(key, x, y));
   window.addEventListener('resize', () => room.resize());
 
   // Replace the OS cursor with ToonTalk's hand, which tracks the pointer.
@@ -170,10 +170,10 @@ async function start(): Promise<void> {
 
   const STORAGE_KEY = 'toontalk-world-v1';
 
-  // Pull a fresh element out of the toolbox onto the floor (a toolbox click).
-  function spawnTool(key: string): void {
-    const x = 180 + Math.random() * 260;
-    const y = 340 + Math.random() * 120;
+  // Pull a fresh element out of the toolbox at (x, y) — an infinite stack, so
+  // the toolbox keeps its copy. Spawned under the cursor; the drag controller
+  // (same pointerdown, bubbled) then picks it up so it drags out of the box.
+  function spawnTool(key: string, x: number, y: number): void {
     switch (key) {
       case 'number': world.add(new NumberThing({ value: 1, x, y })); break;
       case 'text': world.add(new TextThing({ value: 'a', x, y })); break;
