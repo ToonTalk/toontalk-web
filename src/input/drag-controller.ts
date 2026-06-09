@@ -15,6 +15,7 @@ import type { DropContext } from '../model/interactions';
 import type { Trainer } from '../model/trainer';
 import { Box } from '../model/box';
 import { Nest } from '../model/nest';
+import { Notebook } from '../model/notebook';
 import { Wand } from '../model/wand';
 import { NumberThing } from '../model/number';
 import { TextThing } from '../model/text';
@@ -25,6 +26,7 @@ import type { RenderTheme } from '../config/render-mode';
 import { recomputeScales } from '../model/scale';
 import { BoxView } from '../view/box-view';
 import { NestView } from '../view/nest-view';
+import { NotebookView } from '../view/notebook-view';
 import { renderThingDisplay } from '../view/display';
 import { tweenScale } from '../view/animation';
 
@@ -269,6 +271,20 @@ export class DragController {
           this.world.add(occ);
           this.world.notifyChanged(hit);
           return occ;
+        }
+      }
+    } else if (hit instanceof Notebook) {
+      // Pull a copy of the current page off; the notebook keeps its own.
+      const nv = this.views.get(hit.id);
+      if (nv instanceof NotebookView && nv.pressedOnPage(x, y)) {
+        const page = hit.current();
+        if (page) {
+          const copy = page.copy();
+          copy.moveTo({ x, y });
+          this.world.add(copy);
+          const v = this.views.get(copy.id);
+          if (v) tweenScale(v.container, 0.6, 1);
+          return copy;
         }
       }
     }

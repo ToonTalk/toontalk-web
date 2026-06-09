@@ -14,6 +14,7 @@ import { RobotView } from './robot-view';
 import { ScaleView } from './scale-view';
 import { TruckView } from './truck-view';
 import { HouseView } from './house-view';
+import { NotebookView } from './notebook-view';
 
 export function createThingView(
   thing: Thing,
@@ -37,6 +38,8 @@ export function createThingView(
       return new TruckView(thing, textures, theme);
     case 'house':
       return new HouseView(thing, textures, theme);
+    case 'notebook':
+      return new NotebookView(thing, textures, theme);
     default:
       return new SpriteView(thing, textures, theme);
   }

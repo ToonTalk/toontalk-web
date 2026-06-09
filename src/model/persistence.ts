@@ -19,6 +19,7 @@ import { Bomb } from './bomb';
 import { Robot, type RobotSnapshot } from './robot';
 import { Truck } from './truck';
 import { House, type HouseSnapshot } from './house';
+import { Notebook, type NotebookSnapshot } from './notebook';
 import { Scale, type ScaleSnapshot, recomputeScales } from './scale';
 import { Rational } from './rational';
 
@@ -63,6 +64,10 @@ function buildByKind(s: ThingSnapshot): Thing {
       return new Scale({ x: s.x, y: s.y, tilt: (s as ScaleSnapshot).tilt });
     case 'truck':
       return new Truck({ x: s.x, y: s.y });
+    case 'notebook': {
+      const nb = s as NotebookSnapshot;
+      return new Notebook({ x: s.x, y: s.y, pages: nb.pages.map(buildThing), index: nb.index });
+    }
     case 'house': {
       const h = s as HouseSnapshot;
       return new House({

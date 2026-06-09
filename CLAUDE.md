@@ -172,7 +172,13 @@ divergence/simplification in our current code, ▢ = not yet implemented.
 - **Wand** (`wand.htm`): ✅ copies via the **tip**, not consumed. ⚠ we only do
   mode 'C'. ▢ mode 'O' = copy and restore an erased original; ▢ mode 'S' = copy
   self / copy a robot+team (the only way to make another wand; enables recursion).
-- **Notebook** (`notebook.htm`): ▢ not implemented. Pages indexed by number;
+- **Notebook** ✅ (`notebook.ts`/`notebook-view.ts`): a page store. Drop a thing
+  on it → filed as a new page (turned to it); drop a **number** → flips to that
+  1-based page; **drag the page off → a copy** comes out (the notebook keeps its
+  own). Pages + current index persist. ▢ not yet: the **main** notebook as the
+  real save model, modules-in-trucks, page-turn arrows/animation, number-format
+  pages. (Older manual note below.)
+- **Notebook** (`notebook.htm`): ▢ original: pages indexed by number;
   number→page, text→matching page. The **main notebook persists across
   sessions** (this is the real save/load model); secondary notebooks are
   transient unless dropped on a main-notebook page. Used as a **module** when

@@ -21,6 +21,7 @@ export type ThingKind =
   | 'bomb'
   | 'truck'
   | 'house'
+  | 'notebook'
   | 'placeholder';
 
 export interface Point {

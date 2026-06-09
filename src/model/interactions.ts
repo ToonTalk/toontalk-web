@@ -20,6 +20,7 @@ import { Dusty } from './dusty';
 import { Bomb } from './bomb';
 import { Truck } from './truck';
 import { House } from './house';
+import { Notebook } from './notebook';
 import { recomputeScales } from './scale';
 
 export interface DropContext {
@@ -42,6 +43,8 @@ export type DropResult =
   | 'teamed'
   | 'loaded'
   | 'built'
+  | 'stored'
+  | 'flipped'
   | 'none';
 
 export function resolveDrop(
@@ -149,6 +152,21 @@ export function resolveDrop(
     world.remove(dragged.id);
     world.notifyChanged(target);
     return 'joined';
+  }
+
+  // Drop on a notebook: a number flips to that page; anything else is filed as
+  // a new page (consumed).
+  if (target instanceof Notebook) {
+    if (dragged instanceof NumberThing) {
+      target.goTo(dragged.value.toNumber());
+      world.remove(dragged.id);
+      world.notifyChanged(target);
+      return 'flipped';
+    }
+    target.store(dragged);
+    world.remove(dragged.id);
+    world.notifyChanged(target);
+    return 'stored';
   }
 
   // Give a thing to a bird → it carries a copy to each of its nests.

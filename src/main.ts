@@ -21,6 +21,7 @@ import { Scale, recomputeScales } from './model/scale';
 import { Robot } from './model/robot';
 import { Truck } from './model/truck';
 import { House, runHouse } from './model/house';
+import { Notebook } from './model/notebook';
 import { Trainer } from './model/trainer';
 import { resolveDrop } from './model/interactions';
 import { serialize, loadWorld } from './model/persistence';
@@ -232,6 +233,12 @@ async function start(): Promise<void> {
     world.add(new Bomb({ x: 300, y: 470 }));
     // The truck: drop a robot + a box into it and it builds a running house.
     world.add(new Truck({ x: 470, y: 560 }));
+    // A notebook with two pages: drop things on it to file pages, drop a number
+    // to flip to that page, drag the page off to pull a copy out.
+    const notebook = new Notebook({ x: 620, y: 580 });
+    notebook.store(new NumberThing({ value: 42 }));
+    notebook.store(new TextThing({ value: 'hi' }));
+    world.add(notebook);
 
     // Pre-trained "adder" robot + a ready box to run it on.
     world.add(
