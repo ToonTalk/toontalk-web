@@ -10,6 +10,7 @@ import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Box } from '../model/box';
 import { renderThingDisplay } from './display';
+import { tweenScale } from './animation';
 
 const H = 84; // piece (box) height in px
 const ONE = { key: 'cubby1', aspect: 464 / 292, holeCx: 0.5 }; // first hole piece
@@ -94,5 +95,13 @@ export class BoxView extends ThingView {
   /** The content node of a filled hole + its base position (for wiggle), or null. */
   holeNode(i: number): { node: PIXI.Container; x: number; y: number } | null {
     return this.holeNodes[i] ?? null;
+  }
+
+  /** Animate a just-dropped item shrinking from full size into the hole. */
+  popHole(i: number): void {
+    const hn = this.holeNodes[i];
+    if (!hn) return;
+    const fit = hn.node.scale.x;
+    tweenScale(hn.node, fit * 1.9, fit); // ≈ full size → fit
   }
 }

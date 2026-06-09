@@ -96,6 +96,23 @@ export function flyBird(
   PIXI.Ticker.shared.add(step);
 }
 
+/** Ease a node's scale from `from`× to `to`× over `ms` (used for cubby fit/restore). */
+export function tweenScale(node: PIXI.Container, from: number, to: number, ms = 170): void {
+  const start = performance.now();
+  node.scale.set(from);
+  const step = (): void => {
+    if (node.destroyed) {
+      PIXI.Ticker.shared.remove(step);
+      return;
+    }
+    const t = Math.min(1, (performance.now() - start) / ms);
+    const e = 1 - (1 - t) * (1 - t); // ease-out
+    node.scale.set(from + (to - from) * e);
+    if (t >= 1) PIXI.Ticker.shared.remove(step);
+  };
+  PIXI.Ticker.shared.add(step);
+}
+
 /** Play a named cycle once at (x, y) on `parent`, removing it when finished. */
 export function playOnce(name: string, parent: PIXI.Container, x: number, y: number): void {
   const texs = loaded.get(name);

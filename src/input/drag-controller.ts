@@ -24,6 +24,7 @@ import { recomputeScales } from '../model/scale';
 import { BoxView } from '../view/box-view';
 import { NestView } from '../view/nest-view';
 import { renderThingDisplay } from '../view/display';
+import { tweenScale } from '../view/animation';
 
 export type DropResolver = (dragged: Thing, target: Thing | undefined, ctx: DropContext) => void;
 export type TrainStep = (from: number, to: number) => void;
@@ -215,6 +216,9 @@ export class DragController {
             occ.moveTo({ x, y });
             recomputeScales(hit);
             this.world.add(occ);
+            // Grow back from the hole size to full size as it's pulled out.
+            const v = this.views.get(occ.id);
+            if (v) tweenScale(v.container, 0.55, 1);
             this.world.notifyChanged(hit);
             return occ;
           }

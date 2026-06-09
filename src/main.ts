@@ -25,6 +25,7 @@ import { serialize, loadWorld } from './model/persistence';
 import { Renderer } from './view/renderer';
 import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
+import { BoxView } from './view/box-view';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
 import { loadAnimations, playOnce, flyBird } from './view/animation';
@@ -128,6 +129,10 @@ async function start(): Promise<void> {
       } else if (result === 'erased') {
         const at = target ?? dragged;
         playOnce('dusty-suck', renderer.thingLayer, at.x, at.y);
+      } else if ((result === 'filled' || result === 'combined') && target instanceof Box && ctx.holeIndex != null) {
+        // The dropped item shrinks to fit the hole.
+        const bv = views.get(target.id);
+        if (bv instanceof BoxView) bv.popHole(ctx.holeIndex);
       } else if (result === 'delivered' && target instanceof Bird && target.nest) {
         // The bird flies the gift to its nest and back.
         flyBird(renderer.thingLayer, target.x, target.y, target.nest.x, target.nest.y,
