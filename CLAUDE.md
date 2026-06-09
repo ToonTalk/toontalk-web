@@ -256,6 +256,37 @@ normal `resolveDrop` rules against the thing under the tip, `onKeyDown` routes
 space→apply and letters→`setToolMode`. This matches the original (`pumpy.htm`
 etc.): "move the end of the hose over the thing, then click/space".
 
+## Sensors ✅ (live pads)
+Sensors are pads that report **live system state** (the original ships a notebook
+full of them; `source/.../doc/sensor.htm`, `sensors.rc`). The manual says a sensor
+"works much like a control for a picture" and *is* a number or text/yes-no pad
+whose value refreshes every frame — so we model it exactly that way and reuse the
+whole interaction engine with zero special cases.
+- **`src/model/sensor.ts`** — `NumberSensor extends NumberThing` and
+  `TextSensor extends TextThing` (same `kind`, so robots match them, numbers
+  combine with them, they sit on scales). Each adds `sensorType` + `update(input)`
+  / `copy()` / `snapshot()`. `SENSORS` catalog + `makeSensor(type)` factory.
+  Implemented (non-media): `mouse-vx`/`mouse-vy` (velocity, 1000 = screen/sec),
+  `ms-per-frame` (clock/timer), `random` (0–1000), `address-road`/`-street`
+  (from the city block), `click-left|middle|right` (momentary), `down-…` (held),
+  `key-just` (momentary) / `key-last` (held), `shift-down`, `ctrl-down`,
+  `hand-visible`.
+- **`src/input/input-state.ts`** — `InputState` + `InputTracker`: mouse/keyboard
+  listeners; `sample(dt)` builds a per-frame snapshot (velocity from accumulated
+  pointer movement; momentary click/key **edges** true for one sample) then clears
+  the edges. Pluggable `handVisible` + `address` providers.
+- **`src/model/sensor-runtime.ts`** — `updateSensors(world, input)` each frame
+  (on the render ticker in `main.ts`), notifying the view only on change.
+- **Views**: number/text pads draw a sensor tag (antenna + label;
+  `src/view/sensor-tag.ts`). **Persistence**: sensors round-trip via `sensorType`
+  on the number/text snapshot. Seeded: a 17-page **sensor notebook** + two loose
+  sensors in the demo room.
+- ▢ **Media sensors deferred** (with the rest of media): file→picture/sound, MCI,
+  text→speech, wall/house/roof decorations, clipboard. ▢ joystick; the sensor
+  "remote control" state-cycling UI. ▢ NOTE: verify with `__ttInput.sample()` +
+  manual `sensor.update()` — the preview tab is backgrounded so the ticker is
+  paused (real visible tab updates sensors every frame).
+
 ## Room reconstruction (the desktop shell)
 
 ToonTalk has **3 house types, each with a different floor colour** (tan `FLOORC`,
