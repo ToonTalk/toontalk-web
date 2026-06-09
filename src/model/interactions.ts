@@ -177,6 +177,25 @@ export function resolveDrop(
     return 'delivered';
   }
 
+  // Combine two nests: dropping one nest on another merges them into one
+  // channel — the target gets the dragged nest's deliveries, and any bird that
+  // fed the dragged nest is re-pointed to feed the target. The dragged nest goes.
+  if (dragged instanceof Nest && target instanceof Nest) {
+    for (const c of dragged.contents) target.receive(c);
+    for (const t of world.all()) {
+      if (t instanceof Bird) {
+        const i = t.nests.indexOf(dragged);
+        if (i >= 0) {
+          t.nests.splice(i, 1);
+          if (!t.nests.includes(target)) t.nests.push(target);
+        }
+      }
+    }
+    world.remove(dragged.id);
+    world.notifyChanged(target);
+    return 'combined';
+  }
+
   // Drop a thing directly onto a nest → it lands there too.
   if (target instanceof Nest) {
     target.receive(dragged);

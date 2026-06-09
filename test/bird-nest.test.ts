@@ -34,3 +34,45 @@ describe('bird feeds multiple nests after a nest is copied', () => {
     expect(w.get(gift.id)).toBeDefined();
   });
 });
+
+describe('combining nests', () => {
+  it('merges deliveries and re-points the feeding bird', () => {
+    const w = new World();
+    const a = w.add(new Nest()) as Nest;
+    const b = w.add(new Nest()) as Nest;
+    const bird = w.add(new Bird({ nests: [a] })) as Bird;
+    a.receive(new NumberThing({ value: 1 }));
+
+    expect(resolveDrop(w, a, b)).toBe('combined');
+    expect(w.get(a.id)).toBeUndefined();          // dragged nest consumed
+    expect(b.contents).toHaveLength(1);            // its delivery moved to b
+    expect(bird.nests).toEqual([b]);               // the bird now feeds b
+
+    resolveDrop(w, w.add(new NumberThing({ value: 9 })), bird);
+    expect(b.contents).toHaveLength(2);            // delivery reaches the merged nest
+  });
+});
+
+import { hatchFromNest } from '../src/model/bird';
+
+describe('hatching a bird from an egg', () => {
+  it('an empty nest with no bird hatches a fresh one feeding it', () => {
+    const w = new World();
+    const nest = w.add(new Nest()) as Nest;
+    const bird = hatchFromNest(w, nest, 5, 6);
+    expect(bird).not.toBeNull();
+    expect(bird!.nests).toEqual([nest]);
+    expect(w.get(bird!.id)).toBeDefined();
+  });
+
+  it('does not hatch if a bird already feeds the nest or it has contents', () => {
+    const w = new World();
+    const nest = w.add(new Nest()) as Nest;
+    w.add(new Bird({ nests: [nest] }));
+    expect(hatchFromNest(w, nest, 0, 0)).toBeNull(); // already has a bird
+
+    const nest2 = w.add(new Nest()) as Nest;
+    nest2.receive(new NumberThing({ value: 1 }));
+    expect(hatchFromNest(w, nest2, 0, 0)).toBeNull(); // not empty
+  });
+});

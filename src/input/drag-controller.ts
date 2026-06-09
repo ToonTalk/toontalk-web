@@ -15,6 +15,7 @@ import type { DropContext } from '../model/interactions';
 import type { Trainer } from '../model/trainer';
 import { Box } from '../model/box';
 import { Nest } from '../model/nest';
+import { hatchFromNest } from '../model/bird';
 import { Notebook } from '../model/notebook';
 import { Wand } from '../model/wand';
 import { NumberThing } from '../model/number';
@@ -273,6 +274,10 @@ export class DragController {
           return occ;
         }
       }
+      // Hatch a bird from the egg: an empty nest with no bird yet gives a fresh
+      // bird (which then feeds this nest).
+      const bird = hatchFromNest(this.world, hit, x, y);
+      if (bird) return bird;
     } else if (hit instanceof Notebook) {
       // Pull a copy of the current page off; the notebook keeps its own.
       const nv = this.views.get(hit.id);
