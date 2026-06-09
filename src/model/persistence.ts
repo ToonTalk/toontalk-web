@@ -17,6 +17,8 @@ import { Wand } from './wand';
 import { Dusty } from './dusty';
 import { Bomb } from './bomb';
 import { Robot, type RobotSnapshot } from './robot';
+import { Truck } from './truck';
+import { House, type HouseSnapshot } from './house';
 import { Scale, type ScaleSnapshot, recomputeScales } from './scale';
 import { Rational } from './rational';
 
@@ -59,6 +61,17 @@ function buildByKind(s: ThingSnapshot): Thing {
       return new Bomb({ x: s.x, y: s.y });
     case 'scale':
       return new Scale({ x: s.x, y: s.y, tilt: (s as ScaleSnapshot).tilt });
+    case 'truck':
+      return new Truck({ x: s.x, y: s.y });
+    case 'house': {
+      const h = s as HouseSnapshot;
+      return new House({
+        x: s.x,
+        y: s.y,
+        robot: buildThing(h.robot) as Robot,
+        box: buildThing(h.box) as Box,
+      });
+    }
     case 'robot': {
       const r = s as RobotSnapshot;
       return new Robot({

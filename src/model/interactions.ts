@@ -18,6 +18,8 @@ import { Nest } from './nest';
 import { Robot, runRobot } from './robot';
 import { Dusty } from './dusty';
 import { Bomb } from './bomb';
+import { Truck } from './truck';
+import { House } from './house';
 import { recomputeScales } from './scale';
 
 export interface DropContext {
@@ -38,6 +40,8 @@ export type DropResult =
   | 'exploded'
   | 'joined'
   | 'teamed'
+  | 'loaded'
+  | 'built'
   | 'none';
 
 export function resolveDrop(
@@ -97,6 +101,22 @@ export function resolveDrop(
     }
     world.remove(dragged.id);
     return 'exploded';
+  }
+
+  // Load a truck: drop a robot (team) or a box into it. With both aboard, its
+  // crew drives off and builds a house — a running process where the robot
+  // works on the box (truck.cpp fill_house / initial_contents).
+  if (target instanceof Truck && (dragged instanceof Robot || dragged instanceof Box)) {
+    if (dragged instanceof Robot) target.robot = dragged;
+    else target.box = dragged;
+    world.remove(dragged.id);
+    if (target.robot && target.box) {
+      world.add(new House({ x: target.x, y: target.y, robot: target.robot, box: target.box }));
+      world.remove(target.id); // the truck drives off
+      return 'built';
+    }
+    world.notifyChanged(target);
+    return 'loaded';
   }
 
   // Drop a robot on a robot → they form a team: the dragged robot (and its own

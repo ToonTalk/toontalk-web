@@ -91,13 +91,20 @@ Playground — are app-launcher options, not element behavior.)
   terminates a whole running process (a robot team working in a house); its
   stated purpose is *recycling* (deallocating finished houses). It is consumed.
   Our current impl simplifies this to "destroy the target thing/box" because we
-  have no houses yet. When trucks/houses land, revisit so the bomb terminates a
-  running process, not just any object on the table.
-- **Truck (next feature):** drop a **robot (or team of robots) + a box** into a
-  truck → it drives to an empty lot, builds a **house**, and the robot runs on
-  that box there (a spawned process). Optional extras: a house picture, an
-  address, and a notebook that acts as a **module** robots consult first. The
-  truck is **not** consumed.
+  have no houses yet. ✅ a bomb now **terminates a house** (the running process):
+  `world.remove(target)` already covers it. ▢ still simplified for loose objects.
+- **Truck / House ✅** (`truck.cpp` fill_house/initial_contents; `truck.ts`,
+  `house.ts`): drop a **robot (team) + a box** into a `Truck` (the truck is the
+  target) — with both aboard it drives off (truck removed) and builds a **House**,
+  a running process. A periodic step in main.ts (`setInterval` 800ms →
+  `runHouse`) offers the house's box to its team front-to-back; the first
+  matching robot runs, so the house keeps reacting (e.g. to a bird feeding a nest
+  in its box). **City postponed** — the house is shown in place on the floor
+  (drawn house + its box + the lead robot peeking; `house-view.ts`). ▢ later: the
+  city with houses on lots + helicopter navigation; truck extras (house picture,
+  address, notebook module). NOTE: the 800ms interval + animations make the
+  preview screenshot tool time out — verify trucks/houses via tests or a real
+  browser, not screenshots.
 
 ## Element behavior digest (from the manual) — incl. divergences to fix
 

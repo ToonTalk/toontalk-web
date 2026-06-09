@@ -8,7 +8,7 @@ import type { RenderTheme } from '../config/render-mode';
 
 const SPRITE_KEYS = [
   'number', 'text', 'box', 'bird', 'nest', 'robot', 'scale', 'wand', 'pumpy',
-  'dusty', 'bubble', 'bomb',
+  'dusty', 'bubble', 'bomb', 'truck',
   // Authentic lego plates / cubby pieces:
   'numplat', 'textplat', 'cubby', 'cubby1', 'cubbyr', 'cubbyb',
   // Scale tilt images (level / left-heavier / right-heavier):

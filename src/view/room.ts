@@ -286,7 +286,7 @@ export class Room {
       { label: '1', fill: 0xbff2c9, pick: 'number' }, { label: 'A', fill: 0xf2ddc2, pick: 'text' },
       { icon: 'box', pick: 'box' }, { icon: 'nest', pick: 'nest' },
       { icon: 'scale', pick: 'scale' }, { icon: 'robot', pick: 'robot' },
-      { icon: 'truck' }, { icon: 'bomb', pick: 'bomb' },
+      { icon: 'truck', pick: 'truck' }, { icon: 'bomb', pick: 'bomb' },
     ];
     const left = -w / 2 + pad;
     const top = -h / 2 + pad;

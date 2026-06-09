@@ -19,6 +19,8 @@ import { Dusty } from './model/dusty';
 import { Bomb } from './model/bomb';
 import { Scale, recomputeScales } from './model/scale';
 import { Robot } from './model/robot';
+import { Truck } from './model/truck';
+import { House, runHouse } from './model/house';
 import { Trainer } from './model/trainer';
 import { resolveDrop } from './model/interactions';
 import { serialize, loadWorld } from './model/persistence';
@@ -161,6 +163,12 @@ async function start(): Promise<void> {
     onGrab,
   );
 
+  // Houses are running processes: each tick, every house offers its box to its
+  // robot team and the first matching robot runs (so a house keeps reacting).
+  setInterval(() => {
+    for (const t of world.all()) if (t instanceof House) runHouse(world, t);
+  }, 800);
+
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
   // — there's no "cancel training" in the manual, so this is a web-only helper.
   window.addEventListener('keydown', (ev) => {
@@ -198,6 +206,7 @@ async function start(): Promise<void> {
       case 'bomb': world.add(new Bomb({ x, y })); break;
       case 'wand': world.add(new Wand({ x, y })); break;
       case 'dusty': world.add(new Dusty({ x, y })); break;
+      case 'truck': world.add(new Truck({ x, y })); break;
       default: return;
     }
     updateHud('none');
@@ -220,6 +229,8 @@ async function start(): Promise<void> {
     world.add(new Dusty({ x: 410, y: 470 }));
     // The bomb: drop on a thing to blow it up (the bomb is consumed).
     world.add(new Bomb({ x: 300, y: 470 }));
+    // The truck: drop a robot + a box into it and it builds a running house.
+    world.add(new Truck({ x: 470, y: 560 }));
 
     // Pre-trained "adder" robot + a ready box to run it on.
     world.add(

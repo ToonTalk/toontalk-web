@@ -19,6 +19,8 @@ export type ThingKind =
   | 'wand'
   | 'dusty'
   | 'bomb'
+  | 'truck'
+  | 'house'
   | 'placeholder';
 
 export interface Point {
