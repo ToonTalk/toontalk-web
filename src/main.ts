@@ -26,6 +26,7 @@ import { Pumpy } from './model/pumpy';
 import { Trainer } from './model/trainer';
 import { resolveDrop } from './model/interactions';
 import { serialize, loadWorld } from './model/persistence';
+import { saveMainNotebook, loadMainNotebook, clearMainNotebook } from './model/notebook-store';
 import { Renderer } from './view/renderer';
 import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
@@ -236,8 +237,6 @@ async function start(): Promise<void> {
     }
   });
 
-  const STORAGE_KEY = 'toontalk-world-v1';
-
   // Pull a fresh element out of the toolbox at (x, y) — an infinite stack, so
   // the toolbox keeps its copy. Spawned under the cursor; the drag controller
   // (same pointerdown, bubbled) then picks it up so it drags out of the box.
@@ -347,22 +346,48 @@ async function start(): Promise<void> {
     });
     recomputeScales(swapBox);
     world.add(swapBox);
+
+    // Module demo (the recursion primitive): a house whose robot, each tick,
+    // pulls a *copy* of page 1 of its module (the number 1) into the empty hole
+    // and adds it to the accumulator — so the counter climbs, driven entirely by
+    // the module it was given. `fromModule` is how a house's robots draw on the
+    // notebook handed to the truck that built them.
+    const moduleNb = new Notebook({ pages: [new NumberThing({ value: 1 })] });
+    const counterBox = new Box({ holes: [new NumberThing({ value: 0 }), null] });
+    const counterRobot = new Robot({
+      condition: ['number', null],
+      actions: [
+        { type: 'fromModule', page: 1, to: 1 },
+        { type: 'combine', from: 1, to: 0 },
+      ],
+    });
+    world.add(new House({ x: 1000, y: 590, robot: counterRobot, box: counterBox, module: moduleNb }));
   }
 
-  // Restore the last session if there is one; otherwise seed the demo world.
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    try {
-      loadWorld(world, saved);
-    } catch {
-      seedDemo();
-    }
-  } else {
-    seedDemo();
+  // The faithful ToonTalk save model: **only the main notebook persists**. The
+  // floor is transient working space — reseeded fresh each load — while the main
+  // notebook (the one in your toolbox) keeps whatever you file onto it. A fresh
+  // main notebook starts with a single welcome page.
+  function seedMainNotebook(): Notebook {
+    const nb = new Notebook({ x: 500, y: 600, isMain: true });
+    nb.store(new TextThing({ value: 'My ToonTalk notebook' }));
+    return nb;
+  }
+  function installMainNotebook(): Notebook {
+    const nb = loadMainNotebook() ?? seedMainNotebook();
+    nb.moveTo({ x: 500, y: 600 });
+    world.add(nb);
+    return nb;
   }
 
-  // Autosave on every change.
-  world.subscribe(() => localStorage.setItem(STORAGE_KEY, serialize(world)));
+  seedDemo();
+  let mainNotebook = installMainNotebook();
+
+  // Saving = filing onto the main notebook. Persist it whenever it changes;
+  // identity-check so the ~60fps sensor ticks don't trigger a save each frame.
+  world.subscribe((event) => {
+    if (event.type === 'changed' && event.thing === mainNotebook) saveMainNotebook(mainNotebook);
+  });
 
   // Save / Load / Reset controls.
   document.getElementById('save-btn')?.addEventListener('click', () => {
@@ -388,9 +413,10 @@ async function start(): Promise<void> {
     loadInput.value = '';
   });
   document.getElementById('reset-btn')?.addEventListener('click', () => {
-    localStorage.removeItem(STORAGE_KEY);
+    clearMainNotebook();
     world.clear();
     seedDemo();
+    mainNotebook = installMainNotebook();
     updateHud('none');
   });
 

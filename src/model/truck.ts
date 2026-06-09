@@ -10,6 +10,7 @@
 import { Thing, type ThingKind, type ThingSnapshot } from './thing';
 import type { Box } from './box';
 import type { Robot } from './robot';
+import type { Notebook } from './notebook';
 
 export class Truck extends Thing {
   readonly kind = 'truck' as const;
@@ -17,6 +18,8 @@ export class Truck extends Thing {
   robot: Robot | null = null;
   /** The box loaded so far, if any. */
   box: Box | null = null;
+  /** An optional notebook given as the house's module (its program library). */
+  module: Notebook | null = null;
 
   constructor(opts: { id?: string; x?: number; y?: number } = {}) {
     super(opts);

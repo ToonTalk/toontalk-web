@@ -15,9 +15,15 @@
 import { Thing, type ThingKind, type ThingSnapshot } from './thing';
 import type { Box } from './box';
 import type { World } from './world';
+import type { Notebook } from './notebook';
 import { NumberThing, type NumberOp } from './number';
 import { TextThing } from './text';
 import { recomputeScales } from './scale';
+
+/** Extra context an action may need (the running house's module, for recursion). */
+export interface ActionContext {
+  module?: Notebook | null;
+}
 
 /** A demonstrated action, expressed in terms of hole positions so it generalizes. */
 export type RobotAction =
@@ -47,6 +53,13 @@ export type RobotAction =
       /** Exchange the contents of these two holes. */
       a: number;
       b: number;
+    }
+  | {
+      type: 'fromModule';
+      /** Copy this 1-based page of the house's module… */
+      page: number;
+      /** …into this (empty) hole. The module-use / recursion primitive. */
+      to: number;
     };
 
 /** A condition hole: null = must be empty; a kind = must hold a thing of that kind. */
@@ -154,10 +167,20 @@ export function trainByExample(sample: Box, actions: RobotAction[]): Robot {
  * Apply a single action to a box in place. Returns whether it did anything.
  * Shared by running and training.
  */
-export function applyAction(box: Box, action: RobotAction): boolean {
+export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext): boolean {
   if (action.type === 'remove') {
     if (box.isHoleEmpty(action.hole)) return false;
     box.take(action.hole);
+    return true;
+  }
+
+  if (action.type === 'fromModule') {
+    // Module use / recursion: drop a *copy* of a module page into an empty hole.
+    const module = ctx?.module;
+    if (!module || !box.isHoleEmpty(action.to)) return false;
+    const page = module.pages[action.page - 1];
+    if (!page) return false;
+    box.put(action.to, page.copy());
     return true;
   }
 
@@ -199,12 +222,12 @@ export function applyAction(box: Box, action: RobotAction): boolean {
  * the first trained robot whose condition matches replays its actions. Returns
  * whether any robot ran (false = nothing matched, the box is left untouched).
  */
-export function runRobot(world: World, robot: Robot, box: Box): boolean {
+export function runRobot(world: World, robot: Robot, box: Box, ctx?: ActionContext): boolean {
   recomputeScales(box); // ensure any scale's tilt reflects the input before matching
   const runner = robot.lineup().find((r) => r.actions.length > 0 && r.matches(box));
   if (!runner) return false;
   for (const action of runner.actions) {
-    applyAction(box, action);
+    applyAction(box, action, ctx);
   }
   recomputeScales(box);
   world.notifyChanged(box);

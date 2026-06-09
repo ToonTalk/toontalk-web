@@ -182,12 +182,31 @@ export class DragController {
         ? this.editNumber(thing, e.key)
         : thing instanceof TextThing
           ? this.editText(thing, e.key)
-          : this.setToolMode(thing, e.key);
+          : thing instanceof Notebook
+            ? this.editNotebook(thing, e.key)
+            : this.setToolMode(thing, e.key);
     if (handled) {
       e.preventDefault();
       this.world.notifyChanged(thing);
     }
   };
+
+  /** Notebook keyboard shortcuts: ←/→ turn pages; Backspace on page 1 jumps to
+   * the last non-empty page (the manual's tip). */
+  private editNotebook(nb: Notebook, key: string): boolean {
+    switch (key) {
+      case 'ArrowLeft':
+        nb.flip(-1);
+        return true;
+      case 'ArrowRight':
+        nb.flip(1);
+        return true;
+      case 'Backspace':
+        nb.goTo(nb.count); // last page
+        return true;
+    }
+    return false;
+  }
 
   /** Set a tool's current mode/default from a key (the tool's button). */
   private setToolMode(thing: Thing, key: string): boolean {

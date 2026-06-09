@@ -81,6 +81,16 @@ export function resolveDrop(
   if (dragged instanceof Dusty) {
     const dusty = dragged;
 
+    // A notebook only lets things be removed with Dusty: take the current page
+    // (kept in the stomach when sucking, so reverse can spit it back out).
+    if (target instanceof Notebook) {
+      const page = target.removeCurrent();
+      if (!page) return 'none';
+      if (dusty.mode === 'suck') dusty.stomach.push(page);
+      world.notifyChanged(target);
+      return dusty.mode === 'suck' ? 'sucked' : 'erased';
+    }
+
     // SUCK: vacuum the target (or a box hole's contents) into the stomach.
     if (dusty.mode === 'suck') {
       if (target instanceof Box && ctx.holeIndex != null) {
@@ -156,12 +166,24 @@ export function resolveDrop(
   // Load a truck: drop a robot (team) or a box into it. With both aboard, its
   // crew drives off and builds a house — a running process where the robot
   // works on the box (truck.cpp fill_house / initial_contents).
-  if (target instanceof Truck && (dragged instanceof Robot || dragged instanceof Box)) {
+  if (
+    target instanceof Truck &&
+    (dragged instanceof Robot || dragged instanceof Box || dragged instanceof Notebook)
+  ) {
     if (dragged instanceof Robot) target.robot = dragged;
-    else target.box = dragged;
+    else if (dragged instanceof Box) target.box = dragged;
+    else target.module = dragged; // a notebook is the house's module
     world.remove(dragged.id);
     if (target.robot && target.box) {
-      world.add(new House({ x: target.x, y: target.y, robot: target.robot, box: target.box }));
+      world.add(
+        new House({
+          x: target.x,
+          y: target.y,
+          robot: target.robot,
+          box: target.box,
+          module: target.module,
+        }),
+      );
       world.remove(target.id); // the truck drives off
       return 'built';
     }
@@ -201,11 +223,17 @@ export function resolveDrop(
     return 'joined';
   }
 
-  // Drop on a notebook: a number flips to that page; anything else is filed as
-  // a new page (consumed).
+  // Drop on a notebook (notebook.htm): a number flips to that page; a text card
+  // flips to the page whose text starts with it ("ma" finds "mat"), filing it if
+  // there's no match; anything else is filed as a new page (= saving).
   if (target instanceof Notebook) {
     if (dragged instanceof NumberThing) {
       target.goTo(dragged.value.toNumber());
+      world.remove(dragged.id);
+      world.notifyChanged(target);
+      return 'flipped';
+    }
+    if (dragged instanceof TextThing && target.findText(dragged.value)) {
       world.remove(dragged.id);
       world.notifyChanged(target);
       return 'flipped';

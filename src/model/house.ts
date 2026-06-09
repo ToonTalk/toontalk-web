@@ -12,11 +12,13 @@ import { Thing, type ThingKind, type ThingSnapshot } from './thing';
 import type { World } from './world';
 import { Box, type BoxSnapshot } from './box';
 import { Robot, type RobotSnapshot, applyAction } from './robot';
+import { Notebook, type NotebookSnapshot } from './notebook';
 import { recomputeScales } from './scale';
 
 export interface HouseSnapshot extends ThingSnapshot {
   robot: RobotSnapshot;
   box: BoxSnapshot;
+  module?: NotebookSnapshot;
 }
 
 export class House extends Thing {
@@ -25,11 +27,14 @@ export class House extends Thing {
   robot: Robot;
   /** The box the team works on. */
   box: Box;
+  /** The module (notebook) the team's robots may draw pages from. */
+  module: Notebook | null;
 
-  constructor(opts: { id?: string; x?: number; y?: number; robot: Robot; box: Box }) {
+  constructor(opts: { id?: string; x?: number; y?: number; robot: Robot; box: Box; module?: Notebook | null }) {
     super(opts);
     this.robot = opts.robot;
     this.box = opts.box;
+    this.module = opts.module ?? null;
   }
 
   protected override kindForId(): ThingKind {
@@ -37,7 +42,13 @@ export class House extends Thing {
   }
 
   copy(): House {
-    return new House({ x: this.x, y: this.y, robot: this.robot.copy(), box: this.box.copy() });
+    return new House({
+      x: this.x,
+      y: this.y,
+      robot: this.robot.copy(),
+      box: this.box.copy(),
+      module: this.module ? (this.module.copy() as Notebook) : null,
+    });
   }
 
   equals(other: Thing): boolean {
@@ -49,7 +60,12 @@ export class House extends Thing {
   }
 
   override snapshot(): HouseSnapshot {
-    return { ...super.snapshot(), robot: this.robot.snapshot(), box: this.box.snapshot() };
+    return {
+      ...super.snapshot(),
+      robot: this.robot.snapshot(),
+      box: this.box.snapshot(),
+      ...(this.module ? { module: this.module.snapshot() } : {}),
+    };
   }
 }
 
@@ -62,7 +78,7 @@ export function runHouse(world: World, house: House): boolean {
   recomputeScales(house.box);
   const runner = house.robot.lineup().find((r) => r.actions.length > 0 && r.matches(house.box));
   if (!runner) return false;
-  for (const action of runner.actions) applyAction(house.box, action);
+  for (const action of runner.actions) applyAction(house.box, action, { module: house.module });
   recomputeScales(house.box);
   world.notifyChanged(house);
   return true;

@@ -9,10 +9,12 @@
  * we keep notebooks as ordinary things for now.) Pure logic — no rendering.
  */
 import { Thing, type ThingKind, type ThingSnapshot } from './thing';
+import { TextThing } from './text';
 
 export interface NotebookSnapshot extends ThingSnapshot {
   pages: ThingSnapshot[];
   index: number;
+  isMain?: boolean;
 }
 
 export class Notebook extends Thing {
@@ -20,11 +22,20 @@ export class Notebook extends Thing {
   readonly pages: Thing[];
   /** The currently shown page (0-based). */
   index: number;
+  /**
+   * The main (first) notebook — the one that follows you in the toolbox and
+   * persists across sessions (the real save model). Secondary notebooks are
+   * transient unless filed onto a main-notebook page.
+   */
+  isMain: boolean;
 
-  constructor(opts: { id?: string; x?: number; y?: number; pages?: Thing[]; index?: number } = {}) {
+  constructor(
+    opts: { id?: string; x?: number; y?: number; pages?: Thing[]; index?: number; isMain?: boolean } = {},
+  ) {
     super(opts);
     this.pages = opts.pages ?? [];
     this.index = opts.index ?? 0;
+    this.isMain = opts.isMain ?? false;
   }
 
   protected override kindForId(): ThingKind {
@@ -58,12 +69,32 @@ export class Notebook extends Thing {
     this.index = Math.max(0, Math.min(this.pages.length - 1, Math.trunc(page) - 1));
   }
 
+  /**
+   * Flip to the first text page whose value *starts with* `text` (the manual's
+   * "drop 'ma' → finds 'mat'"). Returns whether a page was found.
+   */
+  findText(text: string): boolean {
+    const i = this.pages.findIndex((p) => p instanceof TextThing && p.value.startsWith(text));
+    if (i < 0) return false;
+    this.index = i;
+    return true;
+  }
+
+  /** Remove the current page (only Dusty does this). Returns the removed page. */
+  removeCurrent(): Thing | null {
+    if (this.pages.length === 0) return null;
+    const [removed] = this.pages.splice(this.index, 1);
+    if (this.index >= this.pages.length) this.index = Math.max(0, this.pages.length - 1);
+    return removed ?? null;
+  }
+
   copy(): Notebook {
     return new Notebook({
       x: this.x,
       y: this.y,
       pages: this.pages.map((p) => p.copy()),
       index: this.index,
+      // a copy is a secondary (transient) notebook, never the main one
     });
   }
 
@@ -80,6 +111,7 @@ export class Notebook extends Thing {
       ...super.snapshot(),
       pages: this.pages.map((p) => p.snapshot()),
       index: this.index,
+      ...(this.isMain ? { isMain: true } : {}),
     };
   }
 }

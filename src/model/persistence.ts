@@ -29,6 +29,16 @@ export function serialize(world: World): string {
   return JSON.stringify(world.snapshot(), null, 2);
 }
 
+/** Serialize one thing (and its children) — used for the persistent main notebook. */
+export function thingToJson(thing: Thing): string {
+  return JSON.stringify(thing.snapshot(), null, 2);
+}
+
+/** Rebuild one thing from `thingToJson` (fresh ids). */
+export function thingFromJson(json: string): Thing {
+  return buildThing(JSON.parse(json) as ThingSnapshot);
+}
+
 /** Rebuild a single thing (and its children) from a snapshot, with a fresh id. */
 function buildThing(s: ThingSnapshot): Thing {
   const t = buildByKind(s);
@@ -80,7 +90,13 @@ function buildByKind(s: ThingSnapshot): Thing {
       return new Truck({ x: s.x, y: s.y });
     case 'notebook': {
       const nb = s as NotebookSnapshot;
-      return new Notebook({ x: s.x, y: s.y, pages: nb.pages.map(buildThing), index: nb.index });
+      return new Notebook({
+        x: s.x,
+        y: s.y,
+        pages: nb.pages.map(buildThing),
+        index: nb.index,
+        isMain: nb.isMain,
+      });
     }
     case 'house': {
       const h = s as HouseSnapshot;
@@ -89,6 +105,7 @@ function buildByKind(s: ThingSnapshot): Thing {
         y: s.y,
         robot: buildThing(h.robot) as Robot,
         box: buildThing(h.box) as Box,
+        module: h.module ? (buildThing(h.module) as Notebook) : null,
       });
     }
     case 'robot': {

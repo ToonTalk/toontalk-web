@@ -52,5 +52,34 @@ export class NotebookView extends ThingView {
     label.anchor.set(0.5);
     label.position.set(0, sprite.height / 2 - 12);
     this.container.addChild(label);
+
+    // Page-turn cues (← / →); turn pages with the arrow keys while pointing at
+    // the notebook (drop a number/text to jump). Dim at the ends.
+    const hw = sprite.width / 2;
+    const arrows = new PIXI.Graphics();
+    const tri = (x: number, dir: 1 | -1, on: boolean) => {
+      arrows.beginFill(0x333333, on ? 0.85 : 0.2);
+      arrows.moveTo(x, -6);
+      arrows.lineTo(x - 7 * dir, 0);
+      arrows.lineTo(x, 6);
+      arrows.closePath();
+      arrows.endFill();
+    };
+    tri(-hw + 12, -1, nb.index > 0);
+    tri(hw - 12, 1, nb.index < nb.count - 1);
+    arrows.position.set(0, sprite.height / 2 - 12);
+    this.container.addChild(arrows);
+
+    // The main (toolbox) notebook — the one that persists — gets a star.
+    if (nb.isMain) {
+      const star = new PIXI.Text('★', {
+        fontFamily: this.theme.fontFamily,
+        fontSize: 16,
+        fill: 0xe8b800,
+      });
+      star.anchor.set(0.5);
+      star.position.set(0, -sprite.height / 2 + 12);
+      this.container.addChild(star);
+    }
   }
 }
