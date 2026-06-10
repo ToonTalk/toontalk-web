@@ -80,7 +80,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Truck / House | ✅ | module ✅ · extras (picture, address) ▢ |
 | Notebook | ✅ | main = real save model ✅ · modules + `fromModule` recursion ✅ · sub-notebooks ▢ |
 | Sensors | ✅ | media sensors ▢ · joystick ▢ |
-| City (fly/land/walk) | ✅ | entering a house ▢ · trucks in city ▢ · audio ▢ |
+| City (fly/land/walk) | ✅ | rectangular 3×3, 3 houses, side-view street + Tooly ✅ · entering a house ▢ · audio ▢ |
 | Room shell | ✅ | holdwand anchors ⚠ · near-empty room seed ▢ |
 | Animations | ⚠ | explode ✅ · dusty-suck ✅ · bird flight ▢ · nest hatch ▢ |
 

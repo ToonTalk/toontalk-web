@@ -23,7 +23,14 @@ export interface CityAssets {
   heliFly: DirSpec;
   heliLand: DirSpec;
   person: DirSpec;
+  /** Tooly the toolbox (side view, 8 directions) — follows the walker. */
+  tooly: DirSpec;
+  /** Top-down house art for the flyover, by style. */
   houses: Record<string, PIXI.Texture>;
+  /** Side-view house art for the street view, by style. */
+  houseSides: Record<string, PIXI.Texture>;
+  /** The landed helicopter, parked on the street. */
+  heliParked: PIXI.Texture;
   tree: PIXI.Texture;
 }
 
@@ -82,16 +89,25 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
   const heliFly = await loadDirSpec(manifest['heli-fly'] ?? fallback('heli-fly', 8), scaleMode);
   const heliLand = await loadDirSpec(manifest['heli-land'] ?? fallback('heli-land', 1), scaleMode);
   const person = await loadDirSpec(manifest['person'] ?? fallback('person', 8), scaleMode);
+  const tooly = await loadDirSpec(manifest['tooly'] ?? fallback('tooly', 8), scaleMode);
 
-  const houseB = (await loadTex('/assets/city/house-b.png', scaleMode)) ?? PIXI.Texture.WHITE;
-  const houseC = (await loadTex('/assets/city/house-c.png', scaleMode)) ?? PIXI.Texture.WHITE;
-  const tree = (await loadTex('/assets/city/tree.png', scaleMode)) ?? PIXI.Texture.WHITE;
+  const white = PIXI.Texture.WHITE;
+  const houseB = (await loadTex('/assets/city/house-b.png', scaleMode)) ?? white;
+  const houseC = (await loadTex('/assets/city/house-c.png', scaleMode)) ?? white;
+  const sideA = (await loadTex('/assets/city/house-a-side.png', scaleMode)) ?? white;
+  const sideB = (await loadTex('/assets/city/house-b-side.png', scaleMode)) ?? white;
+  const sideC = (await loadTex('/assets/city/house-c-side.png', scaleMode)) ?? white;
+  const heliParked = (await loadTex('/assets/city/heli-parked.png', scaleMode)) ?? white;
+  const tree = (await loadTex('/assets/city/tree.png', scaleMode)) ?? white;
 
   return {
     heliFly,
     heliLand,
     person,
+    tooly,
     houses: { a: houseC, b: houseB, c: houseC },
+    houseSides: { a: sideA, b: sideB, c: sideC },
+    heliParked,
     tree,
   };
 }

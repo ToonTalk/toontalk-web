@@ -5,13 +5,16 @@ import {
   nextScale,
   shouldLand,
   buildCity,
+  nearestStreetY,
   MIN_FLYING_SCALE,
   MAX_FLYING_SCALE,
   GROUND_SCALE,
   START_SCALE,
   LIFTOFF_SCALE,
-  CITY_MIN,
-  CITY_MAX,
+  BLOCK_W,
+  BLOCK_H,
+  CITY_W,
+  CITY_H,
 } from '../src/city/city-model';
 
 describe('directionFromDelta', () => {
@@ -32,8 +35,8 @@ describe('directionFromDelta', () => {
 
 describe('nextScale', () => {
   it('doubles in ~0.75s going up, halves going down', () => {
-    expect(nextScale(2, 1, 750)).toBeCloseTo(4, 5);
-    expect(nextScale(4, -1, 750)).toBeCloseTo(2, 5);
+    expect(nextScale(1.8, 1, 750)).toBeCloseTo(3.6, 5);
+    expect(nextScale(3.6, -1, 750)).toBeCloseTo(1.8, 5);
   });
   it('holds when altitude is 0', () => {
     expect(nextScale(3, 0, 750)).toBe(3);
@@ -51,17 +54,41 @@ describe('shouldLand', () => {
   });
 });
 
-describe('buildCity', () => {
-  it('produces a deterministic non-empty city of houses and trees', () => {
-    const a = buildCity();
-    const b = buildCity();
-    expect(a.houses.length).toBeGreaterThan(0);
-    expect(a.trees.length).toBeGreaterThan(0);
-    expect(a.houses.length).toBe(b.houses.length); // deterministic
-    for (const h of a.houses) {
-      expect(h.x).toBeGreaterThan(CITY_MIN);
-      expect(h.x).toBeLessThan(CITY_MAX);
+describe('buildCity (faithful: city.cpp build_initial_houses)', () => {
+  it('the city is rectangular (wider than tall)', () => {
+    expect(CITY_W).toBeGreaterThan(CITY_H);
+  });
+
+  it('starts with exactly THREE houses, styles A, B, C', () => {
+    const { houses } = buildCity();
+    expect(houses).toHaveLength(3);
+    expect(houses.map((h) => h.style)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('the houses sit on consecutive lots of the centre block', () => {
+    const { houses } = buildCity();
+    for (const h of houses) {
+      expect(h.x).toBeGreaterThan(BLOCK_W); // inside the middle column
+      expect(h.x).toBeLessThan(2 * BLOCK_W);
+      expect(h.y).toBeGreaterThan(BLOCK_H); // inside the middle row
+      expect(h.y).toBeLessThan(2 * BLOCK_H);
     }
+    // left-to-right order, distinct lots
+    expect(houses[0]!.x).toBeLessThan(houses[1]!.x);
+    expect(houses[1]!.x).toBeLessThan(houses[2]!.x);
+  });
+
+  it('is deterministic', () => {
+    expect(buildCity()).toEqual(buildCity());
+  });
+});
+
+describe('nearestStreetY', () => {
+  it('snaps to the nearest horizontal block boundary, clamped to the city', () => {
+    expect(nearestStreetY(0)).toBe(0);
+    expect(nearestStreetY(BLOCK_H * 1.4)).toBe(BLOCK_H);
+    expect(nearestStreetY(BLOCK_H * 1.6)).toBe(2 * BLOCK_H);
+    expect(nearestStreetY(99999)).toBe(CITY_H);
   });
 });
 
@@ -70,7 +97,8 @@ describe('CityModel state machine', () => {
     const m = new CityModel();
     expect(m.mode).toBe('flying');
     expect(m.scale).toBe(START_SCALE);
-    expect(m.cx).toBeCloseTo(CITY_MAX / 2);
+    expect(m.cx).toBeCloseTo(CITY_W / 2);
+    expect(m.cy).toBeCloseTo(CITY_H / 2);
   });
 
   it('pans (scaled by altitude) and faces the heading while flying', () => {
@@ -83,26 +111,33 @@ describe('CityModel state machine', () => {
     expect(m.dir).toBe(6); // North
   });
 
-  it('descending to the minimum switches to landing at ground scale', () => {
+  it('descending to the minimum switches to the street view, snapped to a street', () => {
     const m = new CityModel();
+    m.cy = BLOCK_H * 2.1; // near the y=1200 street
     let guard = 0;
     while (m.mode === 'flying' && guard++ < 1000) m.fly(0, 0, -1, 100);
     expect(m.mode).toBe('landing');
     expect(m.scale).toBe(GROUND_SCALE);
     expect(m.landY).toBe(1);
+    expect(m.cy).toBe(m.streetY);
+    expect(m.streetY % BLOCK_H).toBe(0);
+    expect(m.landX).toBe(m.cx);
   });
 
-  it('landing: sinking to the ground steps out to walking', () => {
+  it('landing: touching the street parks the copter and steps out to walking', () => {
     const m = new CityModel();
     m.mode = 'landing';
     m.landY = 1;
+    m.cx = 1234;
     let guard = 0;
     while (m.mode === 'landing' && guard++ < 1000) m.land(-1, 100);
     expect(m.mode).toBe('walking');
     expect(m.landY).toBe(0);
+    expect(m.landX).toBe(1234); // the copter stays where it touched down
+    expect(m.cx).toBeGreaterThan(m.landX); // the person stepped out beside it
   });
 
-  it('landing: rising past the top returns to flying', () => {
+  it('landing: rising past the top returns to flying at liftoff altitude', () => {
     const m = new CityModel();
     m.mode = 'landing';
     m.landY = 0.9;
@@ -112,14 +147,18 @@ describe('CityModel state machine', () => {
     expect(m.scale).toBe(LIFTOFF_SCALE);
   });
 
-  it('walking moves 1:1, faces heading, and clamps to the city extent', () => {
+  it('walking moves along the street (E/W) and clamps to the city extent', () => {
     const m = new CityModel();
     m.mode = 'walking';
-    m.cx = CITY_MIN + 1;
-    m.cy = 5000;
-    m.walk(-50, 0);
-    expect(m.cx).toBe(CITY_MIN); // clamped
+    m.cx = 30;
+    m.landX = 30;
+    m.walk(-50);
+    expect(m.cx).toBe(0); // clamped at the west edge
     expect(m.dir).toBe(4); // West
+    m.walk(120);
+    expect(m.cx).toBe(120);
+    expect(m.dir).toBe(0); // East
+    expect(m.landX).toBe(30); // the parked copter did not move
   });
 
   it('calling the helicopter while walking flies again', () => {
@@ -133,7 +172,7 @@ describe('CityModel state machine', () => {
   it('mode guards: walk/land/fly only act in their own mode', () => {
     const m = new CityModel(); // flying
     const x0 = m.cx;
-    m.walk(100, 0);
+    m.walk(100);
     expect(m.cx).toBe(x0); // walk ignored while flying
     m.land(-1, 100);
     expect(m.mode).toBe('flying'); // land ignored while flying

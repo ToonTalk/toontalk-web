@@ -40,7 +40,7 @@ import { updateSensors } from './model/sensor-runtime';
 import { makeSensor, SENSOR_TYPES } from './model/sensor';
 import { CityScene } from './city/city-scene';
 import { loadCityAssets } from './city/city-sprites';
-import { BLOCK } from './city/city-model';
+import { BLOCK_W, BLOCK_H } from './city/city-model';
 import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
 
 function setHud(text: string): void {
@@ -194,8 +194,8 @@ async function start(): Promise<void> {
   const input = new InputTracker(renderer.view, () => renderer.width, () => renderer.height);
   input.handVisible = () => !city.isActive;
   input.address = () => ({
-    road: Math.max(0, Math.floor(city.model.cx / BLOCK)),
-    street: Math.max(0, Math.floor(city.model.cy / BLOCK)),
+    road: Math.max(0, Math.floor(city.model.cx / BLOCK_W)),
+    street: Math.max(0, Math.floor(city.model.cy / BLOCK_H)),
   });
   (window as unknown as { __ttInput?: unknown }).__ttInput = input;
   renderer.app.ticker.add(() => updateSensors(world, input.sample(renderer.app.ticker.deltaMS)));
@@ -209,8 +209,9 @@ async function start(): Promise<void> {
       setHud(
         `ToonTalk City — fly · land · walk\n` +
           `move the mouse to fly where you point (farther = faster)\n` +
-          `↓ / left-button = descend · ↑ / right-button = climb · descend to land\n` +
-          `landed: ↓ steps out to walk · ↑ flies again · while walking press H to call the helicopter\n` +
+          `↓ / left-button = descend · ↑ / right-button = climb · descend far enough → street view\n` +
+          `street view: ↓ lands (the copter parks, you step out) · ↑ flies again\n` +
+          `walking: point left/right to walk — Tooly the toolbox follows · H calls the helicopter\n` +
           `\` (backquote) = switch to the room`,
       );
     } else {

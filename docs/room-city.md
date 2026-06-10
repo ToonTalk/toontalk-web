@@ -3,41 +3,52 @@
 ## The outdoor city ✅ (fly / land / walk)
 
 ToonTalk's world isn't just one room: you fly a **helicopter** over a
-**city** of houses, **land** on a street, get out, and **walk around**.
+**city**, **land** on a street, step out, and **walk around** with Tooly.
 Faithful to the original outdoor "programmer" state machine
 (`source/prgrmmr.cpp` `Programmer_City_Flying` / `_Landing` / `_Walking`) and
-city ground (`city.cpp`).
+the city itself (`city.cpp`):
 
-- **`src/city/city-model.ts`** — pure, no rendering. 12×12 block grid,
-  checkerboard houses + scattered trees (deterministic). `Direction` 0..7 in
-  the enum order **E,SE,S,SW,W,NW,N,NE** (= sprite cycle index). `scale` is
-  flying altitude/zoom (1 = ground, higher = higher up): `nextScale` takes
-  0.75 s to double/halve (source), clamped `[MIN_FLYING_SCALE 1.25, MAX 16]`;
-  descend to the minimum → land. `CityModel.fly/land/walk/callHelicopter` are
-  the four transitions; `LIFTOFF_SCALE` (3) is the altitude on takeoff so
-  returning to flying doesn't instantly re-land.
-- **`src/city/city-sprites.ts`** — loads the baked frame sets + a
-  `DirectionalSprite` (8 headings; animates only while moving).
-- **`src/city/city-scene.ts`** — renders the model in three looks: **flying**
-  (top-down green city — street grid + house tops + trees — scrolls under a
-  centred helicopter; pointer offset pans, faster the higher you are;
-  Up/right-button climb, Down/left-button descend), **landing** (side
-  elevation, copter sinks to a street; Down lands → walking with the empty
-  copter left behind, Up flies again), **walking** (top-down at ground level;
-  lego person walks where you point; **H** calls the helicopter back). Avatar
-  stays screen-centred; the world scrolls under it.
+- **The city is rectangular**: the default is **3×3 blocks** ("small enough
+  that it's hard to get lost exploring", city.cpp:91), each block 4:3
+  (`BLOCK_W 800 × BLOCK_H 600` units). `build_initial_houses` builds exactly
+  **THREE houses** on consecutive lots of the **centre block**, styles
+  cycling **A, B, C** (city.cpp:178-216) — ours match, plus a few trees.
+- **`src/city/city-model.ts`** — pure, no rendering. `Direction` 0..7 in the
+  enum order **E,SE,S,SW,W,NW,N,NE** (= sprite cycle index). `scale` is
+  flying altitude/zoom (1 = ground): `nextScale` takes 0.75 s to double/halve
+  (source), clamped `[MIN 1.25, MAX 4]`, `START 2.5`, `LIFTOFF 2` (so
+  returning to flying doesn't instantly re-land). Descend to the minimum →
+  the view switches to the **horizontal street view**: `streetY` snaps to the
+  nearest street, `landX` records where the copter comes down; touching the
+  street parks it and the person **steps out beside the door** (`cx = landX +
+  70`; cf. `Programmer_City_Landing::true_center` ≈ the door).
+- **`src/city/city-scene.ts`** — two looks. **Flying**: top-down rectangular
+  city (street grid + house-top art + trees) scrolls under a centred 8-dir
+  copter; pointer offset pans, Up/right-button climb, Down/left-button
+  descend. **Street view (landing + walking)**: sky / lawn strip / street,
+  with the street's houses drawn in their **side-view art** (HSA18 / HSB20 /
+  HSC20); the copter (side art, animated rotors) sinks to the street — Down
+  lands, Up flies again. On touchdown it swaps to the **parked art**
+  (HELIHLM7) and stays at `landX`; the lego person walks the street E/W where
+  you point, and **Tooly the toolbox follows** (TOOLBOXS, 8-dir animated,
+  eased toward a point behind the walker). **H** calls the helicopter back.
+- **`src/city/city-sprites.ts`** — baked frame sets + `DirectionalSprite`
+  (8 headings; animates only while moving). Bake adds: `tooly/<dir>/NN.png`,
+  `house-{a,b,c}-side.png`, `heli-parked.png` (tools/bake-city.py).
 - **Integration**: `main.ts` boots into the city. **Backquote (`` ` ``)** is
   a dev seam to flip city ⇄ room (`Room.setVisible` +
   `DragController.setEnabled` gate the room/World while the city is on top).
   `window.__ttCity` exposes the scene for debugging.
 - ▢ **Out of scope (next):** walking up to a house and **entering it**
   (switch into the room/`World` floor view) + recalling the copter from
-  inside; a toolbox following the walker; trucks driving the city; authentic
-  `.tt` city save/load; helicopter/step audio.
+  inside; building new houses from trucks in the city; authentic `.tt` city
+  save/load; helicopter/step audio; doors/door animation.
 - Verify the city with the verify-app skill (`tools/verify/snap.mjs --scene
   city --frames 30 …`) or `--eval` snippets against `__ttCity` — the harness
   pumps the PIXI ticker manually, so the paused-backgrounded-tab problem
-  doesn't apply.
+  doesn't apply. Use `--pre` to set up held input first, e.g. a file with
+  `window.__ttCity.keys.add('ArrowDown')` then `--frames 24` lands mid-descent
+  and `--frames 48` captures the walked-out scene (Tooly + parked copter).
 
 ## Room reconstruction (the desktop shell)
 

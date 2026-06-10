@@ -32,6 +32,9 @@
  *                    (default 1) — great for checking an animation's frames
  *   --name <s>       output file basename                        (default snap)
  *   --out <dir>      output directory          (default tools/verify/shots)
+ *   --pre <file>     JS file whose body runs inside the page BEFORE stepping —
+ *                    set up state the pumped frames act on (e.g. hold a key:
+ *                    window.__ttCity.keys.add('ArrowDown') to descend/land)
  *   --eval <file>    JS file whose body runs inside the page (in an async
  *                    function) AFTER stepping; its `return` value is printed
  *                    as JSON. BigInts are serialized as strings like "12n".
@@ -142,6 +145,19 @@ if (args.keys) {
   for (const k of args.keys.split(',').map(s => s.trim()).filter(Boolean)) {
     await page.keyboard.press(k);
     await page.waitForTimeout(60);
+  }
+}
+
+// --------------------------------------------------------------- pre snippet
+// --pre <file>: JS run inside the page BEFORE the ticker pump — use it to set
+// up state the pumped frames then act on (e.g. hold a key for the city:
+// `window.__ttCity.keys.add('ArrowDown')` descends across the pumped frames).
+if (args.pre) {
+  const src = fs.readFileSync(args.pre, 'utf8');
+  try {
+    await page.evaluate(async (s) => { await (0, eval)('(async () => {\n' + s + '\n})')(); }, src);
+  } catch (e) {
+    errors.push('[pre] ' + (e?.message ?? String(e)));
   }
 }
 

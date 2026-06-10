@@ -182,10 +182,21 @@ def main():
     prep_geom(walk, m25, m22, from_m25=False)
     summary["person"] = bake_directional(walk, out, "person", m25, m22)
 
-    # Static decor tops.
+    # Tooly the toolbox (side view, follows the walker): 8 directions x 4 frames.
+    tooly = parse_tts(os.path.join(m25, "TOOLBOXS.TTS"))
+    prep_geom(tooly, m25, m22, from_m25=True)
+    summary["tooly"] = bake_directional(tooly, out, "tooly", m25, m22)
+
+    # Static decor tops (flyover).
     bake_static("HSBTOP20.BMP", os.path.join(out, "house-b.png"), m25, m22)
     bake_static("HSCTOP20.BMP", os.path.join(out, "house-c.png"), m25, m22)
     bake_static("TREE04.BMP", os.path.join(out, "tree.png"), m25, m22)
+
+    # Side-view houses (landing/walking street view) + the parked helicopter.
+    bake_static("HSA18.BMP", os.path.join(out, "house-a-side.png"), m25, m22)
+    bake_static("HSB20.BMP", os.path.join(out, "house-b-side.png"), m25, m22)
+    bake_static("HSC20.BMP", os.path.join(out, "house-c-side.png"), m25, m22)
+    bake_static("HELIHLM7.BMP", os.path.join(out, "heli-parked.png"), m25, m22)
 
     json.dump(summary, open(os.path.join(out, "city-sprites.json"), "w"), indent=1)
     print(json.dumps(summary, indent=1))
