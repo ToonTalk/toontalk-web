@@ -32,6 +32,13 @@ export interface CityAssets {
   /** The landed helicopter, parked on the street. */
   heliParked: PIXI.Texture;
   tree: PIXI.Texture;
+  /**
+   * The original ground "brushes" (8×8 Lego-stud patterns, BRUSH*.BRH):
+   * lawn/street/water at zoom tiers 1/2/4 plus the side-view variants.
+   * Keys: lawn1, lawn2, lawn4, lawnSide, street1, street2, street4,
+   * streetSide, water1, water2, water4.
+   */
+  brushes: Record<string, PIXI.Texture>;
 }
 
 export interface DirSpec {
@@ -100,7 +107,21 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
   const heliParked = (await loadTex('/assets/city/heli-parked.png', scaleMode)) ?? white;
   const tree = (await loadTex('/assets/city/tree.png', scaleMode)) ?? white;
 
+  // Ground brushes: always nearest-neighbour so the 8×8 stud pattern stays crisp.
+  const brushes: Record<string, PIXI.Texture> = {};
+  const brushFiles: Record<string, string> = {
+    lawn1: 'brush-lawn1', lawn2: 'brush-lawn2', lawn4: 'brush-lawn4', lawnSide: 'brush-lawn-side',
+    street1: 'brush-street1', street2: 'brush-street2', street4: 'brush-street4',
+    streetSide: 'brush-street-side',
+    water1: 'brush-water1', water2: 'brush-water2', water4: 'brush-water4',
+  };
+  for (const [key, file] of Object.entries(brushFiles)) {
+    const t = await loadTex(`/assets/city/${file}.png`, PIXI.SCALE_MODES.NEAREST);
+    brushes[key] = t ?? white;
+  }
+
   return {
+    brushes,
     heliFly,
     heliLand,
     person,

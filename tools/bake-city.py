@@ -147,6 +147,39 @@ def prep_geom(geom, m25_dir, m22_dir, from_m25):
                 f["w2"], f["h2"], f["ox2"], f["oy2"] = f["w"] * 2, f["h"] * 2, f["ox"] * 2, f["oy"] * 2
 
 
+def bake_brushes(source_dir, m25_dir, out_dir):
+    """Decode the original ground 'brushes' (source/BRUSH<i>.BRH).
+
+    Each is a 64-byte 8x8 8-bit DIB pattern (bottom-up rows) using the shared
+    ToonTalk 256-colour palette — sprite.cpp reads 64 bytes per brush into
+    create_DIB_brush. Index order is the BrushId enum (constant.h:318):
+      0-2 LAWN1/2/4, 3 LAWN_SIDE, 4-6 ROOF_A/B/C,
+      7-9 STREET1/2/4, 10 STREET_SIDE, 11-13 WATER1/2/4.
+    The numeric tiers are zoom levels (city.cpp: scale<3 -> 1, <6 -> 2, else 4;
+    the front/side view uses the 4-tier per street_brush_id/lawn_brush_id).
+    """
+    # the global palette, from any 8-bit M25 bitmap
+    pal_im = Image.open(os.path.join(m25_dir, "HELI07.BMP"))
+    palette = pal_im.getpalette()
+    names = {
+        0: "brush-lawn1", 1: "brush-lawn2", 2: "brush-lawn4", 3: "brush-lawn-side",
+        7: "brush-street1", 8: "brush-street2", 9: "brush-street4", 10: "brush-street-side",
+        11: "brush-water1", 12: "brush-water2", 13: "brush-water4",
+    }
+    for idx, name in names.items():
+        path = os.path.join(source_dir, f"BRUSH{idx}.BRH")
+        if not os.path.exists(path):
+            print(f"  MISSING {path}")
+            continue
+        data = open(path, "rb").read()
+        im = Image.new("P", (8, 8))
+        im.putpalette(palette)
+        for y in range(8):  # DIB rows are bottom-up
+            for x in range(8):
+                im.putpixel((x, 7 - y), data[y * 8 + x])
+        im.convert("RGB").save(os.path.join(out_dir, f"{name}.png"))
+
+
 def bake_static(bmp, out_path, m25_dir, m22_dir, max_dim=None):
     img, _ = load_bmp_2x_space(bmp, m25_dir, m22_dir)
     if img is None:
@@ -197,6 +230,10 @@ def main():
     bake_static("HSB20.BMP", os.path.join(out, "house-b-side.png"), m25, m22)
     bake_static("HSC20.BMP", os.path.join(out, "house-c-side.png"), m25, m22)
     bake_static("HELIHLM7.BMP", os.path.join(out, "heli-parked.png"), m25, m22)
+
+    # The Lego ground brushes (lawn/street/water patterns).
+    source_dir = os.path.join(os.path.dirname(os.path.abspath(m25)), "source")
+    bake_brushes(source_dir, m25, out)
 
     json.dump(summary, open(os.path.join(out, "city-sprites.json"), "w"), indent=1)
     print(json.dumps(summary, indent=1))

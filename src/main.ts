@@ -208,11 +208,11 @@ async function start(): Promise<void> {
     if (on) {
       setHud(
         `ToonTalk City — fly · land · walk\n` +
-          `move the mouse to fly where you point (farther = faster)\n` +
-          `↓ / left-button = descend · ↑ / right-button = climb · descend far enough → street view\n` +
-          `street view: ↓ lands (the copter parks, you step out) · ↑ flies again\n` +
-          `walking: point left/right to walk — Tooly the toolbox follows · H calls the helicopter\n` +
-          `\` (backquote) = switch to the room`,
+          `click the city to take the controls (the mouse is captured; Esc frees it)\n` +
+          `mouse movement steers · left button / ↓ descends · right button / Shift / ↑ climbs\n` +
+          `arrow keys also fly: ←→ move, ↑↓ climb/descend (hold to speed up)\n` +
+          `descend far enough → the street: ↓ lands, the copter parks, you step out\n` +
+          `walking: mouse / ←→ walks — Tooly follows · H calls the helicopter · \` = the room`,
       );
     } else {
       updateHud('none');

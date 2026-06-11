@@ -1,4 +1,4 @@
-// Hold ArrowDown to land, and once walking, point east so the person walks
-// (the pre runs before the pump; pointer is read every pumped frame).
+// Hold ArrowDown (descend/land) + ArrowRight (drift, then walk east) so the
+// pumped frames fly down, touch the street, step out, and walk.
 window.__ttCity.keys.add('ArrowDown');
-window.__ttCity.pointer = { x: window.innerWidth * 0.8, y: window.innerHeight / 2 };
+window.__ttCity.keys.add('ArrowRight');

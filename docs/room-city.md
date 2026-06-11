@@ -23,15 +23,35 @@ the city itself (`city.cpp`):
   street parks it and the person **steps out beside the door** (`cx = landX +
   70`; cf. `Programmer_City_Landing::true_center` ≈ the door).
 - **`src/city/city-scene.ts`** — two looks. **Flying**: top-down rectangular
-  city (street grid + house-top art + trees) scrolls under a centred 8-dir
-  copter; pointer offset pans, Up/right-button climb, Down/left-button
-  descend. **Street view (landing + walking)**: sky / lawn strip / street,
-  with the street's houses drawn in their **side-view art** (HSA18 / HSB20 /
-  HSC20); the copter (side art, animated rotors) sinks to the street — Down
-  lands, Up flies again. On touchdown it swaps to the **parked art**
-  (HELIHLM7) and stays at `landX`; the lego person walks the street E/W where
-  you point, and **Tooly the toolbox follows** (TOOLBOXS, 8-dir animated,
-  eased toward a point behind the walker). **H** calls the helicopter back.
+  city scrolls under a centred 8-dir copter. **Street view (landing +
+  walking)**: sky / lawn strip / street, the street's houses in their
+  **side-view art** (HSA18 / HSB20 / HSC20); the copter (side art, animated
+  rotors) sinks to the street, swaps to the **parked art** (HELIHLM7) on
+  touchdown and stays at `landX`; the lego person walks the street E/W, and
+  **Tooly the toolbox follows** (TOOLBOXS, 8-dir animated, eased toward a
+  point behind the walker). **H** calls the helicopter back.
+- **Input is the original's RELATIVE_MOUSE_MODE** (the default,
+  globals.cpp:729): click the city to capture the mouse (Pointer Lock, cursor
+  hidden, like `show_cursor(FALSE)`); raw mouse **movement** then steers
+  directly, clamped per frame to the state's max speed (`dampen_big_deltas`):
+  flying 2 screen-widths/s, landing 3, walking 1 (the prgrmmr.cpp ctors).
+  Flying: mouse pans (deltas scale with altitude — `delta*scale/ground`);
+  left button / ↓ descends, right button / Shift / ↑ climbs. Landing: mouse x
+  drifts along the street, mouse y flies the copter up/down directly
+  (prgrmmr.cpp:4338 `y += delta_y`). Walking: mouse x walks. **Arrow keys are
+  the keyboard alternative** (winmain.cpp `read_arrow_keys`): held keys
+  produce the same deltas, **accelerating with hold duration**; while flying,
+  keyboard ↑/↓ mean climb/descend (prgrmmr.cpp:4012
+  `tt_delta_x_and_delta_y_due_solely_to_arrow_keys`).
+- **The ground is the original's Lego-stud brushes**: BRUSH*.BRH are 64-byte
+  8×8 palettized DIB patterns (sprite.cpp reads 64 bytes per brush; palette =
+  the shared 8-bit BMP palette), baked to `brush-{lawn,street,water}{1,2,4}` +
+  `-side` PNGs by bake-city.py. Drawn as **screen-space TilingSprites** with
+  the pattern anchored to the world (`set_brush_origin`) so studs stay a
+  constant screen size while the world scrolls; the **brush tier switches
+  with altitude** exactly as `street_brush_id`/`lawn_brush_id` (scale < 3 →
+  tier 1, else tier 2; the street view uses tier 4, matching the
+  CAMERA_IN_FRONT branch). Water fills beyond the city edge (city.cpp).
 - **`src/city/city-sprites.ts`** — baked frame sets + `DirectionalSprite`
   (8 headings; animates only while moving). Bake adds: `tooly/<dir>/NN.png`,
   `house-{a,b,c}-side.png`, `heli-parked.png` (tools/bake-city.py).

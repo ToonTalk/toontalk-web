@@ -156,13 +156,25 @@ export class CityModel {
   }
 
   /**
-   * Landing (side view): raise/lower the copter (dir +1 up, -1 down) over dt.
+   * Landing (side view): raise/lower the copter (dir +1 up, -1 down) over dt,
+   * optionally drifting along the street (`driftX`, city units — the original
+   * scrolls its min_x/max_x window as you drift, prgrmmr.cpp:4350). `dLandY`
+   * adds direct height change (mouse-driven, on top of the held direction).
    * Rising past the top returns to flying; touching the street parks the
    * copter (at landX) and steps out to walking.
    */
-  land(dir: -1 | 0 | 1, dtMs: number): void {
+  land(dir: -1 | 0 | 1, dtMs: number, driftX = 0, dLandY = 0): void {
     if (this.mode !== 'landing') return;
-    this.landY = this.landY + dir * LAND_SPEED_PER_S * (dtMs / 1000);
+    if (driftX !== 0) this.cx = clamp(this.cx + driftX, 0, CITY_W);
+    this.landY = this.landY + dir * LAND_SPEED_PER_S * (dtMs / 1000) + dLandY;
+    if (this.landY > 1 && dir >= 0 && dLandY > 0) {
+      // mouse-flown past the top → airborne again
+      this.mode = 'flying';
+      this.scale = LIFTOFF_SCALE;
+      this.landY = 1;
+      return;
+    }
+    this.landY = Math.min(this.landY, 1.05);
     if (this.landY >= 1 && dir > 0) {
       this.mode = 'flying';
       this.scale = LIFTOFF_SCALE; // climb clear of the landing threshold
