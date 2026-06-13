@@ -24,12 +24,21 @@ the city itself (`city.cpp`):
   70`; cf. `Programmer_City_Landing::true_center` ≈ the door).
 - **`src/city/city-scene.ts`** — two looks. **Flying**: top-down rectangular
   city scrolls under a centred 8-dir copter. **Street view (landing +
-  walking)**: sky / lawn strip / street, the street's houses in their
-  **side-view art** (HSA18 / HSB20 / HSC20); the copter (side art, animated
-  rotors) sinks to the street, swaps to the **parked art** (HELIHLM7) on
-  touchdown and stays at `landX`; the lego person walks the street E/W, and
-  **Tooly the toolbox follows** (TOOLBOXS, 8-dir animated, eased toward a
-  point behind the walker). **H** calls the helicopter back.
+  walking)**: a **green Lego (lawn-brush) backdrop** over the street brush
+  (the original front view clears with the lawn brush — *no blue sky*), the
+  street's houses in their **side-view art** (HSA18 / HSB20 / HSC20); the
+  copter (side art, animated rotors) is **big** (`HELI_LAND_W` ≈ 560 px),
+  sinks to the street, swaps to the **parked art** (HELIHLM7) on touchdown and
+  stays at `landX`. The lego person then **walks the street in both axes**
+  (`model.walk(dx, dy)` — fully 8-directional, depth clamped to `[streetY −
+  WALK_BAND_N, streetY + WALK_BAND_S]`), with **Tooly the toolbox following**
+  (TOOLBOXS, 8-dir animated). Walking:
+  - **up to a house door** (`enterableHouse`) → enters it → the room/World;
+  - **'s'** → sits on the grass → also the room/World (`onEnter('grass')`);
+  - **into the parked copter** (`boardHelicopter`) → auto take-off (the scene
+    holds the climb until airborne, `takingOff`);
+  - **H** → calls the helicopter back; **Esc** → the street menu.
+  Trees are a web extra — **off by default** (`CityModel({trees})`).
 - **Input is the original's RELATIVE_MOUSE_MODE** (the default,
   globals.cpp:729): click the city to capture the mouse (Pointer Lock, cursor
   hidden, like `show_cursor(FALSE)`); raw mouse **movement** then steers
@@ -55,14 +64,19 @@ the city itself (`city.cpp`):
 - **`src/city/city-sprites.ts`** — baked frame sets + `DirectionalSprite`
   (8 headings; animates only while moving). Bake adds: `tooly/<dir>/NN.png`,
   `house-{a,b,c}-side.png`, `heli-parked.png` (tools/bake-city.py).
-- **Integration**: `main.ts` boots into the city. **Backquote (`` ` ``)** is
-  a dev seam to flip city ⇄ room (`Room.setVisible` +
-  `DragController.setEnabled` gate the room/World while the city is on top).
-  `window.__ttCity` exposes the scene for debugging.
-- ▢ **Out of scope (next):** walking up to a house and **entering it**
-  (switch into the room/`World` floor view) + recalling the copter from
-  inside; building new houses from trucks in the city; authentic `.tt` city
-  save/load; helicopter/step audio; doors/door animation.
+- **Integration & sitting**: `main.ts` boots into the city. **Entering a house
+  or sitting on the grass drops you onto the working floor (the room/World
+  view)** — `onEnter` → `enterRoom()`; the dev **backquote (`` ` ``)** flips
+  city ⇄ room directly. **Escape** raises a small modal menu (`showMenu`):
+  in the street *Take off / Save / Keep exploring*, sitting *Stand up & leave
+  / Save / Keep working*. *Stand up* → `city.resume()` (`standUp()` puts the
+  walker back on the street centreline so they don't instantly re-enter the
+  door). `window.__ttCity` exposes the scene for debugging.
+- ▢ **Out of scope (next):** **per-house contents** (every house + the grass
+  currently share the one World floor — the *transition* works, distinct
+  contents don't yet); building new houses from trucks in the city; authentic
+  `.tt` city save/load; helicopter/step audio; door-open animation; whether
+  Save in the menu is needed at all (the main notebook already autosaves).
 - Verify the city with the verify-app skill (`tools/verify/snap.mjs --scene
   city --frames 30 …`) or `--eval` snippets against `__ttCity` — the harness
   pumps the PIXI ticker manually, so the paused-backgrounded-tab problem

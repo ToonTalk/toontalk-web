@@ -185,7 +185,14 @@ async function start(): Promise<void> {
   // backquote (`) key is a dev seam to flip between the city and the room so
   // both stay reachable and testable.
   const cityAssets = await loadCityAssets(theme);
-  const city = new CityScene(renderer, cityAssets);
+  const city = new CityScene(renderer, cityAssets, {
+    // Walking up to a house door, or sitting on the grass ('s'), drops you onto
+    // a working floor — the room/World view. (Distinct per-house contents is a
+    // later step; for now every house + the grass share the one floor.)
+    onEnter: () => enterRoom(),
+    // Escape while walking the street raises the street menu.
+    onEscape: () => showStreetMenu(),
+  });
   (window as unknown as { __ttCity?: unknown }).__ttCity = city;
 
   // Sensors: one input tracker feeds a per-frame snapshot to every sensor pad in
@@ -200,26 +207,108 @@ async function start(): Promise<void> {
   (window as unknown as { __ttInput?: unknown }).__ttInput = input;
   renderer.app.ticker.add(() => updateSensors(world, input.sample(renderer.app.ticker.deltaMS)));
 
-  function setCity(on: boolean): void {
-    city.setActive(on);
-    room.setVisible(!on);
-    renderer.thingLayer.visible = !on;
-    dragController.setEnabled(!on);
-    if (on) {
-      setHud(
-        `ToonTalk City — fly · land · walk\n` +
-          `click the city to take the controls (the mouse is captured; Esc frees it)\n` +
-          `mouse movement steers · left button / ↓ descends · right button / Shift / ↑ climbs\n` +
-          `arrow keys also fly: ←→ move, ↑↓ climb/descend (hold to speed up)\n` +
-          `descend far enough → the street: ↓ lands, the copter parks, you step out\n` +
-          `walking: mouse / ←→ walks — Tooly follows · H calls the helicopter · \` = the room`,
-      );
-    } else {
-      updateHud('none');
-    }
+  const CITY_HUD =
+    `ToonTalk City — fly · land · walk\n` +
+    `click the city to take the controls (the mouse is captured; Esc = menu)\n` +
+    `mouse / arrow keys steer · left button / ↓ descends · right button / Shift / ↑ climbs\n` +
+    `street: walk both ways · up to a door enters the house · 's' sits on the grass\n` +
+    `walk into the parked copter to take off · H calls the helicopter · Esc = leave menu`;
+
+  /** Show the city (street/flying); hide the room/World and its input. */
+  function showCity(): void {
+    city.setActive(true);
+    room.setVisible(false);
+    renderer.thingLayer.visible = false;
+    dragController.setEnabled(false);
+    setHud(CITY_HUD);
   }
+  /** Sit down — switch to the working floor (room/World view). */
+  function enterRoom(): void {
+    city.setActive(false);
+    room.setVisible(true);
+    renderer.thingLayer.visible = true;
+    dragController.setEnabled(true);
+    updateHud('none');
+  }
+  /** Stand up from the floor and walk the street again (clear of the door). */
+  function returnToStreet(): void {
+    city.resume();
+    room.setVisible(false);
+    renderer.thingLayer.visible = false;
+    dragController.setEnabled(false);
+    setHud(CITY_HUD);
+  }
+  // Dev seam: backquote flips city ⇄ room directly.
   window.addEventListener('keydown', (ev) => {
-    if (ev.key === '`') setCity(!city.isActive);
+    if (ev.key === '`') (city.isActive ? enterRoom() : returnToStreet());
+  });
+
+  // --- the Escape menus (leave / save / cancel) ---------------------------
+  /** A simple modal overlay of buttons (the street / sitting menu). */
+  interface MenuOption {
+    label: string;
+    onClick: () => void;
+  }
+  function menuOpen(): boolean {
+    return document.getElementById('tt-menu') != null;
+  }
+  function showMenu(title: string, options: MenuOption[]): void {
+    if (menuOpen()) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'tt-menu';
+    overlay.style.cssText =
+      'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+      'background:rgba(0,0,0,0.45);z-index:9999;font-family:sans-serif';
+    const panel = document.createElement('div');
+    panel.style.cssText =
+      'background:#2b3037;color:#fff;border:2px solid #565e69;border-radius:12px;' +
+      'padding:22px 26px;min-width:220px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.5)';
+    const h = document.createElement('div');
+    h.textContent = title;
+    h.style.cssText = 'font-weight:bold;font-size:18px;margin-bottom:16px';
+    panel.appendChild(h);
+    const close = (): void => overlay.remove();
+    for (const opt of options) {
+      const b = document.createElement('button');
+      b.textContent = opt.label;
+      b.style.cssText =
+        'display:block;width:100%;margin:8px 0;padding:10px 14px;font-size:15px;' +
+        'background:#474e57;color:#fff;border:1px solid #6b7280;border-radius:7px;cursor:pointer';
+      b.onmouseenter = () => (b.style.background = '#5a626c');
+      b.onmouseleave = () => (b.style.background = '#474e57');
+      b.onclick = () => {
+        close();
+        opt.onClick();
+      };
+      panel.appendChild(b);
+    }
+    overlay.appendChild(panel);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close(); // click outside = cancel
+    });
+    document.body.appendChild(overlay);
+  }
+
+  function showStreetMenu(): void {
+    showMenu('In the city', [
+      { label: 'Take off ✈', onClick: () => city.model.callHelicopter() },
+      { label: 'Save', onClick: () => document.getElementById('save-btn')?.click() },
+      { label: 'Keep exploring', onClick: () => {} },
+    ]);
+  }
+  function showRoomMenu(): void {
+    showMenu('Sitting down', [
+      { label: 'Stand up & leave', onClick: () => returnToStreet() },
+      { label: 'Save', onClick: () => document.getElementById('save-btn')?.click() },
+      { label: 'Keep working', onClick: () => {} },
+    ]);
+  }
+  // Escape in the room (when not training) opens the room menu.
+  window.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !city.isActive && !trainer.active && !menuOpen()) {
+      ev.preventDefault();
+      showRoomMenu();
+    }
   });
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
@@ -454,7 +543,7 @@ async function start(): Promise<void> {
   updateHud();
 
   // Boot into the outdoor city (flying the helicopter).
-  setCity(true);
+  showCity();
 
   // Signals tools (tools/verify/snap.mjs) that boot is fully complete.
   (window as unknown as { __ttReady?: boolean }).__ttReady = true;

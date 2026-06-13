@@ -11,6 +11,10 @@ import {
   GROUND_SCALE,
   START_SCALE,
   LIFTOFF_SCALE,
+  WALK_BAND_N,
+  WALK_BAND_S,
+  ENTER_DEPTH,
+  DOOR_REACH,
   BLOCK_W,
   BLOCK_H,
   CITY_W,
@@ -76,6 +80,11 @@ describe('buildCity (faithful: city.cpp build_initial_houses)', () => {
     // left-to-right order, distinct lots
     expect(houses[0]!.x).toBeLessThan(houses[1]!.x);
     expect(houses[1]!.x).toBeLessThan(houses[2]!.x);
+  });
+
+  it('has no trees by default (a web extra, opt-in)', () => {
+    expect(buildCity().trees).toHaveLength(0);
+    expect(buildCity(true).trees.length).toBeGreaterThan(0);
   });
 
   it('is deterministic', () => {
@@ -159,6 +168,57 @@ describe('CityModel state machine', () => {
     expect(m.cx).toBe(120);
     expect(m.dir).toBe(0); // East
     expect(m.landX).toBe(30); // the parked copter did not move
+  });
+
+  it('walking is 8-directional: depth (north/south) moves and clamps to the band', () => {
+    const m = new CityModel();
+    m.mode = 'walking';
+    m.streetY = 1000;
+    m.cy = 1000;
+    m.walk(0, -10);
+    expect(m.dir).toBe(6); // North
+    expect(m.cy).toBe(990);
+    m.walk(0, -9999);
+    expect(m.cy).toBe(1000 - WALK_BAND_N); // clamped north at the house fronts
+    m.walk(0, 9999);
+    expect(m.cy).toBe(1000 + WALK_BAND_S); // clamped south at the street edge
+  });
+
+  it('enterableHouse: only when walked up to a door (deep enough + in reach)', () => {
+    const m = new CityModel();
+    m.mode = 'walking';
+    const h = m.houses[1]!;
+    m.streetY = nearestStreetY(h.y);
+    m.cx = h.x;
+    m.cy = m.streetY; // on the street, not up at the door
+    expect(m.enterableHouse()).toBeNull();
+    m.cy = m.streetY - ENTER_DEPTH - 5; // walked up to the door
+    expect(m.enterableHouse()).toBe(h);
+    m.cx = h.x + DOOR_REACH + 50; // too far to the side
+    expect(m.enterableHouse()).toBeNull();
+  });
+
+  it('boardHelicopter: walking into the parked copter starts take-off', () => {
+    const m = new CityModel();
+    m.mode = 'walking';
+    m.streetY = 1200;
+    m.cy = 1200;
+    m.landX = 500;
+    m.cx = 700; // away from the copter
+    expect(m.boardHelicopter()).toBe(false);
+    m.cx = 500; // walked into it
+    expect(m.boardHelicopter()).toBe(true);
+    expect(m.mode).toBe('landing'); // taking off
+    expect(m.landY).toBeGreaterThan(0);
+  });
+
+  it('standUp returns to the street centreline (clear of doorways)', () => {
+    const m = new CityModel();
+    m.mode = 'walking';
+    m.streetY = 1200;
+    m.cy = 1200 - WALK_BAND_N; // up at a door
+    m.standUp();
+    expect(m.cy).toBe(1200);
   });
 
   it('calling the helicopter while walking flies again', () => {

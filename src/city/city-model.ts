@@ -45,6 +45,16 @@ const SCALE_DOUBLE_MS = 750; // 3/4 second to double / halve (source)
 // --- landing (normalized helicopter height: 1 = top of view, 0 = street) --
 const LAND_SPEED_PER_S = 0.9; // fraction of the descent per second under power
 
+// --- walking (the street view is walkable in BOTH axes) ---------------------
+/** How far north of the street centre you can walk (up to the house fronts). */
+export const WALK_BAND_N = 95;
+/** How far south (down the street, toward the viewer). */
+export const WALK_BAND_S = 45;
+/** Walking this far north while in front of a house door enters it. */
+export const ENTER_DEPTH = 80;
+/** Horizontal reach of a house's door / of the parked copter's cabin. */
+export const DOOR_REACH = 60;
+
 export interface House {
   x: number; // city-unit centre of the lot
   y: number;
@@ -91,9 +101,10 @@ export function nearestStreetY(cy: number): number {
 /**
  * Build the city the original starts with: THREE houses on consecutive lots of
  * the centre block (styles A, B, C — build_initial_houses), facing the street
- * below them, plus a few trees on the other blocks.
+ * below them. Trees are a web extra (not in the original city) — off by
+ * default, opt in with `withTrees`.
  */
-export function buildCity(): { houses: House[]; trees: Tree[] } {
+export function buildCity(withTrees = false): { houses: House[]; trees: Tree[] } {
   const styles: HouseStyle[] = ['a', 'b', 'c'];
   const bx = Math.floor(BLOCKS_X / 2); // centre block
   const by = Math.floor(BLOCKS_Y / 2);
@@ -102,13 +113,15 @@ export function buildCity(): { houses: House[]; trees: Tree[] } {
     y: by * BLOCK_H + BLOCK_H * 0.62, // near the block's south edge → front street
     style,
   }));
-  const trees: Tree[] = [
-    { x: 0.4 * BLOCK_W, y: 0.5 * BLOCK_H },
-    { x: 2.5 * BLOCK_W, y: 0.4 * BLOCK_H },
-    { x: 0.55 * BLOCK_W, y: 2.45 * BLOCK_H },
-    { x: 2.4 * BLOCK_W, y: 2.6 * BLOCK_H },
-    { x: 1.2 * BLOCK_W, y: 2.5 * BLOCK_H },
-  ];
+  const trees: Tree[] = withTrees
+    ? [
+        { x: 0.4 * BLOCK_W, y: 0.5 * BLOCK_H },
+        { x: 2.5 * BLOCK_W, y: 0.4 * BLOCK_H },
+        { x: 0.55 * BLOCK_W, y: 2.45 * BLOCK_H },
+        { x: 2.4 * BLOCK_W, y: 2.6 * BLOCK_H },
+        { x: 1.2 * BLOCK_W, y: 2.5 * BLOCK_H },
+      ]
+    : [];
   return { houses, trees };
 }
 
@@ -128,8 +141,8 @@ export class CityModel {
   readonly houses: House[];
   readonly trees: Tree[];
 
-  constructor() {
-    const c = buildCity();
+  constructor(opts: { trees?: boolean } = {}) {
+    const c = buildCity(opts.trees ?? false);
     this.houses = c.houses;
     this.trees = c.trees;
   }
@@ -187,11 +200,49 @@ export class CityModel {
     }
   }
 
-  /** Walking (side view): step along the street; faces East/West. */
-  walk(dx: number): void {
-    if (this.mode !== 'walking' || dx === 0) return;
-    this.dir = dx > 0 ? 0 : 4; // E / W
+  /**
+   * Walking (street view): step in BOTH axes (the original walker is fully
+   * 8-directional — Programmer_City_Walking). `dy` > 0 is south (toward the
+   * viewer); north is clamped at the house fronts, south at the street edge.
+   */
+  walk(dx: number, dy = 0): void {
+    if (this.mode !== 'walking' || (dx === 0 && dy === 0)) return;
+    const d = directionFromDelta(dx, dy);
+    if (d != null) this.dir = d;
     this.cx = clamp(this.cx + dx, 0, CITY_W);
+    this.cy = clamp(this.cy + dy, this.streetY - WALK_BAND_N, this.streetY + WALK_BAND_S);
+  }
+
+  /**
+   * The house whose door the walker has walked up to (deep enough north and
+   * within the door's reach), or null. The scene enters it.
+   */
+  enterableHouse(): House | null {
+    if (this.mode !== 'walking') return null;
+    if (this.cy > this.streetY - ENTER_DEPTH) return null;
+    return this.houses.find((h) => Math.abs(this.cx - h.x) <= DOOR_REACH) ?? null;
+  }
+
+  /**
+   * Walking into the parked copter boards it and starts the take-off: back to
+   * the landing state, just off the ground (the scene auto-rises briefly).
+   * Returns whether boarding happened.
+   */
+  boardHelicopter(): boolean {
+    if (this.mode !== 'walking') return false;
+    if (Math.abs(this.cx - this.landX) > DOOR_REACH) return false;
+    if (this.cy < this.streetY - 40) return false; // up at the houses, not at the copter
+    this.cx = this.landX;
+    this.cy = this.streetY;
+    this.landY = 0.05;
+    this.mode = 'landing';
+    return true;
+  }
+
+  /** Return to the street after a sit / house visit, clear of any doorway. */
+  standUp(): void {
+    if (this.mode !== 'walking') return;
+    this.cy = this.streetY; // back on the street centreline
   }
 
   /** Walking → call the helicopter back and fly again (source: NEED_HELICOPTER). */
