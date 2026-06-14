@@ -52,6 +52,17 @@ export const MAX_FLYING_SCALE = maxFlyingScale(BLOCKS_X, BLOCKS_Y); // prgrmmr.c
 export const LIFTOFF_SCALE = 3 * GROUND_SCALE; // climb clear of the landing threshold on takeoff
 const SCALE_DOUBLE_MS = 750; // ¾ s to double / halve (prgrmmr.cpp grow_value/shrink_value)
 
+// Landing descent (Programmer_City_Landing, prgrmmr.cpp:4296 + ctor). The copter
+// moves in real y between min_y = center−13·tile (leave/ground) and
+// max_y = center+10·tile (fly again), starting at center+6·tile, at
+// button_speed = 5·tile_height per second while a button is held (4237). We keep
+// `landY` normalised (1 = max_y top, 0 = min_y ground) for the Pixi side view, so
+// the held-button rate is button_speed / (23·tile) per second and the start is
+// (6 − (−13)) / 23.
+const LAND_SPAN_TILES = 10 - -13; // (max_y − min_y) in tile_heights = 23
+export const LAND_BUTTON_RATE = 5 / LAND_SPAN_TILES; // button_speed / span ≈ 0.217 /s
+export const LAND_START = (6 - -13) / LAND_SPAN_TILES; // start near the top ≈ 0.826
+
 // --- walking / room --------------------------------------------------------
 // Walking is now world-relative: the avatar roams the whole city (every street),
 // the side view scrolls in BOTH axes (renderStreet projects world→screen), and
@@ -213,7 +224,7 @@ export class CityModel {
     if (this.scale <= MIN_FLYING_SCALE) {
       this.mode = 'landing';
       this.scale = GROUND_SCALE;
-      this.landY = 1;
+      this.landY = LAND_START; // copter starts near the top (center+6·tile), prgrmmr.cpp ctor
       // Touch down on the road along the south edge of the block, so the houses
       // (set back to the north) appear ahead of you (original-land.jpg).
       this.cy = roadYFor(this.cy);
@@ -222,10 +233,19 @@ export class CityModel {
     }
   }
 
+  /**
+   * Landing — port of `Programmer_City_Landing::react` (prgrmmr.cpp:4296). The
+   * copter moves in y: a held button adds ±`button_speed·duration` (5·tile/s,
+   * 4237), the mouse adds its own delta (`dLandY`). `y > max_y → FLYING_AGAIN`
+   * (4339), `y < min_y → LEAVE_HELICOPTER` (4345). Horizontally the original pans
+   * the city with the copter centred (4350-4368); here `driftX` scrolls the
+   * street the same way (the side view keeps the copter centred). `landY` is the
+   * normalised height (1 = max_y, 0 = min_y) for the Pixi side view.
+   */
   land(dir: -1 | 0 | 1, dtMs: number, driftX = 0, dLandY = 0): void {
     if (this.mode !== 'landing') return;
     if (driftX !== 0) this.cx = clamp(this.cx + driftX, 0, CITY_W);
-    this.landY = this.landY + dir * 0.9 * (dtMs / 1000) + dLandY;
+    this.landY = this.landY + dir * LAND_BUTTON_RATE * (dtMs / 1000) + dLandY;
     if (this.landY > 1 && dir >= 0 && dLandY > 0) {
       this.mode = 'flying';
       this.scale = LIFTOFF_SCALE;

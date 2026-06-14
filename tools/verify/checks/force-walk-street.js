@@ -1,8 +1,6 @@
 const c = window.__ttCity, m = c.model;
-// Walking just south of the 3 houses (block 7), copter parked behind on the road.
+const h = m.houses[1];
 m.mode = 'walking';
-m.cx = 300000; m.cy = 240000; m.streetY = 224000;
-m.parkedX = 270000; m.parkedY = 224000; m.landX = 270000;
-c.toolyX = 305000;
-c.streetCamCx = m.cx; // centre the camera on the walker
-
+m.cx = h.x; m.cy = h.y - 6000; m.streetY = Math.floor(m.cy / 32000) * 32000;
+m.parkedX = h.x - 30000; m.parkedY = m.streetY; m.landX = m.parkedX;
+c.toolyX = h.x + 6000; c.streetCamCx = m.cx; c.streetCamCy = m.cy;
