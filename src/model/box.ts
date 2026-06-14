@@ -8,11 +8,19 @@ import type { Side } from './text';
 
 export interface BoxSnapshot extends ThingSnapshot {
   holes: (ThingSnapshot | null)[];
+  blank?: boolean;
 }
 
 export class Box extends Thing {
   readonly kind = 'box' as const;
   readonly holes: (Thing | null)[];
+  /**
+   * A "blank" box has no fixed size yet (cubby.cpp `blank`). Dropping a thing on
+   * it sizes/fills it via `fill` (set_to_future_value): a number → that many
+   * holes, text → one hole per character, a robot team → a hole per robot, a
+   * notebook → a hole per page. A non-blank box just fills the targeted hole.
+   */
+  blank: boolean;
 
   constructor(opts: {
     id?: string;
@@ -20,9 +28,11 @@ export class Box extends Thing {
     y?: number;
     size?: number;
     holes?: (Thing | null)[];
+    blank?: boolean;
   }) {
     super(opts);
-    this.holes = opts.holes ?? new Array<Thing | null>(opts.size ?? 2).fill(null);
+    this.blank = opts.blank ?? false;
+    this.holes = opts.holes ?? (this.blank ? [] : new Array<Thing | null>(opts.size ?? 2).fill(null));
   }
 
   protected override kindForId(): ThingKind {
@@ -59,14 +69,28 @@ export class Box extends Thing {
   join(other: Box, side: Side): void {
     if (side === 'left') this.holes.unshift(...other.holes);
     else this.holes.push(...other.holes);
+    this.blank = false;
+  }
+
+  /** Give a blank box its holes (cubby.cpp set_to_future_value) — it stops being
+   * blank and from now on behaves like an ordinary fixed-size box. */
+  fill(holes: (Thing | null)[]): void {
+    this.holes.length = 0;
+    this.holes.push(...holes);
+    this.blank = false;
   }
 
   copy(): Box {
-    return new Box({ x: this.x, y: this.y, holes: this.holes.map((h) => (h ? h.copy() : null)) });
+    return new Box({
+      x: this.x,
+      y: this.y,
+      blank: this.blank,
+      holes: this.holes.map((h) => (h ? h.copy() : null)),
+    });
   }
 
   equals(other: Thing): boolean {
-    if (!(other instanceof Box) || other.size !== this.size) return false;
+    if (!(other instanceof Box) || other.blank !== this.blank || other.size !== this.size) return false;
     return this.holes.every((h, i) => {
       const oh = other.holes[i];
       if (h == null && oh == null) return true;
@@ -76,10 +100,15 @@ export class Box extends Thing {
   }
 
   describe(): string {
+    if (this.blank) return '[blank box]';
     return `[${this.holes.map((h) => (h ? h.describe() : '_')).join(' | ')}]`;
   }
 
   override snapshot(): BoxSnapshot {
-    return { ...super.snapshot(), holes: this.holes.map((h) => (h ? h.snapshot() : null)) };
+    return {
+      ...super.snapshot(),
+      blank: this.blank,
+      holes: this.holes.map((h) => (h ? h.snapshot() : null)),
+    };
   }
 }

@@ -3,6 +3,8 @@ import { World } from '../src/model/world';
 import { NumberThing } from '../src/model/number';
 import { TextThing } from '../src/model/text';
 import { Box } from '../src/model/box';
+import { Robot } from '../src/model/robot';
+import { Notebook } from '../src/model/notebook';
 import { resolveDrop } from '../src/model/interactions';
 
 describe('resolveDrop: numbers', () => {
@@ -139,6 +141,65 @@ describe('resolveDrop: box joining', () => {
     expect(result).toBe('filled');
     expect(target.size).toBe(1);
     expect(target.contentsAt(0)).toBe(dragged);
+  });
+});
+
+// cubby.cpp set_to_future_value: a BLANK box is sized/filled by what you drop.
+describe('resolveDrop: blank box (set_to_future_value)', () => {
+  it('a number gives the box that many empty holes, and it is no longer blank', () => {
+    const w = new World();
+    const box = w.add(new Box({ blank: true })) as Box;
+    const n = w.add(new NumberThing({ value: 3 })) as NumberThing;
+    expect(resolveDrop(w, n, box)).toBe('combined');
+    expect(box.blank).toBe(false);
+    expect(box.size).toBe(3);
+    expect(box.holes.every((h) => h == null)).toBe(true);
+    expect(w.get(n.id)).toBeUndefined();
+    // now ordinary: a number dropped in a hole fills that hole (not re-sizing)
+    const five = w.add(new NumberThing({ value: 5 })) as NumberThing;
+    expect(resolveDrop(w, five, box, { holeIndex: 1 })).toBe('filled');
+    expect((box.contentsAt(1) as NumberThing).value.toString()).toBe('5');
+  });
+
+  it('text explodes into one single-character pad per letter', () => {
+    const w = new World();
+    const box = w.add(new Box({ blank: true })) as Box;
+    const t = w.add(new TextThing({ value: 'cat' })) as TextThing;
+    expect(resolveDrop(w, t, box)).toBe('combined');
+    expect(box.size).toBe(3);
+    expect((box.contentsAt(0) as TextThing).value).toBe('c');
+    expect((box.contentsAt(1) as TextThing).value).toBe('a');
+    expect((box.contentsAt(2) as TextThing).value).toBe('t');
+  });
+
+  it('a robot team gives a hole per robot in the line-up', () => {
+    const w = new World();
+    const box = w.add(new Box({ blank: true })) as Box;
+    const lead = new Robot();
+    lead.team = [new Robot(), new Robot()]; // a team of 3 with the leader
+    w.add(lead);
+    expect(resolveDrop(w, lead, box)).toBe('combined');
+    expect(box.size).toBe(3);
+    expect(box.holes.every((h) => h instanceof Robot)).toBe(true);
+  });
+
+  it('a notebook gives a hole per page', () => {
+    const w = new World();
+    const box = w.add(new Box({ blank: true })) as Box;
+    const nb = new Notebook({ pages: [new NumberThing({ value: 1 }), new TextThing({ value: 'p' })] });
+    w.add(nb);
+    expect(resolveDrop(w, nb, box)).toBe('combined');
+    expect(box.size).toBe(2);
+  });
+
+  it('clamps a negative or huge number (no negative or runaway holes)', () => {
+    const w = new World();
+    const neg = w.add(new Box({ blank: true })) as Box;
+    resolveDrop(w, w.add(new NumberThing({ value: -4 })), neg);
+    expect(neg.size).toBe(0);
+    const big = w.add(new Box({ blank: true })) as Box;
+    resolveDrop(w, w.add(new NumberThing({ value: 100000 })), big);
+    expect(big.size).toBe(100); // MAX_BOX_HOLES
   });
 });
 

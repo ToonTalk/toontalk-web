@@ -24,7 +24,10 @@ export class BoxView extends ThingView {
 
   protected build(): void {
     const box = this.thing as Box;
-    const n = box.size;
+    // A blank box (no size yet) shows a single faint empty hole — "drop a number
+    // to size me, or text to explode into me" (cubby.cpp blank cubby).
+    const blank = box.blank;
+    const n = blank ? 1 : box.size;
     this.holeCenters = new Array(n).fill(0);
     this.holeNodes = new Array(n).fill(null);
 
@@ -64,7 +67,7 @@ export class BoxView extends ThingView {
       const cx = x + pieceW * spec.holeCx;
       this.holeCenters[i] = cx;
 
-      const occupant = box.contentsAt(i);
+      const occupant = blank ? null : box.contentsAt(i);
       if (occupant) {
         const node = renderThingDisplay(occupant, this.textures, this.theme, contentSize);
         node.position.set(cx, 0);
@@ -73,6 +76,7 @@ export class BoxView extends ThingView {
       }
       x += pieceW;
     }
+    this.container.alpha = blank ? 0.6 : 1; // a blank box reads as "not sized yet"
   }
 
   /** Index of the hole nearest a world-space point (within the box), or null. */

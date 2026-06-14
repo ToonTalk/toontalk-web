@@ -69,7 +69,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Pad editing | ✅ | caret/decimal/fraction typing ▢ |
 | Numbers | ✅ | exact BigInt rationals; ops via keys while held |
 | Text | ⚠ | blank-pad wildcard ▢ · number→blank pad ▢ |
-| Boxes | ⚠ | join ✅ · split ▢ · text-explode ▢ · digit hole-count ▢ |
+| Boxes | ✅ | join ✅ · blank box sizes from number/text/robot/notebook ✅ · split ▢ |
 | Birds & nests | ✅ | FIFO, multi-nest, combine, hatch · egg-on-reload ▢ |
 | Robots | ✅ | teams ✅ · negation ▢ · recursion via wand-S ▢ |
 | Scale | ✅ | `<` `>` `=` guards work |

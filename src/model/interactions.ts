@@ -24,6 +24,9 @@ import { Notebook } from './notebook';
 import { Pumpy, resizeThing } from './pumpy';
 import { recomputeScales } from './scale';
 
+/** Cap on holes a blank box can be sized to (cubby.cpp tt_max_number_of_holes). */
+const MAX_BOX_HOLES = 100;
+
 export interface DropContext {
   /** When dropping onto a box, the hole the cursor is over. */
   holeIndex?: number;
@@ -200,6 +203,31 @@ export function resolveDrop(
     world.remove(dragged.id);
     world.notifyChanged(target);
     return 'teamed';
+  }
+
+  // A BLANK box sizes & fills itself from whatever is dropped on it (cubby.cpp
+  // set_to_future_value): a number → that many holes, text → a hole per character
+  // (explode), a robot team → a hole per robot, a notebook → a hole per page. A
+  // box → join (handled below). Must precede the robot-runs-on-box rule.
+  if (target instanceof Box && target.blank && !(dragged instanceof Box)) {
+    let holes: (Thing | null)[] | null = null;
+    if (dragged instanceof NumberThing) {
+      const n = Math.max(0, Math.min(MAX_BOX_HOLES, Math.floor(dragged.value.toNumber())));
+      holes = new Array<Thing | null>(n).fill(null);
+    } else if (dragged instanceof TextThing) {
+      holes = [...dragged.value].map((c) => new TextThing({ value: c }));
+    } else if (dragged instanceof Robot) {
+      holes = dragged.lineup().map((r) => r.copy());
+    } else if (dragged instanceof Notebook) {
+      holes = dragged.pages.map((p) => p.copy());
+    }
+    if (holes) {
+      target.fill(holes);
+      recomputeScales(target);
+      world.remove(dragged.id);
+      world.notifyChanged(target);
+      return 'combined';
+    }
   }
 
   // A robot (team) meets a box (either direction) → run on the box.

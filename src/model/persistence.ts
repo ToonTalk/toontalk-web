@@ -66,7 +66,12 @@ function buildByKind(s: ThingSnapshot): Thing {
     }
     case 'box': {
       const b = s as BoxSnapshot;
-      return new Box({ x: s.x, y: s.y, holes: b.holes.map((h) => (h ? buildThing(h) : null)) });
+      return new Box({
+        x: s.x,
+        y: s.y,
+        blank: b.blank,
+        holes: b.holes.map((h) => (h ? buildThing(h) : null)),
+      });
     }
     case 'nest': {
       const ns = s as NestSnapshot;

@@ -37,9 +37,13 @@ lives in `input/drag-controller.ts`.
 
 ✅ holes fill / combine-in-place. ✅ **join** — drop a box on another box's
 *edge* (not over a hole) → holes merge, side decides order (`Box.join`);
-dropping *over a hole* still nests/fills. ▢ **split** (drop box on a number N
-→ splits into N and remainder), ▢ text on an (erased/empty) box explodes into
-one hole per character, ▢ set hole count by typing a digit. Robots ignore hole
+dropping *over a hole* still nests/fills. ✅ **blank box** (`cubby.cpp`
+`set_to_future_value`, `Box.blank` + `Box.fill`): the toolbox hands out a blank
+box that sizes/fills itself from what you drop on it — a **number → that many
+empty holes** (clamped to `MAX_BOX_HOLES` 100), **text → one single-character
+pad per letter** (explode), a **robot team → a hole per robot** (`lineup`), a
+**notebook → a hole per page**. A non-blank box just fills the targeted hole.
+▢ **split** (the inverse — e.g. Bammer/cutting a box apart). Robots ignore hole
 labels — only hole count + contents matter (we have no labels, fine).
 
 ## Birds & nests (`bird.cpp`)
