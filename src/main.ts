@@ -412,12 +412,9 @@ async function start(): Promise<void> {
   // the vacuum (remove), and Pumpy the pump (resize). Everything else lives in
   // the toolbox/notebook chrome until you pull it out.
   function seedFloor(): void {
-    // The three hand tools lie out on the floor near its centre (the floor is a
-    // large area, FLOOR_W×FLOOR_H; you sit where your stuff is): the magic wand,
-    // Dusty the vacuum, and Pumpy the pump.
-    world.add(new Wand({ x: FLOOR_W / 2 - 110, y: FLOOR_H / 2 - 40 }));
-    world.add(new Dusty({ x: FLOOR_W / 2 - 190, y: FLOOR_H / 2 + 90 }));
-    world.add(new Pumpy({ x: FLOOR_W / 2 + 20, y: FLOOR_H / 2 + 90 }));
+    // The hand tools (wand, Dusty, Pumpy) LIVE WITH the toolbox now (chrome, at
+    // hand — see room.ts), so the working floor starts empty; you pull tools and
+    // elements out of the toolbox kit as you need them.
   }
 
   function seedDemo(): void {

@@ -192,9 +192,74 @@ export class Room {
     const toolbox = this.makeToolbox();
     toolbox.position.set(W - 170, 180);
     this.chrome.addChild(toolbox);
-    // The notebook, wand and vacuum are NOT chrome — they're the real interactive
-    // objects seeded in the World (the `claude 1` main notebook centre-bottom, the
-    // three hand tools bottom-left), so we don't draw chrome duplicates here.
+
+    // The hand tools LIVE WITH the toolbox (they move with it / stay at hand):
+    // the magic wand, Dusty the vacuum, and Pumpy the pump, in a row under the
+    // toolbox. They're chrome (screen-fixed) so they follow you as the floor
+    // scrolls — picking one pulls a fresh tool out at the cursor.
+    const tools: Array<[string, string]> = [
+      ['wand', 'C'],
+      ['dusty', 'S'],
+      ['pumpy', '+'],
+    ];
+    tools.forEach(([pick, badge], i) => {
+      const chip = this.makeToolChip(pick, badge);
+      chip.position.set(W - 230 + i * 60, 400);
+      this.chrome.addChild(chip);
+    });
+    // The `claude 1` main notebook is the real interactive World object (filed
+    // pages persist), so it's not chrome.
+  }
+
+  /** A toolbox hand-tool chip (chrome): the tool's icon + a small mode badge;
+   * clicking pulls a fresh copy out at the cursor. */
+  private makeToolChip(pick: string, badge: string): PIXI.Container {
+    const c = new PIXI.Container();
+    const tray = new PIXI.Graphics();
+    tray.beginFill(0x2b3037, 0.9);
+    tray.drawRoundedRect(-26, -26, 52, 52, 7);
+    tray.endFill();
+    // pumpy.png is a bad asset (a b/w manual screenshot), so draw a pump glyph.
+    const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 42);
+    c.addChild(tray, icon);
+    const b = new PIXI.Graphics();
+    b.beginFill(0x223040, 0.95);
+    b.drawRoundedRect(10, 10, 18, 18, 4);
+    b.endFill();
+    const t = new PIXI.Text(badge, {
+      fontFamily: this.theme.fontFamily,
+      fontSize: 13,
+      fill: 0xffffff,
+      fontWeight: 'bold',
+    });
+    t.anchor.set(0.5);
+    t.position.set(19, 19);
+    c.addChild(b, t);
+    c.hitArea = new PIXI.Rectangle(-26, -26, 52, 52);
+    c.eventMode = 'static';
+    c.on('pointerdown', (e) => this.onPick(pick, e.global.x, e.global.y));
+    return c;
+  }
+
+  /** A simple bicycle-pump glyph for Pumpy (the bundled pumpy.png is unusable). */
+  private pumpGlyph(): PIXI.Container {
+    const g = new PIXI.Graphics();
+    g.beginFill(0x3a6ea5, 1); // barrel
+    g.drawRoundedRect(-4, -12, 9, 22, 3);
+    g.endFill();
+    g.beginFill(0x1c1f24, 1); // T-handle
+    g.drawRoundedRect(-12, -17, 22, 5, 2);
+    g.drawRoundedRect(-2, -16, 4, 8, 2);
+    g.endFill();
+    g.beginFill(0x565e69, 1); // foot/base
+    g.drawRoundedRect(-9, 9, 18, 5, 2);
+    g.endFill();
+    g.lineStyle(3, 0x2c2f36, 1); // hose
+    g.moveTo(5, 4);
+    g.bezierCurveTo(16, 6, 15, 14, 11, 14);
+    const c = new PIXI.Container();
+    c.addChild(g);
+    return c;
   }
 
   /** A studded grey lego panel (used for the toolbox lid). */
