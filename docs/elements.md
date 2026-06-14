@@ -32,6 +32,16 @@ its digits as text. ✅ exact BigInt rationals (division → exact fractions;
 integer powers exact, non-integer powers approximated). Keyboard handling
 lives in `input/drag-controller.ts`.
 
+**Audit vs number.cpp (`NumberOperation`, defs.h:450; `result_of_operation_once`,
+number.cpp:2910):** a number's operation transforms the target on drop
+(`B op A`, `do_operation`); a plain number defaults to add (INCREASE_BY,
+number.cpp:2921); exactness propagates (`and_exact`). Our `+ * / % ^ =` map
+1:1 to INCREASE_BY/MULTIPLY_BY/DIVIDE_BY/MODULUS_BY/TO_THE_POWER/MAKE_EQUAL —
+**faithful for the common ops**. ▢ the original's advanced ops
+(INTEGER_PART/FRACTION_PART/NUMERATOR/DENOMINATOR, SINE…ARCTAN, NATURAL_LOG/
+LOG10, BITWISE_*) are set via a menu we don't have; ▢ operation *chaining*
+(`following_operation`, number.cpp:2884). All niche for a children's tool.
+
 ## Text (`text.htm`)
 
 ✅ concatenation — drop side decides order (left=prepend, right=append).
