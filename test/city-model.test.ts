@@ -6,7 +6,6 @@ import {
   growValue,
   shrinkValue,
   buildCity,
-  nearestStreetY,
   lotX,
   lotY,
   type Direction,
@@ -20,9 +19,9 @@ import {
   BLOCKS_Y,
   CITY_W,
   CITY_H,
-  WALK_BAND_N,
-  ENTER_DEPTH,
   DOOR_REACH,
+  DOOR_DEPTH,
+  roadYFor,
 } from '../src/city/city-model';
 
 describe('directionFromDelta (utils.cpp direction, +y = NORTH)', () => {
@@ -133,26 +132,40 @@ describe('CityModel landing / walking / room', () => {
     expect(m.cx).toBeGreaterThan(m.landX);
   });
 
-  it('walking is 8-directional with a depth band; H flies again', () => {
+  it('walking roams the whole city north–south; nearby copter / H flies again', () => {
     const m = new CityModel();
     m.mode = 'walking';
-    m.streetY = BLOCK_H;
     m.cy = BLOCK_H;
+    m.streetY = roadYFor(m.cy);
     m.walk(0, 9_999_999); // far north
-    expect(m.cy).toBe(m.streetY + WALK_BAND_N); // clamped at the house fronts
+    expect(m.cy).toBe(CITY_H); // roams clear to the city's north edge
     expect((m.dir as Direction)).toBe(6); // North
+    expect(m.streetY % BLOCK_H).toBe(0); // current road tracks the block we're in
     m.callHelicopter();
     expect(m.mode).toBe('flying');
     expect(m.scale).toBe(LIFTOFF_SCALE);
+  });
+
+  it('walking back into the parked copter takes off', () => {
+    const m = new CityModel();
+    m.mode = 'landing';
+    m.cx = 300000;
+    m.cy = 224000;
+    let guard = 0;
+    while (m.mode === 'landing' && guard++ < 1000) m.land(-1, 100);
+    expect(m.mode).toBe('walking');
+    expect(m.nearHelicopter()).toBe(false); // stepped out clear of it
+    m.cx = m.parkedX; // walk back to it
+    m.cy = m.parkedY;
+    expect(m.nearHelicopter()).toBe(true);
   });
 
   it('enterHouse at a door → room standing; walkInside leaves or sits', () => {
     const m = new CityModel();
     m.mode = 'walking';
     const h = m.houses[1]!;
-    m.streetY = nearestStreetY(h.y);
-    m.cx = h.x;
-    m.cy = m.streetY + ENTER_DEPTH + 1; // walked north up to the door
+    m.cx = h.x; // standing at the house's door
+    m.cy = h.y;
     expect(m.enterHouse()).toBe(true);
     expect(m.mode).toBe('inside');
     expect(m.walkInside(0, 0.6)).toBe('sit'); // to the floor front
@@ -163,15 +176,17 @@ describe('CityModel landing / walking / room', () => {
     expect(m.mode).toBe('walking');
   });
 
-  it('enter only at the narrow door, not anywhere along the house', () => {
+  it('enter only at the narrow door (gated in BOTH x and y)', () => {
     const m = new CityModel();
     m.mode = 'walking';
     const h = m.houses[1]!;
-    m.streetY = nearestStreetY(h.y);
-    m.cy = m.streetY + ENTER_DEPTH + 1; // walked up far enough
-    m.cx = h.x + DOOR_REACH + 1; // just past the door's edge → no entry
-    expect(m.enterableHouse()).toBeNull();
-    m.cx = h.x; // at the door
+    m.cx = h.x;
+    m.cy = h.y; // at the door
     expect(m.enterableHouse()).toBe(h);
+    m.cx = h.x + DOOR_REACH + 1; // beside the door → no entry
+    expect(m.enterableHouse()).toBeNull();
+    m.cx = h.x;
+    m.cy = h.y + DOOR_DEPTH + 1; // not standing at the front → no entry
+    expect(m.enterableHouse()).toBeNull();
   });
 });

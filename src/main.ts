@@ -51,6 +51,9 @@ function setHud(text: string): void {
 async function start(): Promise<void> {
   const mode: RenderMode = getRenderMode();
   const theme = themeFor(mode);
+  // The floor starts faithful & near-empty: just Tooly's three tools. The full
+  // element showcase is opt-in for development via ?demo=1.
+  const demoMode = new URLSearchParams(location.search).get('demo') === '1';
 
   const renderer = new Renderer(theme);
   const container = document.getElementById('game-container');
@@ -189,7 +192,7 @@ async function start(): Promise<void> {
     // Walking up to a house door, or sitting on the grass ('s'), drops you onto
     // a working floor — the room/World view. (Distinct per-house contents is a
     // later step; for now every house + the grass share the one floor.)
-    onEnter: (where, house) => enterRoom(where === 'house' ? (house?.style ?? 'a') : 'a'),
+    onEnter: (where, house) => enterRoom(where === 'house' ? (house?.style ?? 'a') : 'c'),
     // Escape while walking the street raises the street menu.
     onEscape: () => showStreetMenu(),
   });
@@ -211,8 +214,8 @@ async function start(): Promise<void> {
     `ToonTalk City — fly · land · walk\n` +
     `click the city to take the controls (the mouse is captured; Esc = menu)\n` +
     `mouse / arrow keys steer · left button / ↓ descends · right button / Shift / ↑ climbs\n` +
-    `street: walk both ways · up to a door enters the house's room · 's' sits on the grass\n` +
-    `in the room: walk to the front of the floor (or 's') to sit & work · Esc steps back out\n` +
+    `street: walk any direction (every street) · up to a door enters the house · click or 's' sits on the grass\n` +
+    `in the room: click (or walk to the front / 's') to sit & work · Esc steps back out\n` +
     `walk into the parked copter to take off · H calls the helicopter · Esc = leave menu`;
 
   /** Show the city (street/flying); hide the room/World and its input. */
@@ -355,6 +358,16 @@ async function start(): Promise<void> {
     updateHud('none');
   }
 
+  // The faithful initial floor: you sit down and your toolbox (Tooly) is there
+  // with the three hand tools that come out of it — the magic wand (copy), Dusty
+  // the vacuum (remove), and Pumpy the pump (resize). Everything else lives in
+  // the toolbox/notebook chrome until you pull it out.
+  function seedFloor(): void {
+    world.add(new Wand({ x: 430, y: 470 }));
+    world.add(new Dusty({ x: 540, y: 470 }));
+    world.add(new Pumpy({ x: 650, y: 470 }));
+  }
+
   function seedDemo(): void {
     world.add(new NumberThing({ value: 5, x: 180, y: 140 }));
     world.add(new NumberThing({ value: 3, x: 320, y: 140 }));
@@ -473,7 +486,8 @@ async function start(): Promise<void> {
     return nb;
   }
 
-  seedDemo();
+  if (demoMode) seedDemo();
+  else seedFloor();
   let mainNotebook = installMainNotebook();
 
   // Saving = filing onto the main notebook. Persist it whenever it changes;
@@ -508,7 +522,8 @@ async function start(): Promise<void> {
   document.getElementById('reset-btn')?.addEventListener('click', () => {
     clearMainNotebook();
     world.clear();
-    seedDemo();
+    if (demoMode) seedDemo();
+    else seedFloor();
     mainNotebook = installMainNotebook();
     updateHud('none');
   });

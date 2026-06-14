@@ -41,12 +41,19 @@ export const MAX_FLYING_SCALE = BLOCKS_X * 125 * HOUSES_PER_BLOCK; // prgrmmr.cp
 export const LIFTOFF_SCALE = 3 * GROUND_SCALE; // climb clear of the landing threshold on takeoff
 const SCALE_DOUBLE_MS = 750; // ¾ s to double / halve (prgrmmr.cpp grow_value/shrink_value)
 
-// --- walking / room (rescaled; faithful port lands in later phases) --------
-export const WALK_BAND_N = 8 * TILE_H; // depth north toward the house fronts
-export const WALK_BAND_S = 4 * TILE_H; // depth south toward the viewer
-export const ENTER_DEPTH = 6 * TILE_H; // walk this far north at a door → enter
-export const DOOR_REACH = 2 * TILE_W; // narrow: only the DOOR is an entrance, not the whole house
+// --- walking / room --------------------------------------------------------
+// Walking is now world-relative: the avatar roams the whole city (every street),
+// the side view scrolls in BOTH axes (renderStreet projects world→screen), and
+// you enter a house only by standing at its door.
+export const DOOR_REACH = 1.6 * TILE_W; // door half-width: ONLY the door is an entrance
+export const DOOR_DEPTH = 2 * TILE_H; // and you must be standing at the house front (in y)
 export const STEP_OUT = 9 * TILE_W; // how far beside the copter you step out on landing
+export const HELI_REACH = 4 * TILE_W; // walk this close to the parked copter → it takes off
+
+/** The road (block boundary) along the SOUTH edge of the block containing `y`. */
+export function roadYFor(y: number): number {
+  return Math.floor(clamp(y, 0, CITY_H - 1) / BLOCK_H) * BLOCK_H;
+}
 
 export interface House {
   bx: number;
@@ -96,11 +103,6 @@ export function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-/** The horizontal block-boundary (street) y nearest a city y. */
-export function nearestStreetY(cy: number): number {
-  return clamp(Math.round(cy / BLOCK_H), 0, BLOCKS_Y) * BLOCK_H;
-}
-
 /** block.cpp Block::city_location — the centre of lot `i` (0..3) in block `bx`. */
 export function lotX(bx: number, i: number): number {
   return bx * BLOCK_W + ((i + 1) * BLOCK_W) / (HOUSES_PER_BLOCK + 1) + BLOCK_W / 30;
@@ -146,8 +148,12 @@ export class CityModel {
   private minReorient = TILE_W;
   /** Normalized helicopter height while landing: 1 = top of view, 0 = street. */
   landY = 1;
-  streetY = nearestStreetY(CITY_H / 2);
+  /** The road the avatar is currently on (south edge of the block at cy). */
+  streetY = roadYFor(CITY_H / 2);
   landX = CITY_W / 2;
+  /** Where the copter is parked while you walk — walk back into it to take off. */
+  parkedX = CITY_W / 2;
+  parkedY = roadYFor(CITY_H / 2);
   insideHouse: House | null = null;
   ix = 0.5;
   iy = 0.8;
@@ -186,8 +192,10 @@ export class CityModel {
       this.mode = 'landing';
       this.scale = GROUND_SCALE;
       this.landY = 1;
-      this.streetY = nearestStreetY(this.cy);
-      this.cy = this.streetY;
+      // Touch down on the road along the south edge of the block, so the houses
+      // (set back to the north) appear ahead of you (original-land.jpg).
+      this.cy = roadYFor(this.cy);
+      this.streetY = this.cy;
       this.landX = this.cx;
     }
   }
@@ -210,24 +218,42 @@ export class CityModel {
     } else if (this.landY <= 0) {
       this.landY = 0;
       this.landX = this.cx;
+      this.parkedX = this.cx; // the copter stays here on the road
+      this.parkedY = this.cy;
       this.cx = clamp(this.landX + STEP_OUT, 0, CITY_W); // step out beside the copter
+      this.streetY = roadYFor(this.cy);
       this.mode = 'walking';
     }
   }
 
+  /** Walk freely about the whole city (+y = north). The avatar roams every
+   * street; the side view scrolls to follow it (renderStreet). */
   walk(dx: number, dy = 0): void {
     if (this.mode !== 'walking' || (dx === 0 && dy === 0)) return;
     const d = directionFromDelta(dx, dy);
     if (d != null) this.dir = d;
     this.cx = clamp(this.cx + dx, 0, CITY_W);
-    // +y is north (toward the house fronts); south (toward the viewer) is -y.
-    this.cy = clamp(this.cy + dy, this.streetY - WALK_BAND_S, this.streetY + WALK_BAND_N);
+    this.cy = clamp(this.cy + dy, 0, CITY_H);
+    this.streetY = roadYFor(this.cy);
   }
 
+  /** Standing at a house's door (close in BOTH x and y) → you may enter it. */
   enterableHouse(): House | null {
     if (this.mode !== 'walking') return null;
-    if (this.cy - this.streetY < ENTER_DEPTH) return null; // walked north up to the doors
-    return this.houses.find((h) => Math.abs(this.cx - h.x) <= DOOR_REACH) ?? null;
+    return (
+      this.houses.find(
+        (h) => Math.abs(this.cx - h.x) <= DOOR_REACH && Math.abs(this.cy - h.y) <= DOOR_DEPTH,
+      ) ?? null
+    );
+  }
+
+  /** Standing where the copter is parked → walking into it takes off. */
+  nearHelicopter(): boolean {
+    return (
+      this.mode === 'walking' &&
+      Math.abs(this.cx - this.parkedX) <= HELI_REACH &&
+      Math.abs(this.cy - this.parkedY) <= HELI_REACH
+    );
   }
 
   enterHouse(): boolean {
@@ -261,19 +287,24 @@ export class CityModel {
     this.insideHouse = null;
     this.mode = 'walking';
     if (h) {
+      // step back out the door, just south of (in front of) the house
       this.cx = h.x;
-      this.streetY = nearestStreetY(h.y);
-      this.cy = this.streetY;
+      this.cy = h.y - DOOR_DEPTH * 1.5;
+      this.streetY = roadYFor(this.cy);
     }
   }
 
   standUp(): void {
+    // Getting up from a sit leaves you where you were (no position change).
     if (this.mode !== 'walking') return;
-    this.cy = this.streetY;
   }
 
   callHelicopter(): void {
     if (this.mode !== 'walking') return;
+    // take off from where the copter is parked
+    this.cx = this.parkedX;
+    this.cy = this.parkedY;
+    this.streetY = roadYFor(this.cy);
     this.mode = 'flying';
     this.scale = LIFTOFF_SCALE;
   }

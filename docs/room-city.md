@@ -18,29 +18,30 @@ the city itself (`city.cpp`):
   flying altitude/zoom (1 = ground): `nextScale` takes 0.75 s to double/halve
   (source), clamped `[MIN 1.25, MAX 4]`, `START 2.5`, `LIFTOFF 2` (so
   returning to flying doesn't instantly re-land). Descend to the minimum →
-  the view switches to the **horizontal street view**: `streetY` snaps to the
-  nearest street, `landX` records where the copter comes down; touching the
-  street parks it and the person **steps out beside the door** (`cx = landX +
-  70`; cf. `Programmer_City_Landing::true_center` ≈ the door).
+  the view switches to the **horizontal street view**: the copter **lands on the
+  road** along the south edge of the block (`cy = roadYFor(cy)`, so the houses —
+  set back to the north — appear ahead), `landX`/`parkedX,parkedY` record where it
+  comes down; touching down parks it and the person **steps out beside it**
+  (`cx = landX + STEP_OUT`).
 - **`src/city/city-scene.ts`** — two looks. **Flying**: top-down rectangular
-  city scrolls under a centred 8-dir copter. **Street view (landing +
-  walking)**: a **green Lego (lawn-brush) backdrop** over the street brush
-  (the original front view clears with the lawn brush — *no blue sky*), the
-  street's houses in their **side-view art** (HSA18 / HSB20 / HSC20); the
-  copter (side art, animated rotors) is **big** (`HELI_LAND_W` ≈ 560 px),
-  sinks to the street, swaps to the **parked art** (HELIHLM7) on touchdown and
-  stays at `landX`. The lego person then **walks the street in both axes**
-  (`model.walk(dx, dy)` — fully 8-directional, depth clamped to `[streetY −
-  WALK_BAND_N, streetY + WALK_BAND_S]`), with **camera-follow within a band**
-  (`streetCamCx`: the walker moves on screen before the world scrolls, per
-  prgrmmr.cpp min_x/max_x) and **Tooly the toolbox following** (TOOLBOXS, 8-dir
-  animated). Walking:
-  - **up to a house door** (`enterableHouse`) → `enterHouse()` steps you INTO
-    the **room standing view** (mode `'inside'`, below) — *not* straight to the
-    floor;
-  - **'s'** → sits on the grass → the room/World floor (`onEnter('grass')`);
-  - **into the parked copter** (`boardHelicopter`) → auto take-off (the scene
-    holds the climb until airborne, `takingOff`);
+  city scrolls under a centred 8-dir copter. **Street view (landing + walking)**
+  is a **side-scroller on a ground plane** (`renderStreet` projects world→screen
+  via `proj`, following the walker in BOTH axes): a **green Lego (lawn-brush)
+  backdrop** (no blue sky), the **E–W roads as horizontal bands** at each block
+  boundary (a small pool, depth-placed), the houses in their **side-view art**
+  set back to the north and **perspective-scaled** (depth-sorted), and the copter
+  (side art, animated rotors) **big** (`HELI_LAND_W` ≈ 0.58·W), sinking to the
+  road then swapping to the **parked art** at `parkedX,parkedY`. The lego person
+  then **walks the whole city** (`model.walk(dx, dy)` — fully 8-directional,
+  roaming `cx∈[0,CITY_W]`, `cy∈[0,CITY_H]` across **every street**; the camera
+  follows in x within a band and centres in y) with **Tooly the toolbox
+  following** (8-dir animated, trailing behind). Walking:
+  - **standing at a house's door** (`enterableHouse`, gated narrowly in BOTH x
+    `DOOR_REACH` and y `DOOR_DEPTH` — **only the door**, not the walls) →
+    `enterHouse()` steps you INTO the **room standing view** (mode `'inside'`);
+  - **a click**, or **'s'**, → sits on the grass → the working floor
+    (`onEnter('grass')` → green floor);
+  - **walking back into the parked copter** (`nearHelicopter`) → take-off;
   - **H** → calls the helicopter back; **Esc** → the street menu.
   Trees are a web extra — **off by default** (`CityModel({trees})`).
 - **Room standing view** (`mode 'inside'`, `renderInterior`) — the missing
@@ -53,13 +54,14 @@ the city itself (`city.cpp`):
   FLOORC/B/D; `create_floor` maps style→FLOOR background), and the **red door on
   the LEFT** (`ROOMDOOR`). You walk the room
   in normalised coords (`ix`/`iy`, slight depth perspective); `walkInside`
-  returns **`'leave'`** at a side wall (→ back to the street at the house,
-  `leaveRoom`) or **`'sit'`** at the front of the floor (→ `onEnter` → the
-  working floor / World). `'s'` also sits; **Esc** steps back out. Standing up
-  from the floor (`resume`) returns here, not straight to the street — matching
-  `at_floor → stand up → room_walking`. Note: our existing `src/view/room.ts`
-  is the *floor working* chrome (`Programmer_At_Floor` + `Floor`) — a different
-  view from this room.
+  returns **`'leave'`** at a side wall (→ back to the street just south of the
+  house door, `leaveRoom`) or **`'sit'`** at the front of the floor (→ `onEnter`
+  → the working floor / World). **A click** also sits; `'s'` also sits; **Esc**
+  steps back out. Note: our existing `src/view/room.ts` is the *floor working*
+  chrome (`Programmer_At_Floor` + `Floor`) — a different view from this room. The
+  working floor starts **near-empty & faithful**: just Tooly's three hand tools
+  (wand, Dusty, Pumpy) + the main notebook; the full element demo is opt-in via
+  `?demo=1` (`seedFloor` vs `seedDemo` in `main.ts`).
 - **Input is the original's RELATIVE_MOUSE_MODE** (the default,
   globals.cpp:729): click the city to capture the mouse (Pointer Lock, cursor
   hidden, like `show_cursor(FALSE)`); raw mouse **movement** then steers
