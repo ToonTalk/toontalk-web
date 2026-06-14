@@ -295,18 +295,25 @@ export class CityModel {
     return true;
   }
 
-  walkInside(dx: number, dy: number): 'leave' | 'sit' | null {
+  /**
+   * Walk around the room floor (ix/iy normalised 0..1). Faithful to
+   * Programmer_Room_Walking::react: only the LEFT wall (the door) leaves the
+   * room; the right and front/back walls just stop you. Sitting is a click
+   * (handled by the scene), not a wall, in relative-mouse mode.
+   */
+  walkInside(dx: number, dy: number): 'leave' | null {
     if (this.mode !== 'inside') return null;
     const d = directionFromDelta(dx, -dy); // screen-down dy → south
     if (d != null) this.dir = d;
     this.ix += dx;
     this.iy += dy;
-    if (this.ix <= 0 || this.ix >= 1) {
-      this.leaveRoom();
+    if (this.ix <= 0) {
+      this.leaveRoom(); // the door is on the left wall (min_x → LEAVING_ROOM)
       return 'leave';
     }
-    this.iy = clamp(this.iy, 0.08, 1);
-    return this.iy >= 1 ? 'sit' : null;
+    this.ix = clamp(this.ix, 0, 1); // right wall stops you
+    this.iy = clamp(this.iy, 0.06, 1); // front/back walls stop you
+    return null;
   }
 
   leaveRoom(): void {

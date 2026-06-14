@@ -18,6 +18,7 @@ export function renderThingDisplay(
   const view = createThingView(thing, textures, theme);
   const node = view.container;
   node.eventMode = 'none';
+  node.position.set(0, 0); // createThingView places it at the thing's world coords; centre it
   const bounds = node.getLocalBounds();
   const largest = Math.max(bounds.width, bounds.height, 1);
   // Shrink to fit by default; with scaleUp, also enlarge small things to fill

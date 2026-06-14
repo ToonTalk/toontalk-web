@@ -38,6 +38,10 @@ import { DirectionalSprite, type CityAssets } from './city-sprites';
 export interface CitySceneCallbacks {
   onEnter?: (where: 'house' | 'grass', house?: House) => void;
   onEscape?: () => void;
+  /** Snapshot of what's on the working floor, for the room standing view to show
+   * in miniature. fx/fy are the item's position normalised to the floor (0..1);
+   * node is a fresh display the scene owns and destroys. */
+  floorItems?: () => Array<{ fx: number; fy: number; node: PIXI.Container }>;
 }
 
 const K_SIDE = 0.04; // screen px per city unit, street side view (one house dominant)
@@ -84,6 +88,9 @@ export class CityScene {
   private readonly rightWall: PIXI.SimpleMesh;
   private readonly floorMesh: PIXI.SimpleMesh;
   private readonly doorSprite: PIXI.Sprite;
+  private readonly floorMiniLayer: PIXI.Container; // the floor's things, shown small in the room
+  private floorMinis: { fx: number; fy: number; node: PIXI.Container }[] = [];
+  private wasInside = false;
 
   private readonly avatar: PIXI.Container;
   private readonly heliFly: DirectionalSprite;
@@ -199,12 +206,15 @@ export class CityScene {
     this.floorMesh = mesh(assets.floors['b'] ?? PIXI.Texture.WHITE, floorUV);
     this.doorSprite = new PIXI.Sprite(assets.roomdoor);
     this.doorSprite.anchor.set(0.5, 1);
+    this.floorMiniLayer = new PIXI.Container();
+    this.floorMiniLayer.sortableChildren = true;
     this.interior.addChild(
       this.backWall,
       this.leftWall,
       this.rightWall,
       this.floorMesh,
       this.doorSprite,
+      this.floorMiniLayer, // the floor's things, on top of the floor mesh
     );
 
     // avatar
@@ -434,7 +444,8 @@ export class CityScene {
       const px = this.inputPxX(WALK_SCREENS_PER_S, dt);
       const py = this.inputPxY(WALK_SCREENS_PER_S, dt);
       const moving = Math.abs(px) > 0.4 || Math.abs(py) > 0.4;
-      const result = this.model.walkInside(px / (this.renderer.width * 0.7), py / (this.renderer.height * 0.6));
+      // 'leave' is handled inside walkInside (leaveRoom); sitting is a click.
+      this.model.walkInside(px / (this.renderer.width * 0.7), py / (this.renderer.height * 0.6));
       this.person.setDirection(this.model.dir);
       this.person.update(dt, moving);
       const tb = this.model.dir >= 5 || this.model.dir === 0 ? -0.08 : 0.08;
@@ -442,7 +453,6 @@ export class CityScene {
       this.toolyIY += (this.model.iy - this.toolyIY) * Math.min(1, dt / 280);
       this.tooly.setDirection(this.model.dir);
       this.tooly.update(dt, moving);
-      if (result === 'sit') this.cb.onEnter?.('house', this.model.insideHouse ?? undefined);
     }
 
     this.mouseDX = 0;
@@ -471,6 +481,28 @@ export class CityScene {
     this.heliParked.visible = false; // renderStreet re-enables it (depth-culled) for walking
     this.person.sprite.visible = m === 'walking' || inside;
     this.tooly.sprite.visible = m === 'walking' || inside;
+    // Build the floor's miniatures once on entering the room; clear on leaving.
+    if (inside && !this.wasInside) this.buildFloorMinis();
+    else if (!inside && this.wasInside) this.clearFloorMinis();
+    this.wasInside = inside;
+  }
+
+  /** Snapshot the working floor's things and show them small in the room. */
+  private buildFloorMinis(): void {
+    this.clearFloorMinis();
+    for (const it of this.cb.floorItems?.() ?? []) {
+      // wrap so depth-scaling in renderInterior composes with the node's own
+      // fit-scale instead of overwriting it
+      const wrap = new PIXI.Container();
+      wrap.addChild(it.node);
+      this.floorMiniLayer.addChild(wrap);
+      this.floorMinis.push({ fx: it.fx, fy: it.fy, node: wrap });
+    }
+  }
+  private clearFloorMinis(): void {
+    for (const m of this.floorMinis) m.node.destroy({ children: true });
+    this.floorMinis.length = 0;
+    this.floorMiniLayer.removeChildren();
   }
 
   private render(): void {
@@ -674,6 +706,15 @@ export class CityScene {
     };
     const fy = (iy: number): number => horizon + (H - horizon) * iy;
     const depthScale = (iy: number): number => 0.6 + iy * 0.7;
+
+    // The floor's things, laid out small in perspective where they sit on the
+    // floor (so it's clear what's there, and where to sit down to work on it).
+    for (const mini of this.floorMinis) {
+      mini.node.position.set(fx(mini.fx, mini.fy), fy(mini.fy));
+      mini.node.scale.set(depthScale(mini.fy));
+      mini.node.zIndex = mini.fy;
+    }
+
     this.avatar.position.set(0, 0);
     fitHeight(this.person.sprite, H * 0.34 * depthScale(m.iy));
     this.person.sprite.position.set(fx(m.ix, m.iy), fy(m.iy));

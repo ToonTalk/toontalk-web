@@ -30,6 +30,7 @@ import { saveMainNotebook, loadMainNotebook, clearMainNotebook } from './model/n
 import { Renderer } from './view/renderer';
 import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
+import { renderThingDisplay } from './view/display';
 import { BoxView } from './view/box-view';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
@@ -195,6 +196,17 @@ async function start(): Promise<void> {
     onEnter: (where, house) => enterRoom(where === 'house' ? (house?.style ?? 'a') : 'c'),
     // Escape while walking the street raises the street menu.
     onEscape: () => showStreetMenu(),
+    // The room standing view shows the working floor's things in miniature, at
+    // their floor positions (normalised to the canvas the floor view fills).
+    floorItems: () => {
+      const fw = renderer.width || 1280;
+      const fh = renderer.height || 800;
+      return world.all().map((t) => ({
+        fx: Math.max(0.02, Math.min(0.98, t.x / fw)),
+        fy: Math.max(0.05, Math.min(0.98, t.y / fh)),
+        node: renderThingDisplay(t, textures, theme, 64),
+      }));
+    },
   });
   (window as unknown as { __ttCity?: unknown }).__ttCity = city;
 

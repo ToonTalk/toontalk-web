@@ -183,7 +183,7 @@ describe('CityModel landing / walking / room', () => {
     expect(m.nearHelicopter()).toBe(true);
   });
 
-  it('enterHouse at a door → room standing; walkInside leaves or sits', () => {
+  it('enterHouse → room standing; only the LEFT wall (door) leaves, others stop', () => {
     const m = new CityModel();
     m.mode = 'walking';
     const h = m.houses[1]!;
@@ -191,11 +191,16 @@ describe('CityModel landing / walking / room', () => {
     m.cy = h.y;
     expect(m.enterHouse()).toBe(true);
     expect(m.mode).toBe('inside');
-    expect(m.walkInside(0, 0.6)).toBe('sit'); // to the floor front
-    m.mode = 'inside';
-    m.insideHouse = h;
+    // front/back + right walls clamp you in the room (no leaving, no sitting)
+    expect(m.walkInside(0, 0.6)).toBeNull();
+    expect(m.iy).toBeLessThanOrEqual(1);
     m.ix = 0.5;
-    expect(m.walkInside(-1, 0)).toBe('leave'); // out a side wall
+    expect(m.walkInside(1, 0)).toBeNull(); // into the right wall → stops
+    expect(m.ix).toBe(1);
+    expect(m.mode).toBe('inside');
+    // the left wall is the door → leaves the room
+    m.ix = 0.2;
+    expect(m.walkInside(-1, 0)).toBe('leave');
     expect(m.mode).toBe('walking');
   });
 
