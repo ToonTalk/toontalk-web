@@ -191,67 +191,9 @@ export class Room {
     const nb = this.makeNotebook();
     nb.position.set(W * 0.5, H - nb.height / 2 - 14);
     this.chrome.addChild(nb);
-
-    const wand = this.makeWand();
-    wand.position.set(160, H * 0.5);
-    this.chrome.addChild(wand);
-
-    const vac = this.makeTool('dusty', 'dusty', 'S', 1.0);
-    vac.position.set(120, H * 0.5 + 130);
-    this.chrome.addChild(vac);
-  }
-
-  /** The magic wand resting on the floor: a dark rod with a star tip and mode badge. */
-  private makeWand(): PIXI.Container {
-    const c = new PIXI.Container();
-    const len = 150;
-    const th = 13;
-
-    const rod = new PIXI.Graphics();
-    rod.beginFill(0x000000, 0.25);
-    rod.drawRoundedRect(-len / 2 + 3, -th / 2 + 4, len, th, th / 2);
-    rod.endFill();
-    rod.lineStyle(2, 0x101216, 1);
-    rod.beginFill(0x2c2f36, 1);
-    rod.drawRoundedRect(-len / 2, -th / 2, len, th, th / 2);
-    rod.endFill();
-    rod.lineStyle(0);
-    rod.beginFill(0x515761, 0.85); // top highlight
-    rod.drawRoundedRect(-len / 2 + 7, -th / 2 + 3, len - 14, 3, 1.5);
-    rod.endFill();
-    c.addChild(rod);
-
-    // White knob/ball at the left end (the wand's tip).
-    const tip = new PIXI.Graphics();
-    tip.lineStyle(2, 0xccc6ba, 1);
-    tip.beginFill(0xfdfcf5, 1);
-    tip.drawCircle(-len / 2 - 2, 0, 13);
-    tip.endFill();
-    tip.lineStyle(0);
-    tip.beginFill(0xffffff, 0.85); // glint
-    tip.drawCircle(-len / 2 - 6, -4, 4);
-    tip.endFill();
-    c.addChild(tip);
-
-    // Mode badge ('C' = copy) near the right end.
-    const badge = new PIXI.Graphics();
-    badge.beginFill(0x223040, 0.92);
-    badge.drawRoundedRect(len / 2 - 24, -13, 26, 26, 5);
-    badge.endFill();
-    const t = new PIXI.Text('C', {
-      fontFamily: this.theme.fontFamily,
-      fontSize: 16,
-      fill: 0xffffff,
-      fontWeight: 'bold',
-    });
-    t.anchor.set(0.5);
-    t.position.set(len / 2 - 11, 0);
-    c.addChild(badge, t);
-
-    c.hitArea = new PIXI.Rectangle(-len / 2 - 20, -22, len + 44, 44);
-    c.eventMode = 'static';
-    c.on('pointerdown', (e) => this.onPick('wand', e.global.x, e.global.y));
-    return c;
+    // The wand and the vacuum are NOT chrome — they're the real hand tools that
+    // lie out on the floor (seeded in the World, bottom-left), so we don't draw
+    // duplicates here.
   }
 
   /** A studded grey lego panel (used for the toolbox lid). */
@@ -310,10 +252,12 @@ export class Room {
     box.addChild(tray);
 
     // 2x4 grid of recessed slots holding the tools.
+    // Matches the original toolbox grid (ToonTalk - claude 1): number, text,
+    // box, wand, scale, bird, truck, bomb.
     const grid: Array<{ pick?: string; label?: string; fill?: number; icon?: string }> = [
       { label: '1', fill: 0xbff2c9, pick: 'number' }, { label: 'A', fill: 0xf2ddc2, pick: 'text' },
-      { icon: 'box', pick: 'box' }, { icon: 'nest', pick: 'nest' },
-      { icon: 'scale', pick: 'scale' }, { icon: 'robot', pick: 'robot' },
+      { icon: 'box', pick: 'box' }, { icon: 'wand', pick: 'wand' },
+      { icon: 'scale', pick: 'scale' }, { icon: 'bird', pick: 'bird' },
       { icon: 'truck', pick: 'truck' }, { icon: 'bomb', pick: 'bomb' },
     ];
     const left = -w / 2 + pad;
@@ -397,33 +341,6 @@ export class Room {
     title.anchor.set(0.5);
     title.position.set(0, s.height / 2 - 18);
     c.addChild(title);
-    return c;
-  }
-
-  private makeTool(texKey: string, pick: string, mode: string, scale: number): PIXI.Container {
-    const c = new PIXI.Container();
-    const s = new PIXI.Sprite(this.tools.get(texKey) ?? this.room.get(texKey) ?? PIXI.Texture.WHITE);
-    s.anchor.set(0.5);
-    s.scale.set(scale);
-    c.addChild(s);
-
-    const badge = new PIXI.Graphics();
-    badge.beginFill(0x223040, 0.92);
-    badge.drawRoundedRect(-s.width / 2 - 4, -14, 26, 28, 5);
-    badge.endFill();
-    const t = new PIXI.Text(mode, {
-      fontFamily: this.theme.fontFamily,
-      fontSize: 18,
-      fill: 0xffffff,
-      fontWeight: 'bold',
-    });
-    t.anchor.set(0.5);
-    t.position.set(-s.width / 2 + 9, 0);
-    c.addChild(badge, t);
-
-    c.hitArea = new PIXI.Rectangle(-s.width / 2, -s.height / 2, s.width, s.height);
-    c.eventMode = 'static';
-    c.on('pointerdown', (e) => this.onPick(pick, e.global.x, e.global.y));
     return c;
   }
 

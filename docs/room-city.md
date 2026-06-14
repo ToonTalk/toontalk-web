@@ -59,9 +59,13 @@ the city itself (`city.cpp`):
   → the working floor / World). **A click** also sits; `'s'` also sits; **Esc**
   steps back out. Note: our existing `src/view/room.ts` is the *floor working*
   chrome (`Programmer_At_Floor` + `Floor`) — a different view from this room. The
-  working floor starts **near-empty & faithful**: just Tooly's three hand tools
-  (wand, Dusty, Pumpy) + the main notebook; the full element demo is opt-in via
-  `?demo=1` (`seedFloor` vs `seedDemo` in `main.ts`).
+  working floor is laid out to match the original (`ToonTalk - claude 1`
+  capture): a **tan lego baseplate**, the **open lego toolbox top-right** whose
+  2×4 grid spawns fresh elements (**1, A / box, wand / scale, bird / truck,
+  bomb**), the **`claude 1` notebook** bottom-centre, and the **three real hand
+  tools lying out bottom-left** (the wand, Dusty the vacuum, Pumpy) seeded in the
+  World (`seedFloor`) — *not* drawn as chrome, so there are no duplicates. The
+  full element demo is opt-in via `?demo=1` (`seedFloor` vs `seedDemo`).
 - **Input is the original's RELATIVE_MOUSE_MODE** (the default,
   globals.cpp:729): click the city to capture the mouse (Pointer Lock, cursor
   hidden, like `show_cursor(FALSE)`); raw mouse **movement** then steers

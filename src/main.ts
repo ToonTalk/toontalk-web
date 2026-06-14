@@ -352,7 +352,14 @@ async function start(): Promise<void> {
       case 'bomb': world.add(new Bomb({ x, y })); break;
       case 'wand': world.add(new Wand({ x, y })); break;
       case 'dusty': world.add(new Dusty({ x, y })); break;
+      case 'pumpy': world.add(new Pumpy({ x, y })); break;
       case 'truck': world.add(new Truck({ x, y })); break;
+      case 'bird': {
+        const nest = new Nest({ x: x + 90, y: y + 40 });
+        world.add(nest);
+        world.add(new Bird({ nests: [nest], x, y }));
+        break;
+      }
       default: return;
     }
     updateHud('none');
@@ -363,9 +370,11 @@ async function start(): Promise<void> {
   // the vacuum (remove), and Pumpy the pump (resize). Everything else lives in
   // the toolbox/notebook chrome until you pull it out.
   function seedFloor(): void {
-    world.add(new Wand({ x: 430, y: 470 }));
-    world.add(new Dusty({ x: 540, y: 470 }));
-    world.add(new Pumpy({ x: 650, y: 470 }));
+    // The three hand tools lie out on the floor (bottom-left, as in the
+    // original): the magic wand, Dusty the vacuum, and Pumpy the pump.
+    world.add(new Wand({ x: 230, y: 470 }));
+    world.add(new Dusty({ x: 150, y: 600 }));
+    world.add(new Pumpy({ x: 320, y: 600 }));
   }
 
   function seedDemo(): void {
