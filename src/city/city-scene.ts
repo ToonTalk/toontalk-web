@@ -1,30 +1,20 @@
 /**
- * The outdoor city scene: fly the helicopter, land it, walk around.
+ * The outdoor city scene.
  *
- * Renders the pure CityModel. Two looks, driven by model.mode:
- *  - flying:  top-down. The rectangular 3×3-block city scrolls beneath a
- *             centred helicopter. The ground is drawn with the ORIGINAL
- *             Lego-stud brushes (BRUSH*.BRH → lawn/street/water patterns,
- *             city.cpp draw_streets): screen-space tiling, pattern anchored to
- *             the world, with the brush tier switching by altitude exactly as
- *             `street_brush_id`/`lawn_brush_id` do (scale < 3 → tier 1, else
- *             tier 2; the side view uses tier 4).
- *  - landing + walking: the HORIZONTAL street view (sky / lawn strip / street,
- *             side-view house art). The copter sinks to the street; on
- *             touchdown it parks and the person walks with Tooly following.
+ * FLYING is now a faithful port: rendered through the `Camera` (camera.ts, a
+ * port of screen.cpp) in the original `city_coordinate` system, with the flight
+ * dynamics from CityModel (port of Programmer_City_Flying::react). Pointer/arrow
+ * deltas are converted to WORLD deltas via the camera, so panning covers more
+ * city when you're higher, climbing/descending doubles/halves the scale every
+ * ¾ s, and the heading eases via dampen_turn. Descend to the minimum → landing.
  *
- * INPUT is faithful to the original's RELATIVE_MOUSE_MODE (the default,
- * globals.cpp:729): click the city to capture the mouse (Pointer Lock, cursor
- * hidden — show_cursor(FALSE) in the original); raw mouse MOVEMENT then steers
- * directly, clamped per frame to the state's max speed via dampen_big_deltas:
- *   flying  2 screen-widths/sec; mouse pans (deltas scale with altitude),
- *           left button / ↓ descends, right button / Shift / ↑ climbs
- *   landing 3 screens/sec; mouse x drifts along the street, mouse y flies the
- *           copter up/down directly (prgrmmr.cpp:4338 y += delta_y)
- *   walking 1 screen/sec; mouse x walks
- * ARROW KEYS are the keyboard alternative (winmain.cpp read_arrow_keys): held
- * keys produce the same deltas, accelerating with hold duration; while flying,
- * ↑/↓ from the keyboard mean climb/descend (prgrmmr.cpp:4012).
+ * LANDING / WALKING / the room (`inside`) are still side-elevation views with
+ * their own screen scaling (`K_SIDE`/`DEPTH`); their faithful port is a later
+ * phase. The ground everywhere uses the original lego brushes (BRUSH*.BRH).
+ *
+ * Input is the original's RELATIVE_MOUSE_MODE: click to capture the mouse
+ * (Pointer Lock), then raw movement steers; arrow keys are the alternative,
+ * accelerating with hold duration. Left/Down descend, right/Shift/Up climb.
  */
 import * as PIXI from 'pixi.js';
 import type { Renderer } from '../view/renderer';
@@ -40,6 +30,7 @@ import {
   CITY_W,
   CITY_H,
 } from './city-model';
+import { Camera, GROUND_SCALE } from './camera';
 import { DirectionalSprite, type CityAssets } from './city-sprites';
 
 /** The scene calls back to the app to enter the room (a house / the grass) and
@@ -49,44 +40,47 @@ export interface CitySceneCallbacks {
   onEscape?: () => void;
 }
 
-const GROUND_PPU = 1.8; // screen px per city unit at scale 1 (top-down)
-const K_SIDE = 1.6; // screen px per city unit in the street view (horizontal)
-const DEPTH = 1.35; // screen px per city unit of walking *depth* (toward houses)
-const BRUSH_SCALE = 2; // the 8×8 brushes were drawn 1:1 at 640×480; we run ~2×
+const K_SIDE = 0.0085; // screen px per city unit, street side view (houses ~a lot apart)
+const DEPTH = 0.012; // screen px per city unit of walking depth (toward houses)
+const BRUSH_SCALE = 2; // the 8×8 lego brushes run ~2× (constant screen size)
+const HOUSE_UNITS = 24000; // a house-top's footprint in city units (≈ a lot width)
+const TREE_UNITS = 14000;
 const HELI_LAND_W = 560; // the landing/landed copter is BIG (near native art size)
 const WALK_BASE_FRAC = 0.86; // the walker's feet at street centre (fraction of H)
 
-// Max speeds in screen-widths/sec (dampen_big_deltas; prgrmmr.cpp ctors)
-const FLY_SCREENS_PER_S = 2; // "1/2 second to cross the screen"
-const LAND_SCREENS_PER_S = 3; // "1/3 second to cross the screen"
-const WALK_SCREENS_PER_S = 1; // "1 second to cross the screen"
-/** Held arrow keys ramp from this fraction of max speed to full over RAMP ms. */
-const KEY_RAMP_MS = 800;
+// Max pointer speeds in screen-widths/sec (dampen_big_deltas; prgrmmr.cpp ctors)
+const FLY_SCREENS_PER_S = 1.6;
+const LAND_SCREENS_PER_S = 3;
+const WALK_SCREENS_PER_S = 1;
+const KEY_RAMP_MS = 800; // held arrow keys ramp to full speed over this long
 const KEY_START_FRACTION = 0.3;
 
 export class CityScene {
   readonly container: PIXI.Container;
   readonly model: CityModel;
+  private readonly camera = new Camera();
 
-  // top-down ground: screen-space Lego-brush tiling, world-anchored pattern
+  // flying (top-down, drawn through the camera) — screen-space lego brush tiles
   private readonly waterTile: PIXI.TilingSprite;
   private readonly lawnTile: PIXI.TilingSprite;
   private readonly streetTilesV: PIXI.TilingSprite[] = [];
   private readonly streetTilesH: PIXI.TilingSprite[] = [];
-  private groundTier: '1' | '2' = '1';
-  private readonly decor: PIXI.Container; // houses (top art) + trees, world units
+  private groundTier: '1' | '2' | '4' = '4';
+  private readonly flyDecor: PIXI.Container; // house-top + tree sprites
+  private readonly flyHouses: PIXI.Sprite[] = [];
+  private readonly flyTrees: PIXI.Sprite[] = [];
 
-  // street view
+  // street view (landing + walking)
   private readonly sideLawnTile: PIXI.TilingSprite;
   private readonly sideStreetTile: PIXI.TilingSprite;
-  private readonly sideWorld: PIXI.Container; // houses (side art), parked heli, Tooly
+  private readonly sideWorld: PIXI.Container;
 
-  // room-interior view (standing in a house before sitting at the floor)
+  // room interior (standing before sitting)
   private readonly interior: PIXI.Container;
   private readonly floorTile: PIXI.TilingSprite;
-  private readonly wallStrip: PIXI.Sprite; // BACKWALL across the top
-  private readonly wallFill: PIXI.Graphics; // plain wall above the strip
-  private readonly doorSprite: PIXI.Sprite; // ROOMDOOR — the way out
+  private readonly wallStrip: PIXI.Sprite;
+  private readonly wallFill: PIXI.Graphics;
+  private readonly doorSprite: PIXI.Sprite;
 
   private readonly avatar: PIXI.Container;
   private readonly heliFly: DirectionalSprite;
@@ -94,22 +88,19 @@ export class CityScene {
   private readonly heliParked: PIXI.Sprite;
   private readonly person: DirectionalSprite;
   private readonly tooly: DirectionalSprite;
-  private toolyX = 0; // Tooly's own world x (trails the person, street view)
-  private toolyIX = 0.4; // Tooly's interior position (trails the person inside)
+  private toolyX = 0;
+  private toolyIX = 0.4;
   private toolyIY = 0.8;
-  private personBaseScale = 1; // the walking person's natural scale (interior scales by depth)
+  private personBaseScale = 1;
 
   private active = false;
   private buttons = { left: false, right: false };
-  /** Held keys; `keyStart` records when each went down (for the speed ramp). */
   readonly keys = new Set<string>();
   private readonly keyStart = new Map<string, number>();
-  /** Accumulated relative mouse movement since the last frame (Pointer Lock). */
   private mouseDX = 0;
   private mouseDY = 0;
   private locked = false;
   private lockUnavailable = false;
-  /** True between boarding the parked copter and becoming airborne again. */
   private takingOff = false;
 
   constructor(
@@ -129,25 +120,36 @@ export class CityScene {
       return t;
     };
 
-    // --- top-down ground (screen-space) ---
-    this.waterTile = tile('water1');
-    this.lawnTile = tile('lawn1');
+    // flying ground
+    this.waterTile = tile('water4');
+    this.lawnTile = tile('lawn4');
     this.container.addChild(this.waterTile, this.lawnTile);
     for (let i = 0; i <= BLOCKS_X; i++) {
-      const s = tile('street1');
+      const s = tile('street4');
       this.streetTilesV.push(s);
       this.container.addChild(s);
     }
     for (let j = 0; j <= BLOCKS_Y; j++) {
-      const s = tile('street1');
+      const s = tile('street4');
       this.streetTilesH.push(s);
       this.container.addChild(s);
     }
-    this.decor = new PIXI.Container();
-    this.container.addChild(this.decor);
-    this.buildDecor();
+    this.flyDecor = new PIXI.Container();
+    this.container.addChild(this.flyDecor);
+    for (const h of this.model.houses) {
+      const s = new PIXI.Sprite(assets.houses[h.style] ?? assets.houses['b']!);
+      s.anchor.set(0.5, 0.5);
+      this.flyHouses.push(s);
+      this.flyDecor.addChild(s);
+    }
+    for (const _t of this.model.trees) {
+      const s = new PIXI.Sprite(assets.tree);
+      s.anchor.set(0.5, 0.85);
+      this.flyTrees.push(s);
+      this.flyDecor.addChild(s);
+    }
 
-    // --- street view ---
+    // street view
     this.sideLawnTile = tile('lawn4');
     this.sideStreetTile = tile('street4');
     this.sideLawnTile.visible = this.sideStreetTile.visible = false;
@@ -157,7 +159,7 @@ export class CityScene {
     this.container.addChild(this.sideWorld);
     this.buildSideWorld();
 
-    // --- room interior (standing view) ---
+    // room interior
     this.interior = new PIXI.Container();
     this.interior.visible = false;
     this.container.addChild(this.interior);
@@ -168,6 +170,7 @@ export class CityScene {
     this.doorSprite.anchor.set(0.5, 1);
     this.interior.addChild(this.wallFill, this.floorTile, this.wallStrip, this.doorSprite);
 
+    // avatar
     this.avatar = new PIXI.Container();
     this.container.addChild(this.avatar);
     this.heliFly = new DirectionalSprite(assets.heliFly, 70);
@@ -175,7 +178,7 @@ export class CityScene {
     this.person = new DirectionalSprite(assets.person, 95);
     this.tooly = new DirectionalSprite(assets.tooly, 110);
     fitHeight(this.heliFly.sprite, 130);
-    fitWidth(this.heliLand.sprite, HELI_LAND_W); // big when landing
+    fitWidth(this.heliLand.sprite, HELI_LAND_W);
     fitHeight(this.person.sprite, 116);
     this.personBaseScale = this.person.sprite.scale.x;
     fitHeight(this.tooly.sprite, 64);
@@ -185,10 +188,8 @@ export class CityScene {
     this.tooly.sprite.anchor.set(0.5, 1);
     this.heliParked = new PIXI.Sprite(assets.heliParked);
     this.heliParked.anchor.set(0.5, 1);
-    this.heliParked.scale.set(HELI_LAND_W / this.heliParked.texture.width); // big when landed
+    this.heliParked.scale.set(HELI_LAND_W / this.heliParked.texture.width);
     this.sideWorld.addChild(this.heliParked);
-    // Tooly + the person live in the avatar layer (screen space) so they show in
-    // both the street and the room; the avatar layer is positioned per mode.
     this.avatar.addChild(
       this.heliFly.sprite,
       this.heliLand.sprite,
@@ -197,23 +198,27 @@ export class CityScene {
     );
 
     renderer.app.stage.addChild(this.container);
+    this.attachInput();
+    renderer.app.ticker.add(this.tick);
+    this.syncModeVisibility();
+  }
 
-    // --- input: relative mouse (Pointer Lock) + buttons + arrow keys ---
-    const view = renderer.view;
-    renderer.app.stage.on('pointerdown', (e) => {
+  // --- input ----------------------------------------------------------------
+
+  private attachInput(): void {
+    const view = this.renderer.view;
+    this.renderer.app.stage.on('pointerdown', (e) => {
       if (!this.active) return;
-      // First click captures the mouse (the original's relative mouse mode
-      // hides the cursor); after that, clicks are the climb/descend buttons.
       if (!this.locked && !this.lockUnavailable) {
         const p = view.requestPointerLock?.() as unknown as Promise<void> | undefined;
         if (p && typeof p.catch === 'function') p.catch(() => (this.lockUnavailable = true));
         if (!view.requestPointerLock) this.lockUnavailable = true;
-        return; // swallow the capturing click
+        return;
       }
       if (e.button === 2) this.buttons.right = true;
       else this.buttons.left = true;
     });
-    renderer.app.stage.on('pointerup', () => {
+    this.renderer.app.stage.on('pointerup', () => {
       this.buttons.left = this.buttons.right = false;
     });
     view.addEventListener('mousemove', (e) => {
@@ -238,15 +243,15 @@ export class CityScene {
       if (e.key.toLowerCase() === 'h') this.model.callHelicopter();
       if (e.key === 'Escape') {
         if (this.model.mode === 'walking') {
-          if (this.locked) document.exitPointerLock?.(); // free the mouse for the menu
+          if (this.locked) document.exitPointerLock?.();
           this.cb.onEscape?.();
         } else if (this.model.mode === 'inside') {
-          this.model.leaveRoom(); // step back out to the street
+          this.model.leaveRoom();
         }
       }
       if (e.key.toLowerCase() === 's') {
-        if (this.model.mode === 'walking') this.cb.onEnter?.('grass'); // sit on the grass
-        else if (this.model.mode === 'inside') this.cb.onEnter?.('house', this.model.insideHouse ?? undefined); // sit at the floor
+        if (this.model.mode === 'walking') this.cb.onEnter?.('grass');
+        else if (this.model.mode === 'inside') this.cb.onEnter?.('house', this.model.insideHouse ?? undefined);
       }
     });
     window.addEventListener('keyup', (e) => {
@@ -256,9 +261,6 @@ export class CityScene {
     view.addEventListener('contextmenu', (ev) => {
       if (this.active) ev.preventDefault();
     });
-
-    renderer.app.ticker.add(this.tick);
-    this.syncModeVisibility();
   }
 
   setActive(on: boolean): void {
@@ -271,53 +273,25 @@ export class CityScene {
       if (this.locked) document.exitPointerLock?.();
     }
   }
-
   get isActive(): boolean {
     return this.active;
   }
-
-  /** Come back after sitting at the floor. If we entered a house we return to
-   * the room standing view (stepped back from the floor so we don't instantly
-   * re-sit, matching at_floor → stand up → room_walking); if we sat on the
-   * grass we return to the street. */
   resume(): void {
     this.takingOff = false;
-    if (this.model.mode === 'inside') this.model.iy = 0.72; // back off the floor front
+    if (this.model.mode === 'inside') this.model.iy = 0.72;
     else this.model.standUp();
     this.setActive(true);
   }
 
-  // --- build static worlds ---------------------------------------------------
+  // --- build ----------------------------------------------------------------
 
-  /** Top-down decor: the three houses (top art) + trees, in city units. */
-  private buildDecor(): void {
-    const HOUSE_UNITS = 210;
-    const TREE_UNITS = 120;
-    for (const h of this.model.houses) {
-      const tex = this.assets.houses[h.style] ?? this.assets.houses['b']!;
-      const s = new PIXI.Sprite(tex);
-      s.anchor.set(0.5, 0.5);
-      s.scale.set(HOUSE_UNITS / s.texture.width);
-      s.position.set(h.x, h.y);
-      this.decor.addChild(s);
-    }
-    for (const t of this.model.trees) {
-      const s = new PIXI.Sprite(this.assets.tree);
-      s.anchor.set(0.5, 0.85);
-      s.scale.set(TREE_UNITS / s.texture.width);
-      s.position.set(t.x, t.y);
-      this.decor.addChild(s);
-    }
-  }
-
-  /** Street view world: the houses with their side-view art, at world x. */
   private buildSideWorld(): void {
     for (const h of this.model.houses) {
       const tex = this.assets.houseSides[h.style];
       if (!tex) continue;
       const s = new PIXI.Sprite(tex);
-      s.anchor.set(0.5, 1); // baseline at the lawn/street boundary
-      s.position.set(h.x * K_SIDE, 0); // y per frame (screen-height bound)
+      s.anchor.set(0.5, 1);
+      s.position.set(h.x * K_SIDE, 0);
       this.sideWorld.addChild(s);
     }
   }
@@ -332,34 +306,30 @@ export class CityScene {
     return this.renderer.height * 0.92;
   }
 
-  // --- input helpers ----------------------------------------------------------
+  // --- input helpers --------------------------------------------------------
 
-  /** Speed fraction (0..1) for a held key: ramps up with hold duration. */
   private keyRamp(key: string): number {
     if (!this.keys.has(key)) return 0;
     let start = this.keyStart.get(key);
     if (start == null) {
-      start = performance.now(); // key injected externally (tools) — start now
+      start = performance.now();
       this.keyStart.set(key, start);
     }
     const held = performance.now() - start;
     return KEY_START_FRACTION + (1 - KEY_START_FRACTION) * Math.min(1, held / KEY_RAMP_MS);
   }
-
-  /** Per-frame horizontal input in *screen px*: mouse delta + arrows, clamped
-   * to the state's max speed (dampen_big_deltas). */
+  /** Horizontal pointer input in screen px (mouse + arrows), clamped to max speed. */
   private inputPxX(maxScreensPerS: number, dt: number): number {
     const W = this.renderer.width;
     const maxPx = (maxScreensPerS * W * dt) / 1000;
     const keyVx = (this.keyRamp('ArrowRight') - this.keyRamp('ArrowLeft')) * maxScreensPerS * W;
-    const px = this.mouseDX + (keyVx * dt) / 1000;
-    return clampAbs(px, maxPx);
+    return clampAbs(this.mouseDX + (keyVx * dt) / 1000, maxPx);
   }
-
   private inputPxY(maxScreensPerS: number, dt: number): number {
     const H = this.renderer.height;
     const maxPx = (maxScreensPerS * H * dt) / 1000;
-    return clampAbs(this.mouseDY, maxPx);
+    const keyVy = (this.keyRamp('ArrowDown') - this.keyRamp('ArrowUp')) * maxScreensPerS * H;
+    return clampAbs(this.mouseDY + (keyVy * dt) / 1000, maxPx);
   }
 
   // --- per-frame ------------------------------------------------------------
@@ -367,79 +337,63 @@ export class CityScene {
   private tick = (): void => {
     if (!this.active) return;
     const dt = this.renderer.app.ticker.deltaMS;
+    this.camera.setViewport(this.renderer.width, this.renderer.height);
 
     if (this.model.mode === 'flying') {
-      // Mouse pans; deltas are scaled by altitude inside model.fly (source:
-      // delta *= scale/ground_scale). Keyboard ↑/↓ mean climb/descend.
-      const up =
-        this.buttons.right ||
-        this.keys.has('ArrowUp') ||
-        this.keys.has('Shift');
+      const up = this.buttons.right || this.keys.has('ArrowUp') || this.keys.has('Shift');
       const down = this.buttons.left || this.keys.has('ArrowDown');
       const alt: -1 | 0 | 1 = up ? 1 : down ? -1 : 0;
-      const panX = this.inputPxX(FLY_SCREENS_PER_S, dt) / GROUND_PPU;
-      const panY = this.inputPxY(FLY_SCREENS_PER_S, dt) / GROUND_PPU;
+      // pointer px → world units (camera-scaled, so higher = covers more ground);
+      // mouse up (−screen y) is NORTH (+world y).
+      this.camera.set(this.model.cx, this.model.cy, this.model.scale);
+      const upp = this.camera.unitsPerPixel;
+      // arrow ↑/↓ are altitude only (prgrmmr.cpp: up/down arrows move in z, not
+      // y) — so vertical PAN comes from the mouse alone; ←/→ + mouse pan x.
+      const maxPxY = (FLY_SCREENS_PER_S * this.renderer.height * dt) / 1000;
+      const panX = this.inputPxX(FLY_SCREENS_PER_S, dt) * upp;
+      const panY = -clampAbs(this.mouseDY, maxPxY) * upp;
       this.model.fly(panX, panY, alt, dt);
       this.heliFly.setDirection(this.model.dir);
-      this.heliFly.update(dt, true); // rotor always spins
-      const after = this.model.mode as CityMode; // fly() may have switched modes
-      if (after === 'landing') this.toolyX = this.model.cx - 130; // pre-seat Tooly
+      this.heliFly.update(dt, true);
+      if ((this.model.mode as CityMode) === 'landing') this.toolyX = this.model.cx - BLOCK_W * 0.03;
     } else if (this.model.mode === 'landing') {
-      // After boarding the parked copter we auto-climb until airborne.
       const up = this.takingOff || this.buttons.right || this.keys.has('ArrowUp');
       const down = !this.takingOff && (this.buttons.left || this.keys.has('ArrowDown'));
       const dir: -1 | 0 | 1 = up ? 1 : down ? -1 : 0;
       const drift = this.takingOff ? 0 : this.inputPxX(LAND_SCREENS_PER_S, dt) / K_SIDE;
-      // Mouse y flies the copter directly (prgrmmr.cpp:4338 — y += delta_y).
-      const descentPx = this.heliBaseY() - this.renderer.height * 0.3;
+      const descentPx = this.heliBaseY() - this.renderer.height * 0.18;
       const dLandY = this.takingOff ? 0 : -this.inputPxY(LAND_SCREENS_PER_S, dt) / descentPx;
       this.model.land(dir, dt, drift, dLandY);
       this.heliLand.update(dt, true);
-      if ((this.model.mode as CityMode) === 'flying') this.takingOff = false; // airborne
+      if ((this.model.mode as CityMode) === 'flying') this.takingOff = false;
     } else if (this.model.mode === 'walking') {
-      // walking the street (side view) — fully 8-directional
       const px = this.inputPxX(WALK_SCREENS_PER_S, dt);
-      const keyVy = (this.keyRamp('ArrowDown') - this.keyRamp('ArrowUp')) * WALK_SCREENS_PER_S;
-      const pyMax = (WALK_SCREENS_PER_S * this.renderer.height * dt) / 1000;
-      const py = clampAbs(this.mouseDY + (keyVy * this.renderer.height * dt) / 1000, pyMax);
-      this.model.walk(px / K_SIDE, py / DEPTH);
-      this.person.setDirection(this.model.dir);
-      this.person.update(dt, Math.abs(px) > 0.4 || Math.abs(py) > 0.4);
-
-      // Walked into the parked copter → take off. Walked up to a door → step
-      // into the room (the standing view) before sitting at the floor.
-      if (this.model.boardHelicopter()) {
-        this.takingOff = true;
-      } else {
-        this.model.enterHouse();
-      }
-
-      // Tooly trails the walker: eases toward a point just behind them.
-      const behind = this.model.dir >= 5 || this.model.dir === 0 ? -110 : 110;
-      const target = this.model.cx + behind;
-      const step = (target - this.toolyX) * Math.min(1, dt / 280);
-      this.toolyX += step;
-      this.tooly.setDirection(step > 0 ? 0 : 4);
-      this.tooly.update(dt, Math.abs(step) > 0.25);
-    }
-    // Standing in the room: walk around, then sit at the floor or leave.
-    if (this.model.mode === 'inside') {
-      const px = this.inputPxX(WALK_SCREENS_PER_S, dt);
-      const keyVy = (this.keyRamp('ArrowDown') - this.keyRamp('ArrowUp')) * WALK_SCREENS_PER_S;
-      const py = this.mouseDY + (keyVy * this.renderer.height * dt) / 1000;
+      const py = this.inputPxY(WALK_SCREENS_PER_S, dt);
       const moving = Math.abs(px) > 0.4 || Math.abs(py) > 0.4;
-      // interior coords are normalised; convert screen px → 0..1 over the room
+      this.model.walk(px / K_SIDE, -py / DEPTH); // mouse up = north (+y)
+      this.person.setDirection(this.model.dir);
+      this.person.update(dt, moving);
+      if (this.model.boardHelicopter()) this.takingOff = true;
+      else this.model.enterHouse();
+      const behind = this.model.dir >= 5 || this.model.dir === 0 ? -BLOCK_W * 0.025 : BLOCK_W * 0.025;
+      const target = this.model.cx + behind;
+      this.toolyX += (target - this.toolyX) * Math.min(1, dt / 280);
+      this.tooly.setDirection(this.toolyX < target ? 0 : 4);
+      this.tooly.update(dt, moving);
+    } else {
+      // inside (room standing)
+      const px = this.inputPxX(WALK_SCREENS_PER_S, dt);
+      const py = this.inputPxY(WALK_SCREENS_PER_S, dt);
+      const moving = Math.abs(px) > 0.4 || Math.abs(py) > 0.4;
       const result = this.model.walkInside(px / (this.renderer.width * 0.7), py / (this.renderer.height * 0.6));
       this.person.setDirection(this.model.dir);
       this.person.update(dt, moving);
-      // Tooly trails in interior space too.
       const tb = this.model.dir >= 5 || this.model.dir === 0 ? -0.08 : 0.08;
       this.toolyIX += (this.model.ix + tb - this.toolyIX) * Math.min(1, dt / 280);
       this.toolyIY += (this.model.iy - this.toolyIY) * Math.min(1, dt / 280);
       this.tooly.setDirection(this.model.dir);
       this.tooly.update(dt, moving);
       if (result === 'sit') this.cb.onEnter?.('house', this.model.insideHouse ?? undefined);
-      // 'leave' already flipped the model back to 'walking'; nothing to do.
     }
 
     this.mouseDX = 0;
@@ -457,7 +411,7 @@ export class CityScene {
     this.lawnTile.visible = flying;
     for (const s of this.streetTilesV) s.visible = flying;
     for (const s of this.streetTilesH) s.visible = flying;
-    this.decor.visible = flying;
+    this.flyDecor.visible = flying;
     this.sideLawnTile.visible = street;
     this.sideStreetTile.visible = street;
     this.sideWorld.visible = street;
@@ -465,144 +419,130 @@ export class CityScene {
     this.heliFly.sprite.visible = flying;
     this.heliLand.sprite.visible = m === 'landing';
     this.heliParked.visible = m === 'walking';
-    // the lego person + Tooly appear both on the street and in the room
     this.person.sprite.visible = m === 'walking' || inside;
     this.tooly.sprite.visible = m === 'walking' || inside;
-    // Tooly lives in sideWorld (street) but is repositioned to the avatar layer
-    // feel via render(); keep it parented to sideWorld and just toggle here.
   }
 
   private render(): void {
     const W = this.renderer.width;
     const H = this.renderer.height;
     const m = this.model;
+    if (m.mode === 'flying') this.renderFlying(W, H);
+    else if (m.mode === 'inside') this.renderInterior(W, H);
+    else this.renderStreet(W, H);
+  }
 
-    if (m.mode === 'flying') {
-      const k = GROUND_PPU / m.scale;
-      // brush tier switches with altitude (street_brush_id / lawn_brush_id)
-      const tier: '1' | '2' = m.scale < 3 ? '1' : '2';
-      if (tier !== this.groundTier) {
-        this.groundTier = tier;
-        this.waterTile.texture = this.assets.brushes[`water${tier}`]!;
-        this.lawnTile.texture = this.assets.brushes[`lawn${tier}`]!;
-        for (const s of [...this.streetTilesV, ...this.streetTilesH]) {
-          s.texture = this.assets.brushes[`street${tier}`]!;
-        }
-      }
-      // world origin in screen coords — the brush pattern is anchored to it
-      // (set_brush_origin in the original), so the ground scrolls under you
-      // while the stud size stays constant on screen.
-      const ox = W / 2 - m.cx * k;
-      const oy = H / 2 - m.cy * k;
+  /** Top-down flyover through the camera (faithful coords + projection). */
+  private renderFlying(W: number, H: number): void {
+    const cam = this.camera;
+    cam.set(this.model.cx, this.model.cy, this.model.scale);
 
-      this.waterTile.position.set(0, 0);
-      this.waterTile.width = W;
-      this.waterTile.height = H;
-      this.waterTile.tilePosition.set(ox, oy);
-
-      place(this.lawnTile, ox, oy, CITY_W * k, CITY_H * k, ox, oy);
-      for (let i = 0; i <= BLOCKS_X; i++) {
-        place(
-          this.streetTilesV[i]!,
-          ox + (i * BLOCK_W - STREET / 2) * k,
-          oy,
-          STREET * k,
-          CITY_H * k,
-          ox,
-          oy,
-        );
+    // brush tier by altitude (street_brush_id/lawn_brush_id: <3 t1, <6 t2, else t4)
+    const s = this.model.scale;
+    const tier: '1' | '2' | '4' = s < GROUND_SCALE * 3 ? '1' : s < GROUND_SCALE * 6 ? '2' : '4';
+    if (tier !== this.groundTier) {
+      this.groundTier = tier;
+      this.waterTile.texture = this.assets.brushes[`water${tier}`]!;
+      this.lawnTile.texture = this.assets.brushes[`lawn${tier}`]!;
+      for (const t of [...this.streetTilesV, ...this.streetTilesH]) {
+        t.texture = this.assets.brushes[`street${tier}`]!;
       }
-      for (let j = 0; j <= BLOCKS_Y; j++) {
-        place(
-          this.streetTilesH[j]!,
-          ox,
-          oy + (j * BLOCK_H - STREET / 2) * k,
-          CITY_W * k,
-          STREET * k,
-          ox,
-          oy,
-        );
-      }
-      this.decor.scale.set(k);
-      this.decor.position.set(ox, oy);
-      this.avatar.position.set(W / 2, H / 2);
-      return;
     }
 
-    if (m.mode === 'inside') {
-      this.renderInterior(W, H);
-      return;
+    const ox = cam.sx(0); // world origin in screen px — anchors the brush pattern
+    const oy = cam.sy(0);
+    // water fills the whole screen, behind the (smaller) city
+    this.waterTile.position.set(0, 0);
+    this.waterTile.width = W;
+    this.waterTile.height = H;
+    this.waterTile.tilePosition.set(ox, oy);
+
+    // lawn over the city rect (note +y north → screen top)
+    const x0 = cam.sx(0);
+    const x1 = cam.sx(CITY_W);
+    const yTop = cam.sy(CITY_H);
+    const yBot = cam.sy(0);
+    place(this.lawnTile, x0, yTop, x1 - x0, yBot - yTop, ox, oy);
+    const sw = cam.s(STREET);
+    for (let i = 0; i <= BLOCKS_X; i++) {
+      const vx = cam.sx(i * BLOCK_W);
+      place(this.streetTilesV[i]!, vx - sw / 2, yTop, sw, yBot - yTop, ox, oy);
+    }
+    for (let j = 0; j <= BLOCKS_Y; j++) {
+      const hy = cam.sy(j * BLOCK_H);
+      place(this.streetTilesH[j]!, x0, hy - sw / 2, x1 - x0, sw, ox, oy);
     }
 
-    // Street view: camera follows the copter (landing) / the walker (walking).
-    // The backdrop is the GREEN LEGO lawn brush (the original front view clears
-    // with the lawn brush — no blue sky), with the street brush at the bottom.
+    // house tops + trees, projected individually
+    this.flyDecor.position.set(0, 0);
+    this.flyDecor.scale.set(1);
+    this.model.houses.forEach((h, i) => {
+      const spr = this.flyHouses[i]!;
+      spr.position.set(cam.sx(h.x), cam.sy(h.y));
+      spr.scale.set(cam.s(HOUSE_UNITS) / spr.texture.width);
+    });
+    this.model.trees.forEach((t, i) => {
+      const spr = this.flyTrees[i]!;
+      spr.position.set(cam.sx(t.x), cam.sy(t.y));
+      spr.scale.set(cam.s(TREE_UNITS) / spr.texture.width);
+    });
+
+    this.avatar.position.set(0, 0);
+    this.heliFly.sprite.position.set(W / 2, H / 2);
+  }
+
+  /** Side-elevation street view (landing + walking). */
+  private renderStreet(W: number, H: number): void {
+    const m = this.model;
     const streetTop = this.streetTop();
-    const camX = W / 2 - m.cx * K_SIDE; // world-origin screen x
-
-    place(this.sideLawnTile, 0, 0, W, streetTop, camX, 0); // green lego backdrop
+    const camX = W / 2 - m.cx * K_SIDE;
+    place(this.sideLawnTile, 0, 0, W, streetTop, camX, 0);
     place(this.sideStreetTile, 0, streetTop, W, H - streetTop, camX, 0);
-
     this.sideWorld.position.set(camX, 0);
     for (const child of this.sideWorld.children) {
       if (child === this.heliParked) child.y = this.heliBaseY();
-      else child.y = streetTop + 6; // houses stand on the lawn/street line
+      else child.y = streetTop + 6;
     }
     this.heliParked.x = m.landX * K_SIDE;
-    this.avatar.position.set(0, 0); // screen space
+    this.avatar.position.set(0, 0);
     this.tooly.sprite.position.set(camX + this.toolyX * K_SIDE, this.walkBaseY());
 
     if (m.mode === 'landing') {
-      // The copter descends at the camera centre: landY 1 = near the top,
-      // 0 = on the street. (Bottom-anchored, so y is where its skids are.)
       const topY = H * 0.18;
-      this.heliLand.sprite.position.set(
-        W / 2,
-        topY + (1 - Math.min(m.landY, 1)) * (this.heliBaseY() - topY),
-      );
-      this.avatar.position.set(0, 0);
+      this.heliLand.sprite.position.set(W / 2, topY + (1 - Math.min(m.landY, 1)) * (this.heliBaseY() - topY));
     } else {
-      // walking: the person is screen-centred horizontally; vertical position
-      // reflects how far they've walked toward the houses (depth).
-      const depthY = (m.cy - m.streetY) * DEPTH;
-      this.person.sprite.scale.set(this.personBaseScale); // undo interior perspective
+      // walking: +y north → up the screen
+      const depthY = -(m.cy - m.streetY) * DEPTH;
+      this.person.sprite.scale.set(this.personBaseScale);
       this.person.sprite.position.set(W / 2, this.walkBaseY() + depthY);
-      this.avatar.position.set(0, 0);
     }
   }
 
-  /** The room you stand in after entering a house (Programmer_Room_Walking):
-   * the floor baseplate (by house style) with a back wall and the door. You
-   * walk here, then walk to the front of the floor (or click/key) to sit. */
+  /** The room you stand in after entering a house, before sitting at the floor. */
   private renderInterior(W: number, H: number): void {
     const m = this.model;
-    const wallBottom = H * 0.3; // floor starts here
-    // back wall: a plain band with the BACKWALL strip along its foot
+    const wallBottom = H * 0.3;
     this.wallFill.clear();
-    this.wallFill.beginFill(0x6b5240); // warm wall colour behind the strip
+    this.wallFill.beginFill(0x6b5240);
     this.wallFill.drawRect(0, 0, W, wallBottom);
     this.wallFill.endFill();
     this.wallStrip.texture = this.assets.backwall;
     this.wallStrip.width = W;
     this.wallStrip.height = 40;
     this.wallStrip.position.set(0, wallBottom - 40);
-    // floor: the lego baseplate (by style), tiled across the lower area
     const style = m.insideHouse?.style ?? 'a';
     this.floorTile.texture = this.assets.floors[style] ?? this.assets.floors['a']!;
     this.floorTile.tileScale.set(0.6);
     this.floorTile.position.set(0, wallBottom);
     this.floorTile.width = W;
     this.floorTile.height = H - wallBottom;
-    // door (the way out) on the right wall
     this.doorSprite.height = wallBottom * 0.92;
     this.doorSprite.scale.x = this.doorSprite.scale.y;
     this.doorSprite.position.set(W * 0.9, wallBottom + 6);
 
-    // map interior coords → screen; a little perspective scaling by depth
     const sx = (ix: number): number => W * 0.12 + ix * W * 0.76;
     const sy = (iy: number): number => wallBottom + 20 + iy * (H * 0.92 - (wallBottom + 20));
     const depthScale = (iy: number): number => 0.82 + iy * 0.3;
-
     this.avatar.position.set(0, 0);
     this.person.sprite.position.set(sx(m.ix), sy(m.iy));
     this.person.sprite.scale.set(this.personBaseScale * depthScale(m.iy));
@@ -616,7 +556,7 @@ export class CityScene {
 }
 
 /** Position a screen-space tiling sprite, keeping its pattern anchored to the
- * world origin at (ox, oy) — tilePosition is relative to the sprite's corner. */
+ * world origin at (ox, oy). */
 function place(
   t: PIXI.TilingSprite,
   x: number,
@@ -635,7 +575,6 @@ function place(
 function clampAbs(v: number, max: number): number {
   return v > max ? max : v < -max ? -max : v;
 }
-
 function fitHeight(s: PIXI.Sprite, px: number): void {
   s.scale.set(px / s.texture.height);
 }

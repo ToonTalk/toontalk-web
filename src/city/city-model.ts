@@ -1,63 +1,51 @@
 /**
- * The ToonTalk city — pure model (no rendering).
+ * The ToonTalk city — pure model, ported to the ORIGINAL coordinate system
+ * (constant.h / globals.cpp / block.cpp) so the camera (camera.ts) and the
+ * flight dynamics match source/prgrmmr.cpp rather than approximating them.
  *
- * Faithful to the original C++ outdoor "programmer" state machine
- * (source/prgrmmr.cpp: Programmer_City_Flying / _Landing / _Walking) and the
- * city itself (source/city.cpp):
- *  - the default city is 3×3 blocks ("small enough that it's hard to get lost
- *    exploring", city.cpp:91), each block wider than tall, so the city reads
- *    as a rectangle;
- *  - `build_initial_houses` builds exactly THREE houses, on consecutive lots
- *    of the centre block, styles cycling A, B, C (city.cpp:178-216).
- *
- * You FLY the helicopter top-down (zoomed out by `scale`); descend to the
- * minimum and the view switches to the HORIZONTAL street view: the helicopter
- * (side-view art) sinks toward the street. On touchdown the copter parks and
- * you WALK the street — still in the side view — with Tooly the toolbox
- * following. Pressing the call-helicopter key flies again.
- *
- * Units are abstract "city units"; the view maps them to pixels. `scale` is the
- * flying zoom: 1 = on the ground, higher = higher up / more zoomed out.
+ * Units are `city_coordinate`. +y is NORTH (up), matching utils.cpp direction().
+ * Flying is a faithful port of Programmer_City_Flying::react (scale grows/shrinks
+ * ¾ s to double/halve, pan deltas already altitude-scaled by the camera, heading
+ * eased with dampen_turn, descend to the minimum → land). Landing / walking /
+ * inside keep their prior logic for now (rescaled to real units) — they get the
+ * same faithful-port treatment in later phases.
  */
+import { IDEAL_W, GROUND_SCALE } from './camera';
 
-/** 8 compass headings, in the original's Direction enum order (cycle index). */
+/** 8 compass headings in the original's Direction enum order. */
 export type Direction = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7; // E,SE,S,SW,W,NW,N,NE
-// flying/landing/walking are outdoors; 'inside' is standing in a house's room
-// (Programmer_Room_Walking) — you walk here before sitting down at the floor.
 export type CityMode = 'flying' | 'landing' | 'walking' | 'inside';
 export type HouseStyle = 'a' | 'b' | 'c';
 
-// --- city geometry (rectangular: 4:3 blocks, 3×3 of them) -----------------
-export const BLOCKS_X = 3;
+// --- city geometry (globals.cpp / block.cpp) -------------------------------
+export const TILE_W = 1600; // constant.h tile_width
+export const TILE_H = 1200; // constant.h tile_height
+export const BLOCK_W = 4 * IDEAL_W; // globals.cpp tt_default_block_width = 4·ideal_w = 128000
+export const BLOCK_H = IDEAL_W; // block.cpp ideal_block_height = ideal_screen_width = 32000
+export const HOUSES_PER_BLOCK = 4; // globals.cpp tt_houses_to_a_block
+export const BLOCKS_X = 3; // default tt_city_size
 export const BLOCKS_Y = 3;
-export const BLOCK_W = 800; // city units
-export const BLOCK_H = 600;
-export const STREET = 80; // street width drawn on block boundaries
-export const CITY_W = BLOCKS_X * BLOCK_W; // 2400
-export const CITY_H = BLOCKS_Y * BLOCK_H; // 1800
+export const CITY_W = BLOCKS_X * BLOCK_W;
+export const CITY_H = BLOCKS_Y * BLOCK_H;
+export const STREET = 4 * TILE_W; // drawn street width (≈ a lane)
 
-// --- flying altitude (scale) ----------------------------------------------
-export const GROUND_SCALE = 1; // 1:1, on the ground
-export const MIN_FLYING_SCALE = 1.25; // descend to here → switch to the street view
-export const MAX_FLYING_SCALE = 4; // high enough to see the whole city
-export const START_SCALE = 2.5; // initial altitude when flying begins
-export const LIFTOFF_SCALE = 2; // altitude on takeoff (clear of the landing threshold)
-const SCALE_DOUBLE_MS = 750; // 3/4 second to double / halve (source)
+// --- flying altitude (prgrmmr.cpp) -----------------------------------------
+export { GROUND_SCALE };
+export const MIN_FLYING_SCALE = GROUND_SCALE; // tt_min_flying_scale = ground_scale → land
+export const INITIAL_SCALE = 10 * GROUND_SCALE; // constant.h initial_scale (1000)
+export const MAX_FLYING_SCALE = BLOCKS_X * 125 * HOUSES_PER_BLOCK; // prgrmmr.cpp max_scale (1500)
+export const LIFTOFF_SCALE = 3 * GROUND_SCALE; // climb clear of the landing threshold on takeoff
+const SCALE_DOUBLE_MS = 750; // ¾ s to double / halve (prgrmmr.cpp grow_value/shrink_value)
 
-// --- landing (normalized helicopter height: 1 = top of view, 0 = street) --
-const LAND_SPEED_PER_S = 0.9; // fraction of the descent per second under power
-
-// --- walking (the street view is walkable in BOTH axes) ---------------------
-/** How far north of the street centre you can walk (up to the house fronts). */
-export const WALK_BAND_N = 95;
-/** How far south (down the street, toward the viewer). */
-export const WALK_BAND_S = 45;
-/** Walking this far north while in front of a house door enters it. */
-export const ENTER_DEPTH = 80;
-/** Horizontal reach of a house's door / of the parked copter's cabin. */
-export const DOOR_REACH = 60;
+// --- walking / room (rescaled; faithful port lands in later phases) --------
+export const WALK_BAND_N = 8 * TILE_H; // depth north toward the house fronts
+export const WALK_BAND_S = 4 * TILE_H; // depth south toward the viewer
+export const ENTER_DEPTH = 6 * TILE_H; // walk this far north at a door → enter
+export const DOOR_REACH = 8 * TILE_W; // horizontal reach of a door / the copter
 
 export interface House {
+  bx: number;
+  lot: number;
   x: number; // city-unit centre of the lot
   y: number;
   style: HouseStyle;
@@ -67,61 +55,76 @@ export interface Tree {
   y: number;
 }
 
-/** Compass heading (0..7) for a movement delta, or null if not moving. */
+/** utils.cpp direction(): compass heading 0..7 for a delta (+y = NORTH), or null. */
 export function directionFromDelta(dx: number, dy: number): Direction | null {
   if (dx === 0 && dy === 0) return null;
-  // Screen coords: +x East, +y South. atan2 grows clockwise from East, matching
-  // the enum order E,SE,S,SW,W,NW,N,NE.
-  const a = Math.atan2(dy, dx); // -PI..PI
-  const sector = ((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8;
-  return sector as Direction;
+  if (dx === 0) return (dy > 0 ? 6 : 2) as Direction; // N / S
+  let r = (dy * 1000) / dx;
+  if (r < 0) r = -r;
+  if (r > 2414) return (dy > 0 ? 6 : 2) as Direction; // > 67.5° → N / S
+  if (r > 414) {
+    // 22.5°–67.5° → a diagonal
+    if (dy > 0) return (dx > 0 ? 7 : 5) as Direction; // NE / NW
+    return (dx > 0 ? 1 : 3) as Direction; // SE / SW
+  }
+  return (dx > 0 ? 0 : 4) as Direction; // E / W
 }
 
-/** Grow (dir>0) or shrink (dir<0) the flying altitude over dt ms; clamped. */
-export function nextScale(scale: number, dir: -1 | 0 | 1, dtMs: number): number {
-  if (dir === 0) return scale;
-  const ms = Math.min(dtMs, SCALE_DOUBLE_MS); // limit a single huge step
-  const factor = Math.pow(2, (dir * ms) / SCALE_DOUBLE_MS);
-  const next = scale * factor;
-  return Math.max(MIN_FLYING_SCALE, Math.min(MAX_FLYING_SCALE, next));
+/** utils.cpp dampen_turn(): step the heading one of 8 toward the target, the
+ * short way around — so the helicopter rotates gradually, never snaps. */
+export function dampenTurn(target: Direction, current: Direction): Direction {
+  let c: number = current;
+  if (current < target) c = target - current < 4 ? c + 1 : c - 1;
+  else if (current > target) c = current - target < 4 ? c - 1 : c + 1;
+  return (((c % 8) + 8) % 8) as Direction;
 }
 
-/** Has the copter descended to the street-view threshold? */
-export function shouldLand(scale: number): boolean {
-  return scale <= MIN_FLYING_SCALE;
+/** grow_value/shrink_value: v doubles/halves every `doubleEvery` ms. */
+export function growValue(v: number, dtMs: number, doubleEvery = SCALE_DOUBLE_MS): number {
+  return v * Math.pow(2, dtMs / doubleEvery);
+}
+export function shrinkValue(v: number, dtMs: number, doubleEvery = SCALE_DOUBLE_MS): number {
+  return v * Math.pow(2, -dtMs / doubleEvery);
 }
 
 export function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-/** The horizontal street (block boundary y) nearest to a city y. */
+/** The horizontal block-boundary (street) y nearest a city y. */
 export function nearestStreetY(cy: number): number {
   return clamp(Math.round(cy / BLOCK_H), 0, BLOCKS_Y) * BLOCK_H;
 }
 
+/** block.cpp Block::city_location — the centre of lot `i` (0..3) in block `bx`. */
+export function lotX(bx: number, i: number): number {
+  return bx * BLOCK_W + ((i + 1) * BLOCK_W) / (HOUSES_PER_BLOCK + 1) + BLOCK_W / 30;
+}
+export function lotY(by: number): number {
+  return by * BLOCK_H + (2 * BLOCK_H) / 3;
+}
+
 /**
- * Build the city the original starts with: THREE houses on consecutive lots of
- * the centre block (styles A, B, C — build_initial_houses), facing the street
- * below them. Trees are a web extra (not in the original city) — off by
- * default, opt in with `withTrees`.
+ * city.cpp build_initial_houses: THREE houses, consecutive lots of the centre
+ * block, styles cycling A,B,C. Trees are a web extra — off by default.
  */
 export function buildCity(withTrees = false): { houses: House[]; trees: Tree[] } {
   const styles: HouseStyle[] = ['a', 'b', 'c'];
-  const bx = Math.floor(BLOCKS_X / 2); // centre block
+  const bx = Math.floor(BLOCKS_X / 2);
   const by = Math.floor(BLOCKS_Y / 2);
   const houses: House[] = styles.map((style, i) => ({
-    x: bx * BLOCK_W + ((i + 0.5) * BLOCK_W) / 3,
-    y: by * BLOCK_H + BLOCK_H * 0.62, // near the block's south edge → front street
+    bx,
+    lot: i,
+    x: lotX(bx, i),
+    y: lotY(by),
     style,
   }));
   const trees: Tree[] = withTrees
     ? [
-        { x: 0.4 * BLOCK_W, y: 0.5 * BLOCK_H },
-        { x: 2.5 * BLOCK_W, y: 0.4 * BLOCK_H },
-        { x: 0.55 * BLOCK_W, y: 2.45 * BLOCK_H },
-        { x: 2.4 * BLOCK_W, y: 2.6 * BLOCK_H },
-        { x: 1.2 * BLOCK_W, y: 2.5 * BLOCK_H },
+        { x: lotX(0, 1), y: lotY(0) },
+        { x: lotX(2, 2), y: lotY(0) },
+        { x: lotX(0, 2), y: lotY(2) },
+        { x: lotX(2, 1), y: lotY(2) },
       ]
     : [];
   return { houses, trees };
@@ -129,20 +132,18 @@ export function buildCity(withTrees = false): { houses: House[]; trees: Tree[] }
 
 export class CityModel {
   mode: CityMode = 'flying';
-  /** World position the avatar is over / at (city units). */
+  /** Camera/avatar centre in city units (+y north). */
   cx = CITY_W / 2;
   cy = CITY_H / 2;
-  scale = START_SCALE;
+  scale = INITIAL_SCALE;
   dir: Direction = 0;
+  /** Reorient only after travelling a tile (prgrmmr minimum_distance_to_reorient). */
+  private minReorient = TILE_W;
   /** Normalized helicopter height while landing: 1 = top of view, 0 = street. */
   landY = 1;
-  /** The horizontal street the copter is landing on / the walker stands on. */
   streetY = nearestStreetY(CITY_H / 2);
-  /** Where the helicopter parked (world x) — it stays there while you walk. */
   landX = CITY_W / 2;
-  /** The house whose room you're standing in ('inside' mode), or null. */
   insideHouse: House | null = null;
-  /** Interior position, normalised: ix 0..1 left→right, iy 0..1 back→front. */
   ix = 0.5;
   iy = 0.8;
   readonly houses: House[];
@@ -154,18 +155,29 @@ export class CityModel {
     this.trees = c.trees;
   }
 
-  /** Flying: pan by a screen delta (scaled by altitude) and climb/descend. */
+  /**
+   * Flying — port of Programmer_City_Flying::react. `panX`/`panY` are WORLD
+   * deltas (the scene converts mouse pixels → world via the camera, so they are
+   * already altitude-scaled). `altitude` +1 climbs (scale grows), -1 descends.
+   */
   fly(panX: number, panY: number, altitude: -1 | 0 | 1, dtMs: number): void {
     if (this.mode !== 'flying') return;
-    const d = directionFromDelta(panX, panY);
-    if (d != null) this.dir = d;
-    // pan distance grows with altitude (source: delta *= scale/ground_scale)
-    this.cx = clamp(this.cx + panX * this.scale, 0, CITY_W);
-    this.cy = clamp(this.cy + panY * this.scale, 0, CITY_H);
-    this.scale = nextScale(this.scale, altitude, dtMs);
-    if (shouldLand(this.scale)) {
-      // Switch to the horizontal street view: snap to the nearest street and
-      // start the copter near the top of the view (Programmer_City_Landing).
+    const dt = Math.min(dtMs, SCALE_DOUBLE_MS); // limit a single huge step
+    if (altitude > 0) this.scale = Math.min(MAX_FLYING_SCALE, growValue(this.scale, dt));
+    else if (altitude < 0) this.scale = Math.max(MIN_FLYING_SCALE, shrinkValue(this.scale, dt));
+
+    if (panX !== 0 || panY !== 0) {
+      this.minReorient -= Math.abs(panX) + Math.abs(panY);
+      if (this.minReorient < 0) {
+        this.minReorient = TILE_W;
+        const nd = directionFromDelta(panX, panY);
+        if (nd != null) this.dir = dampenTurn(nd, this.dir);
+      }
+      this.cx = clamp(this.cx + panX, 0, CITY_W);
+      this.cy = clamp(this.cy + panY, 0, CITY_H);
+    }
+
+    if (this.scale <= MIN_FLYING_SCALE) {
       this.mode = 'landing';
       this.scale = GROUND_SCALE;
       this.landY = 1;
@@ -175,20 +187,11 @@ export class CityModel {
     }
   }
 
-  /**
-   * Landing (side view): raise/lower the copter (dir +1 up, -1 down) over dt,
-   * optionally drifting along the street (`driftX`, city units — the original
-   * scrolls its min_x/max_x window as you drift, prgrmmr.cpp:4350). `dLandY`
-   * adds direct height change (mouse-driven, on top of the held direction).
-   * Rising past the top returns to flying; touching the street parks the
-   * copter (at landX) and steps out to walking.
-   */
   land(dir: -1 | 0 | 1, dtMs: number, driftX = 0, dLandY = 0): void {
     if (this.mode !== 'landing') return;
     if (driftX !== 0) this.cx = clamp(this.cx + driftX, 0, CITY_W);
-    this.landY = this.landY + dir * LAND_SPEED_PER_S * (dtMs / 1000) + dLandY;
+    this.landY = this.landY + dir * 0.9 * (dtMs / 1000) + dLandY;
     if (this.landY > 1 && dir >= 0 && dLandY > 0) {
-      // mouse-flown past the top → airborne again
       this.mode = 'flying';
       this.scale = LIFTOFF_SCALE;
       this.landY = 1;
@@ -197,64 +200,45 @@ export class CityModel {
     this.landY = Math.min(this.landY, 1.05);
     if (this.landY >= 1 && dir > 0) {
       this.mode = 'flying';
-      this.scale = LIFTOFF_SCALE; // climb clear of the landing threshold
+      this.scale = LIFTOFF_SCALE;
       this.landY = 1;
     } else if (this.landY <= 0) {
       this.landY = 0;
-      this.landX = this.cx; // the copter parks here
-      this.cx = clamp(this.landX + 70, 0, CITY_W); // step out beside the door
+      this.landX = this.cx;
+      this.cx = clamp(this.landX + DOOR_REACH, 0, CITY_W);
       this.mode = 'walking';
     }
   }
 
-  /**
-   * Walking (street view): step in BOTH axes (the original walker is fully
-   * 8-directional — Programmer_City_Walking). `dy` > 0 is south (toward the
-   * viewer); north is clamped at the house fronts, south at the street edge.
-   */
   walk(dx: number, dy = 0): void {
     if (this.mode !== 'walking' || (dx === 0 && dy === 0)) return;
     const d = directionFromDelta(dx, dy);
     if (d != null) this.dir = d;
     this.cx = clamp(this.cx + dx, 0, CITY_W);
-    this.cy = clamp(this.cy + dy, this.streetY - WALK_BAND_N, this.streetY + WALK_BAND_S);
+    // +y is north (toward the house fronts); south (toward the viewer) is -y.
+    this.cy = clamp(this.cy + dy, this.streetY - WALK_BAND_S, this.streetY + WALK_BAND_N);
   }
 
-  /**
-   * The house whose door the walker has walked up to (deep enough north and
-   * within the door's reach), or null.
-   */
   enterableHouse(): House | null {
     if (this.mode !== 'walking') return null;
-    if (this.cy > this.streetY - ENTER_DEPTH) return null;
+    if (this.cy - this.streetY < ENTER_DEPTH) return null; // walked north up to the doors
     return this.houses.find((h) => Math.abs(this.cx - h.x) <= DOOR_REACH) ?? null;
   }
 
-  /**
-   * Walk up to a door → step INTO the room (the standing view), where you walk
-   * around before sitting at the floor (Programmer_Room_Walking). Returns
-   * whether we entered.
-   */
   enterHouse(): boolean {
     const h = this.enterableHouse();
     if (!h) return false;
     this.insideHouse = h;
     this.ix = 0.5;
-    this.iy = 0.78; // just inside, near the door at the front
-    this.dir = 6; // facing into the room (north)
+    this.iy = 0.78;
+    this.dir = 6;
     this.mode = 'inside';
     return true;
   }
 
-  /**
-   * Walk around inside the room. Returns 'leave' (reached a side wall → back
-   * out to the street), 'sit' (reached the front of the floor → sit down), or
-   * null. (source Programmer_Room_Walking::react: side edge → LEAVING_ROOM,
-   * front/bottom → SITTING_DOWN.)
-   */
   walkInside(dx: number, dy: number): 'leave' | 'sit' | null {
     if (this.mode !== 'inside') return null;
-    const d = directionFromDelta(dx, dy);
+    const d = directionFromDelta(dx, -dy); // screen-down dy → south
     if (d != null) this.dir = d;
     this.ix += dx;
     this.iy += dy;
@@ -266,7 +250,6 @@ export class CityModel {
     return this.iy >= 1 ? 'sit' : null;
   }
 
-  /** Leave the room back to the street, at the house we came in from. */
   leaveRoom(): void {
     if (this.mode !== 'inside') return;
     const h = this.insideHouse;
@@ -279,15 +262,11 @@ export class CityModel {
     }
   }
 
-  /**
-   * Walking into the parked copter boards it and starts the take-off: back to
-   * the landing state, just off the ground (the scene auto-rises briefly).
-   * Returns whether boarding happened.
-   */
+  /** Walk into the parked copter (down by the street) → board & take off. */
   boardHelicopter(): boolean {
     if (this.mode !== 'walking') return false;
     if (Math.abs(this.cx - this.landX) > DOOR_REACH) return false;
-    if (this.cy < this.streetY - 40) return false; // up at the houses, not at the copter
+    if (this.cy - this.streetY > WALK_BAND_N * 0.5) return false; // up at the houses, not the copter
     this.cx = this.landX;
     this.cy = this.streetY;
     this.landY = 0.05;
@@ -295,13 +274,11 @@ export class CityModel {
     return true;
   }
 
-  /** Return to the street after a sit / house visit, clear of any doorway. */
   standUp(): void {
     if (this.mode !== 'walking') return;
-    this.cy = this.streetY; // back on the street centreline
+    this.cy = this.streetY;
   }
 
-  /** Walking → call the helicopter back and fly again (source: NEED_HELICOPTER). */
   callHelicopter(): void {
     if (this.mode !== 'walking') return;
     this.mode = 'flying';
