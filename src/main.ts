@@ -526,7 +526,7 @@ async function start(): Promise<void> {
   // main notebook starts with a single welcome page.
   function seedMainNotebook(): Notebook {
     const nb = new Notebook({ x: 500, y: 600, isMain: true });
-    nb.store(new TextThing({ value: 'My ToonTalk notebook' }));
+    nb.store(new TextThing({ value: 'Pictures' })); // the original opens to its "Pictures" page
     return nb;
   }
   function installMainNotebook(): Notebook {

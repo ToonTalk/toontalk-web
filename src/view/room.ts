@@ -206,18 +206,19 @@ export class Room {
     toolbox.position.set(W - 170, 180);
     this.chrome.addChild(toolbox);
 
-    // The hand tools: the magic wand, Dusty the vacuum, and Pumpy the pump, in a
-    // row under the open tray — picking one pulls a fresh copy out at the cursor.
-    const tools: Array<[string, string]> = [
-      ['wand', 'C'],
-      ['dusty', 'S'],
-      ['pumpy', '+'],
+    // Opening Tooly SPILLS the hand tools out onto the floor around it (the wand,
+    // Dusty the vacuum, Pumpy the pump), as in the original — each is its own
+    // sprite at a tilt; picking one pulls a fresh copy out at the cursor.
+    const spill: Array<[string, string, number, number, number]> = [
+      ['wand', 'C', W - 250, 360, -0.25],
+      ['dusty', 'S', W - 300, 450, 0.1],
+      ['pumpy', '+', W - 180, 470, 0.2],
     ];
-    tools.forEach(([pick, badge], i) => {
-      const chip = this.makeToolChip(pick, badge);
-      chip.position.set(W - 230 + i * 60, 400);
+    for (const [pick, badge, x, y, tilt] of spill) {
+      const chip = this.makeToolChip(pick, badge, tilt);
+      chip.position.set(x, y);
       this.chrome.addChild(chip);
-    });
+    }
     // The `claude 1` main notebook is the real interactive World object (filed
     // pages persist), so it's not chrome.
   }
@@ -268,19 +269,17 @@ export class Room {
 
   /** A toolbox hand-tool chip (chrome): the tool's icon + a small mode badge;
    * clicking pulls a fresh copy out at the cursor. */
-  private makeToolChip(pick: string, badge: string): PIXI.Container {
+  /** A hand tool spilled onto the floor by the open Tooly — the tool's own
+   * sprite (no UI tray) at a slight tilt, with a small mode badge; clicking pulls
+   * a fresh copy out at the cursor. */
+  private makeToolChip(pick: string, badge: string, tilt = 0): PIXI.Container {
     const c = new PIXI.Container();
-    const tray = new PIXI.Graphics();
-    tray.beginFill(0x2b3037, 0.9);
-    tray.drawRoundedRect(-26, -26, 52, 52, 7);
-    tray.endFill();
-    // Pumpy keeps a crisp vector glyph at chip size: the detailed pump sprite
-    // (pumpy.png) reads muddy this small, the way the wand/dusty icons do.
-    const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 42);
-    c.addChild(tray, icon);
+    // Pumpy keeps a crisp vector glyph (the detailed pump sprite goes muddy small).
+    const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 56);
+    c.addChild(icon);
     const b = new PIXI.Graphics();
-    b.beginFill(0x223040, 0.95);
-    b.drawRoundedRect(10, 10, 18, 18, 4);
+    b.beginFill(0x223040, 0.92);
+    b.drawCircle(22, 18, 11);
     b.endFill();
     const t = new PIXI.Text(badge, {
       fontFamily: this.theme.fontFamily,
@@ -289,10 +288,12 @@ export class Room {
       fontWeight: 'bold',
     });
     t.anchor.set(0.5);
-    t.position.set(19, 19);
+    t.position.set(22, 18);
     c.addChild(b, t);
-    c.hitArea = new PIXI.Rectangle(-26, -26, 52, 52);
+    c.rotation = tilt;
+    c.hitArea = new PIXI.Rectangle(-30, -22, 64, 48);
     c.eventMode = 'static';
+    c.cursor = 'grab';
     c.on('pointerdown', (e) => this.onPick(pick, e.global.x, e.global.y));
     return c;
   }
@@ -319,22 +320,28 @@ export class Room {
     return c;
   }
 
-  /** A studded grey lego panel (used for the toolbox lid). */
-  private studdedPanel(w: number, h: number): PIXI.Container {
+  /** A studded lego panel (the toolbox lid). Tinted to Tooly's green by default. */
+  private studdedPanel(
+    w: number,
+    h: number,
+    base = 0x3f9e87,
+    studLight = 0x5fb8a2,
+    studDark = 0x2f7a68,
+  ): PIXI.Container {
     const c = new PIXI.Container();
     const g = new PIXI.Graphics();
-    g.lineStyle(2, 0x4a505a, 1);
-    g.beginFill(0x6b7280, 1);
+    g.lineStyle(2, studDark, 1);
+    g.beginFill(base, 1);
     g.drawRoundedRect(-w / 2, -h / 2, w, h, 6);
     g.endFill();
     const step = 18;
     g.lineStyle(0);
     for (let sx = -w / 2 + step; sx < w / 2 - 4; sx += step) {
       for (let sy = -h / 2 + step; sy < h / 2 - 4; sy += step) {
-        g.beginFill(0x7c838d, 1);
+        g.beginFill(studLight, 1);
         g.drawCircle(sx, sy, 4);
         g.endFill();
-        g.beginFill(0x595f68, 0.6);
+        g.beginFill(studDark, 0.6);
         g.drawCircle(sx + 1, sy + 2, 4);
         g.endFill();
       }
@@ -382,16 +389,16 @@ export class Room {
     tray.beginFill(0x000000, 0.28); // ground shadow
     tray.drawRoundedRect(-w / 2 + 8, -h / 2 + depth + 8, w, h, 12);
     tray.endFill();
-    tray.beginFill(0x252a31, 1); // front/side walls (the box's depth)
+    tray.beginFill(0x2b6155, 1); // front/side walls (the box's green depth)
     tray.drawRoundedRect(-w / 2, -h / 2 + depth, w, h, 12);
     tray.endFill();
-    tray.beginFill(0x3b424c, 1); // top rim (lit)
+    tray.beginFill(0x3f9e87, 1); // top rim (Tooly green, lit)
     tray.drawRoundedRect(-w / 2, -h / 2, w, h, 12);
     tray.endFill();
-    tray.beginFill(0x4a525d, 1); // rim highlight (top edge)
+    tray.beginFill(0x57b29c, 1); // rim highlight (top edge)
     tray.drawRoundedRect(-w / 2 + 3, -h / 2 + 3, w - 6, 6, 4);
     tray.endFill();
-    tray.beginFill(0x191d22, 1); // recessed well
+    tray.beginFill(0x173d34, 1); // recessed well (dark green interior)
     tray.drawRoundedRect(-w / 2 + pad - 6, -h / 2 + pad - 6, w - 2 * (pad - 6), h - 2 * (pad - 6), 8);
     tray.endFill();
     box.addChild(tray);
@@ -401,7 +408,7 @@ export class Room {
     // Raised lego dividers between the compartments (so each tool sits in its
     // own recess, like the original).
     const div = new PIXI.Graphics();
-    div.beginFill(0x444b55, 1);
+    div.beginFill(0x357f6e, 1); // green dividers
     for (let c = 1; c < cols; c++) {
       const x = left + c * cell + (c - 0.5) * gap;
       div.drawRoundedRect(x - gap / 2, -h / 2 + pad - 6, gap, h - 2 * (pad - 6), 3);
@@ -427,10 +434,10 @@ export class Room {
       const cy = top + Math.floor(i / cols) * (cell + gap) + cell / 2;
 
       const slot = new PIXI.Graphics();
-      slot.beginFill(0x14171c, 1); // recessed dark compartment floor
+      slot.beginFill(0x123029, 1); // recessed dark-green compartment floor
       slot.drawRoundedRect(cx - cell / 2, cy - cell / 2, cell, cell, 5);
       slot.endFill();
-      slot.lineStyle(1.5, 0x101318, 0.5); // inner shadow at the top-left
+      slot.lineStyle(1.5, 0x0c211c, 0.5); // inner shadow at the top-left
       slot.moveTo(cx - cell / 2 + 2, cy + cell / 2 - 2);
       slot.lineTo(cx - cell / 2 + 2, cy - cell / 2 + 2);
       slot.lineTo(cx + cell / 2 - 2, cy - cell / 2 + 2);
