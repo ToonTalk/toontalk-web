@@ -15,7 +15,12 @@ append (sign preserved), Backspace drops a digit; text: characters append,
 Backspace deletes. Handled in `drag-controller` `onKeyDown` →
 `editNumber`/`editText` against the hovered/held thing. (`window.__ttWorld`
 exposes the world for debugging, like `__ttApp`.)
-▢ no insertion-point/cursor editing or decimal/fraction typing yet.
+✅ **decimal-point typing** for numbers — typing goes through a string edit
+buffer (`number.ts` `rationalToEditBuffer`/`applyNumberKeyToBuffer`/
+`editBufferToRational`), so `1` `.` `2` `5` → exactly `5/4` and Backspace is
+exact; the buffer resets when you move off the pad or after a drop.
+▢ no insertion-point/cursor editing yet; ▢ fraction typing (`/` is the
+divide-op key, so fractions come from the ÷ operation, exactly).
 
 ## Numbers (`newnum.htm`)
 

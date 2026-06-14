@@ -18,11 +18,15 @@ import { Nest } from '../model/nest';
 import { hatchFromNest } from '../model/bird';
 import { Notebook } from '../model/notebook';
 import { Wand } from '../model/wand';
-import { NumberThing } from '../model/number';
+import {
+  NumberThing,
+  rationalToEditBuffer,
+  editBufferToRational,
+  applyNumberKeyToBuffer,
+} from '../model/number';
 import { TextThing } from '../model/text';
 import { Dusty } from '../model/dusty';
 import { Pumpy } from '../model/pumpy';
-import { Rational } from '../model/rational';
 import type { Renderer } from '../view/renderer';
 import type { ThingView } from '../view/thing-view';
 import type { RenderTheme } from '../config/render-mode';
@@ -60,6 +64,9 @@ export class DragController {
   private hoverTarget: WiggleTarget | null = null;
   /** Thing under the hand, for keyboard editing of the selected pad. */
   private hoveredThing: Thing | null = null;
+  /** In-progress number-pad typing buffer (so a decimal point / Backspace are
+   * exact); reset when the edited pad changes or after any drop. */
+  private numEdit: { id: string; text: string } | null = null;
   /** A tool (wand/Dusty/Pumpy) held on the cursor; click/space applies it. */
   private heldTool: ThingView | null = null;
   /** When false (e.g. the city scene is on top), ignore all pointer/key input. */
@@ -126,6 +133,7 @@ export class DragController {
       const v = this.views.get(thing.id);
       return v ? v.containsPoint(p.x, p.y) : false;
     });
+    if ((hit ?? null) !== this.hoveredThing) this.numEdit = null; // moved off the pad → end its edit
     this.hoveredThing = hit ?? null;
     this.hoverTarget = hit ? this.computeTarget(hit) : null;
   }
@@ -226,20 +234,16 @@ export class DragController {
       case '%': n.operation = '%'; return true;
       case '^': n.operation = '^'; return true;
       case '=': n.operation = '='; return true;
-      case '-': n.negate(); return true;
-      case 'Backspace': // drop the last digit (toward zero)
-        n.value = n.value.divide(Rational.fromInt(10)).truncate();
-        return true;
+      case '-': n.negate(); this.numEdit = null; return true; // re-seed buffer from the negated value
     }
-    if (key.length === 1 && key >= '0' && key <= '9') {
-      // Append a digit, preserving sign.
-      const neg = n.value.num < 0n;
-      let mag = neg ? n.value.negate() : n.value;
-      mag = mag.multiply(Rational.fromInt(10)).add(Rational.fromInt(Number(key)));
-      n.value = neg ? mag.negate() : mag;
-      return true;
-    }
-    return false;
+    // Value editing through a string buffer so a decimal point and Backspace work
+    // exactly (digits append, '.' once, Backspace removes a char).
+    const buf0 = this.numEdit?.id === n.id ? this.numEdit.text : rationalToEditBuffer(n.value);
+    const buf = applyNumberKeyToBuffer(buf0, key);
+    if (buf == null) return false;
+    this.numEdit = { id: n.id, text: buf };
+    n.value = editBufferToRational(buf);
+    return true;
   }
 
   /**
@@ -488,6 +492,7 @@ export class DragController {
 
   private onPointerUp = (e: PIXI.FederatedPointerEvent): void => {
     if (!this.enabled) return;
+    this.numEdit = null; // a drop may change a pad's value — end any number edit
     // Training: complete a hole-to-hole demonstration.
     if (this.trainer.active) {
       this.clearTrainGhost();

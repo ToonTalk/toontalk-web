@@ -57,4 +57,11 @@ describe('Rational', () => {
     // 4 ^ (1/2) = 2 (within float precision, lands exactly here)
     expect(Rational.fromInt(4).power(Rational.parse('1/2')).toNumber()).toBeCloseTo(2, 6);
   });
+
+  it('parses decimals exactly into fractions', () => {
+    expect(Rational.parse('1.25').toString()).toBe('5/4');
+    expect(Rational.parse('-0.5').toString()).toBe('-1/2');
+    expect(Rational.parse('.5').toString()).toBe('1/2');
+    expect(Rational.parse('5.').toString()).toBe('5');
+  });
 });

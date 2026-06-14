@@ -66,7 +66,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 
 | Element | State | Headline gaps |
 |---|---|---|
-| Pad editing | ✅ | caret/decimal/fraction typing ▢ |
+| Pad editing | ✅ | decimal typing ✅ · caret/insertion-point ▢ · fraction typing ▢ |
 | Numbers | ✅ | exact BigInt rationals; ops via keys while held |
 | Text | ⚠ | blank-pad wildcard ▢ · number→blank pad ▢ |
 | Boxes | ✅ | join ✅ · blank box sizes from number/text/robot/notebook ✅ · split ▢ |
