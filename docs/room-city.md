@@ -59,13 +59,23 @@ the city itself (`city.cpp`):
   → the working floor / World). **A click** also sits; `'s'` also sits; **Esc**
   steps back out. Note: our existing `src/view/room.ts` is the *floor working*
   chrome (`Programmer_At_Floor` + `Floor`) — a different view from this room. The
-  working floor is laid out to match the original (`ToonTalk - claude 1`
-  capture): a **tan lego baseplate**, the **open lego toolbox top-right** whose
-  2×4 grid spawns fresh elements (**1, A / box, wand / scale, bird / truck,
-  bomb**), the **`claude 1` notebook** bottom-centre, and the **three real hand
-  tools lying out bottom-left** (the wand, Dusty the vacuum, Pumpy) seeded in the
-  World (`seedFloor`) — *not* drawn as chrome, so there are no duplicates. The
-  full element demo is opt-in via `?demo=1` (`seedFloor` vs `seedDemo`).
+  working floor matches the original (`ToonTalk - claude 1` capture): a **tan
+  lego baseplate**, the **open lego toolbox top-right** whose 2×4 grid spawns
+  fresh elements in the source order (constant.h:1049 / tools.cpp:4024:
+  **number, text / box, nest / scale, robot / truck, bomb**), the **`claude 1`
+  notebook**, and the **three real hand tools** (wand, Dusty, Pumpy) seeded in
+  the World (`seedFloor`) — *not* chrome, so no duplicates. Demo content is
+  opt-in via `?demo=1`.
+- **The working floor is a large, scrollable area** (`view/floor-camera.ts`,
+  `FLOOR_W×FLOOR_H`), faithful to `prgrmmr.cpp set_sit_corner`: sitting at a spot
+  re-centres the floor there (`enterRoom(style, ix, iy)` → `setFloorCamera`,
+  clamped to the walls). The `thingLayer` is panned by `−camera` and the baseplate
+  scrolls, so **things you leave stay put in world coords** while the **toolbox
+  chrome stays on screen** (it "follows" you). Drag & drop stays correct while
+  scrolled: all pointer↔world conversion goes through `worldPt` in the drag
+  controller, the `getBounds`-based hit tests (`containsPoint`,
+  nest/notebook `pressedOn…`) shift bounds by `floorCamera`, `holeIndexAt` is
+  already world, and drop-overlap is screen-consistent.
 - **Input is the original's RELATIVE_MOUSE_MODE** (the default,
   globals.cpp:729): click the city to capture the mouse (Pointer Lock, cursor
   hidden, like `show_cursor(FALSE)`); raw mouse **movement** then steers
