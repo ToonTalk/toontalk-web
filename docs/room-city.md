@@ -31,8 +31,10 @@ the city itself (`city.cpp`):
   sinks to the street, swaps to the **parked art** (HELIHLM7) on touchdown and
   stays at `landX`. The lego person then **walks the street in both axes**
   (`model.walk(dx, dy)` — fully 8-directional, depth clamped to `[streetY −
-  WALK_BAND_N, streetY + WALK_BAND_S]`), with **Tooly the toolbox following**
-  (TOOLBOXS, 8-dir animated). Walking:
+  WALK_BAND_N, streetY + WALK_BAND_S]`), with **camera-follow within a band**
+  (`streetCamCx`: the walker moves on screen before the world scrolls, per
+  prgrmmr.cpp min_x/max_x) and **Tooly the toolbox following** (TOOLBOXS, 8-dir
+  animated). Walking:
   - **up to a house door** (`enterableHouse`) → `enterHouse()` steps you INTO
     the **room standing view** (mode `'inside'`, below) — *not* straight to the
     floor;

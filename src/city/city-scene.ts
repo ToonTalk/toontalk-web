@@ -98,6 +98,9 @@ export class CityScene {
   private toolyIX = 0.4;
   private toolyIY = 0.8;
   private personBaseScale = 1;
+  /** Street-view camera centre (world x). Follows the walker within a band so
+   * they move on screen before the world scrolls (prgrmmr.cpp min_x/max_x). */
+  private streetCamCx = 0;
 
   private active = false;
   private buttons = { left: false, right: false };
@@ -304,6 +307,7 @@ export class CityScene {
     this.takingOff = false;
     if (this.model.mode === 'inside') this.model.iy = 0.72;
     else this.model.standUp();
+    this.streetCamCx = this.model.cx; // re-centre the street camera on the walker
     this.setActive(true);
   }
 
@@ -528,7 +532,17 @@ export class CityScene {
   private renderStreet(W: number, H: number): void {
     const m = this.model;
     const streetTop = this.streetTop();
-    const camX = W / 2 - m.cx * K_SIDE;
+    // Camera-follow: centred while landing; while walking the person moves on
+    // screen within a band and the world scrolls only at its edges.
+    if (m.mode === 'landing') {
+      this.streetCamCx = m.cx;
+    } else {
+      const band = W * 0.28;
+      const psx = W / 2 + (m.cx - this.streetCamCx) * K_SIDE;
+      if (psx > W / 2 + band) this.streetCamCx = m.cx - band / K_SIDE;
+      else if (psx < W / 2 - band) this.streetCamCx = m.cx + band / K_SIDE;
+    }
+    const camX = W / 2 - this.streetCamCx * K_SIDE;
     place(this.sideLawnTile, 0, 0, W, streetTop, camX, 0); // green lawn fills most
     place(this.sideStreetTile, 0, streetTop, W, H - streetTop, camX, 0); // thin street
     const houseBaseY = H * HOUSE_SIDE_BASE_FRAC;
@@ -559,10 +573,10 @@ export class CityScene {
         topY + (1 - Math.min(m.landY, 1)) * (this.heliBaseY() - topY),
       );
     } else {
-      // walking: +y north → up the screen
+      // walking: person at the camera-follow x; +y north → up the screen
       const depthY = -(m.cy - m.streetY) * DEPTH;
       this.person.sprite.scale.set(this.personBaseScale);
-      this.person.sprite.position.set(W / 2, this.walkBaseY() + depthY);
+      this.person.sprite.position.set(camX + m.cx * K_SIDE, this.walkBaseY() + depthY);
     }
   }
 
