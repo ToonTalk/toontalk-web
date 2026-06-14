@@ -170,6 +170,8 @@ export class CityModel {
   dir: Direction = 0;
   /** Reorient only after travelling a tile (prgrmmr minimum_distance_to_reorient). */
   private minReorient = TILE_W;
+  /** Same, but in the normalised room (walkInside): reorient after ~a tile. */
+  private roomReorient = 0;
   /** Normalized helicopter height while landing: 1 = top of view, 0 = street. */
   landY = 1;
   /** During a takeoff we replay the landing view in reverse (copter rises). */
@@ -343,15 +345,21 @@ export class CityModel {
   }
 
   /**
-   * Walk around the room floor (ix/iy normalised 0..1). Faithful to
-   * Programmer_Room_Walking::react: only the LEFT wall (the door) leaves the
-   * room; the right and front/back walls just stop you. Sitting is a click
-   * (handled by the scene), not a wall, in relative-mouse mode.
+   * Walk around the room floor (ix/iy normalised 0..1). Port of
+   * Programmer_Room_Walking::react (prgrmmr.cpp:5260): only the LEFT wall (the
+   * door, x<min_x → LEAVING_ROOM, 5296-5299) leaves the room; the right and
+   * front/back walls clamp (5300-5324); sitting is a click (5337-5365), not a
+   * wall, in relative-mouse mode. The heading eases via dampen_turn after a
+   * tile's travel (5286-5292), not a snap.
    */
   walkInside(dx: number, dy: number): 'leave' | null {
     if (this.mode !== 'inside') return null;
-    const d = directionFromDelta(dx, -dy); // screen-down dy → south
-    if (d != null) this.dir = d;
+    this.roomReorient -= Math.abs(dx) + Math.abs(dy);
+    if (this.roomReorient < 0) {
+      this.roomReorient = 0.08; // ≈ a tile in the normalised room (tile_width, 5034/5289)
+      const nd = directionFromDelta(dx, -dy); // screen-down dy → south
+      if (nd != null) this.dir = dampenTurn(nd, this.dir);
+    }
     this.ix += dx;
     this.iy += dy;
     if (this.ix <= 0) {

@@ -52,21 +52,28 @@ bird/robot/tools/dragdrop`, `room.cpp/floor.cpp`.
    geometry (`city-model.ts` ← block.cpp:205 `city_location`, city.cpp:172
    `build_initial_houses`, free-play **10×10** blocks) · `fly()` ← `Programmer_
    City_Flying::react` (prgrmmr.cpp:3988), anchored with line refs.
-2. **Landing — analyzed, port next.** `Programmer_City_Landing::react`
-   (prgrmmr.cpp:4296): the copter moves in **real y** (`y += delta_y`,
-   `delta_y ± button_speed·duration/1000`); **`y>max_y && Δ>0 → FLYING_AGAIN`**,
-   **`y<min_y → LEAVE_HELICOPTER`**; horizontal mouse **pans the city** (shift
-   `min_x/max_x` + `tt_screen->move_by`) with the copter centred. Our `land()`
-   approximates this with a normalised `landY`; reconcile to real-y. (The
-   side-view *render* stays Pixi — CAMERA_IN_FRONT is platform.)
-3. **Walking** — `Programmer_City_Walking::react` (prgrmmr.cpp:5000) ▢.
-4. **Rooms** — `room.cpp` + `Programmer_Room_Walking` (5260) / `At_Floor` ▢.
-5. **Elements** — `cubby/number/text/bird/robot/tools` onto the `Sprite` shim ▢.
+2. **Landing — ✅ done.** `Programmer_City_Landing::react` (prgrmmr.cpp:4296):
+   `land()` descends at `button_speed = 5·tile` (4237) over `min_y..max_y`
+   (−13..+10 tile, ctor) starting at +6 tile; `y>max_y → FLYING_AGAIN` (4339),
+   `y<min_y → LEAVE_HELICOPTER` (4345); horizontal pans the city, copter centred
+   (4350-4368 ↔ streetCamCx). `landY` kept normalised for the Pixi side view.
+3. **Walking — ✅ done.** `Programmer_City_Walking::react` (prgrmmr.cpp:5000):
+   real-coord move clamped to city bounds (5028-5056), heading eased via
+   dampen_turn after a tile (5031-5036), camera-follow band (5057-5076 ↔
+   renderStreet), house collisions (`blockedByHouse` ↔ handle_collisions 5082),
+   'h' → copter / click → sit.
+4. **Rooms — ✅ done.** `Programmer_Room_Walking::react` (prgrmmr.cpp:5260): only
+   the left wall (door) leaves (5296), other walls clamp (5300-5324), click sits
+   (5337-5365), heading eased via dampen_turn (5286-5292). `AT_FLOOR` /
+   `set_sit_corner` → the floor camera (`view/floor-camera.ts`); the perspective
+   room + floor miniatures render in Pixi (room.cpp display is platform).
+5. **Elements — next.** `cubby/number/text/bird/robot/tools` onto the `Sprite`
+   shim ▢.
 
 The **`Sprite` base shim** (city coords / size / priority / `react·receive_item·
 copy·used`, Pixi-backed display) is still ▢ and is the prerequisite for porting
-elements faithfully (slice 5); landing/walking/rooms mostly need the Programmer
-state machine, not the full Sprite base.
+elements faithfully (slice 5); the navigation slices (1-4) needed only the
+Programmer state machine, which is now faithfully ported.
 
 Keep the app working after each slice; per-element fidelity detail stays in
 `docs/elements.md`.
