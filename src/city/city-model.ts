@@ -23,8 +23,12 @@ export const TILE_H = 1200; // constant.h tile_height
 export const BLOCK_W = 4 * IDEAL_W; // globals.cpp tt_default_block_width = 4·ideal_w = 128000
 export const BLOCK_H = IDEAL_W; // block.cpp ideal_block_height = ideal_screen_width = 32000
 export const HOUSES_PER_BLOCK = 4; // globals.cpp tt_houses_to_a_block
-export const BLOCKS_X = 3; // default tt_city_size
-export const BLOCKS_Y = 3;
+// The original city extends well past the view at flying altitude (the flyover
+// is a green street-grid to every edge, no water in sight). Our blocks are wide
+// & short (4:1), so we need many rows to fill the view's height — the few
+// houses sit in the centre block, the rest is empty green like the original.
+export const BLOCKS_X = 5;
+export const BLOCKS_Y = 14;
 export const CITY_W = BLOCKS_X * BLOCK_W;
 export const CITY_H = BLOCKS_Y * BLOCK_H;
 export const STREET = 4 * TILE_W; // drawn street width (≈ a lane)

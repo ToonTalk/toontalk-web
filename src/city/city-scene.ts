@@ -491,6 +491,9 @@ export class CityScene {
       spr.scale.set(cam.s(TREE_UNITS) / spr.texture.width);
     });
 
+    // The flying helicopter is a constant, LARGE screen size (the original's
+    // set_scale(scale) cancels the zoom so it stays a fixed ~⅓-screen size).
+    fitHeight(this.heliFly.sprite, Math.min(W, H) * 0.42);
     this.avatar.position.set(0, 0);
     this.heliFly.sprite.position.set(W / 2, H / 2);
   }
