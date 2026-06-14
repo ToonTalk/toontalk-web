@@ -29,7 +29,6 @@ import {
   STREET,
   CITY_W,
   CITY_H,
-  clamp,
 } from './city-model';
 import { Camera, GROUND_SCALE } from './camera';
 import { DirectionalSprite, type CityAssets } from './city-sprites';
@@ -42,13 +41,11 @@ export interface CitySceneCallbacks {
 }
 
 const K_SIDE = 0.04; // screen px per city unit, street side view (one house dominant)
-const WALK_VY = 40; // world units north per screen px of vertical walk input
 const BRUSH_SCALE = 2; // the 8×8 lego brushes run ~2× (constant screen size)
 const HOUSE_UNITS = 24000; // a house-top's footprint in city units (≈ a lot width)
 const TREE_UNITS = 14000;
 // Street side view (original-land.jpg): mostly green lawn, big side houses set
 // back to the north, the person/copter in front (lower).
-const HOUSE_SIDE_H_FRAC = 0.58; // house height (big — often cut off at the top)
 const HELI_LAND_W_FRAC = 0.58; // the landing/landed copter is huge (fraction of W)
 
 // Max pointer speeds in screen-widths/sec (dampen_big_deltas; prgrmmr.cpp ctors)
@@ -97,9 +94,11 @@ export class CityScene {
   private toolyX = 0;
   private toolyIX = 0.4;
   private toolyIY = 0.8;
-  /** Street-view camera centre (world x). Follows the walker within a band so
-   * they move on screen before the world scrolls (prgrmmr.cpp min_x/max_x). */
+  /** Street-view camera centre (world x, y). Follows the walker within a band in
+   * BOTH axes so they move on screen before the world scrolls (the walker stays a
+   * constant size and the city slides under them — prgrmmr.cpp min_x/max_x). */
   private streetCamCx = 0;
+  private streetCamCy = 0;
 
   private active = false;
   private buttons = { left: false, right: false };
@@ -323,6 +322,7 @@ export class CityScene {
     if (this.model.mode === 'inside') this.model.iy = 0.72;
     else this.model.standUp();
     this.streetCamCx = this.model.cx; // re-centre the street camera on the walker
+    this.streetCamCy = this.model.cy;
     this.setActive(true);
   }
 
@@ -341,6 +341,14 @@ export class CityScene {
 
   private heliBaseY(): number {
     return this.renderer.height * 0.9; // skids just above the street strip
+  }
+  /** Screen px per world unit of north–south depth (a block spans ~0.42·H). */
+  private vpix(): number {
+    return (this.renderer.height * 0.42) / BLOCK_H;
+  }
+  /** The walker's feet baseline on screen (room to walk north up & south down). */
+  private groundY(): number {
+    return this.renderer.height * 0.72;
   }
 
   // --- input helpers --------------------------------------------------------
@@ -406,7 +414,7 @@ export class CityScene {
       const px = this.inputPxX(WALK_SCREENS_PER_S, dt);
       const py = this.inputPxY(WALK_SCREENS_PER_S, dt);
       const moving = Math.abs(px) > 0.4 || Math.abs(py) > 0.4;
-      this.model.walk(px / K_SIDE, -py * WALK_VY); // mouse up = north (+y)
+      this.model.walk(px / K_SIDE, -py / this.vpix()); // 1px input ≈ 1px on screen, both axes
       this.person.setDirection(this.model.dir);
       this.person.update(dt, moving);
       this.model.enterHouse(); // only triggers standing at a house's door
@@ -535,54 +543,57 @@ export class CityScene {
     this.heliFly.sprite.position.set(W / 2, H / 2);
   }
 
-  /** Side-scroller street view (landing + walking) — a ground plane seen from
-   * the south: lawn everywhere, the E–W roads as horizontal bands at each block
-   * boundary, houses set back to the north, the parked copter on its road. The
-   * camera follows the walker in x (within a band) and in y (centred), so you
-   * can roam every street (matches original-land.jpg on touchdown). */
+  /** Side-scroller street view (landing + walking) — a flat 2.5D ground seen
+   * from the south: lawn everywhere, the E–W roads as horizontal bands at each
+   * block boundary, the houses set back to the north, the parked copter on its
+   * road. The **walker stays a constant size** and moves on screen within a band
+   * in BOTH axes; only past the band edge does the city slide under them. So
+   * walking reads as the avatar striding across a scrolling city, not a
+   * treadmill — and you can roam every street. */
   private renderStreet(W: number, H: number): void {
     const m = this.model;
-    // x camera-follow: centred while landing; a band while walking.
+    const VPIX = this.vpix(); // screen px per world unit of N–S depth
+    const GROUND_Y = this.groundY();
+
+    // Camera-follow: centred while landing; a band in each axis while walking, so
+    // the walker moves on screen first and the world scrolls only at the edges.
     if (m.mode === 'landing') {
       this.streetCamCx = m.cx;
+      this.streetCamCy = m.cy;
     } else {
-      const band = W * 0.28;
+      const bandX = W * 0.22;
       const psx = W / 2 + (m.cx - this.streetCamCx) * K_SIDE;
-      if (psx > W / 2 + band) this.streetCamCx = m.cx - band / K_SIDE;
-      else if (psx < W / 2 - band) this.streetCamCx = m.cx + band / K_SIDE;
+      if (psx > W / 2 + bandX) this.streetCamCx = m.cx - bandX / K_SIDE;
+      else if (psx < W / 2 - bandX) this.streetCamCx = m.cx + bandX / K_SIDE;
+      const bandUp = H * 0.2;
+      const bandDn = H * 0.12;
+      const psy = GROUND_Y - (m.cy - this.streetCamCy) * VPIX;
+      if (psy < GROUND_Y - bandUp) this.streetCamCy = m.cy - bandUp / VPIX;
+      else if (psy > GROUND_Y + bandDn) this.streetCamCy = m.cy + bandDn / VPIX;
     }
     const camCx = this.streetCamCx;
-    const camCy = m.cy; // y follows the avatar directly
+    const camCy = this.streetCamCy;
     const camX = W / 2 - camCx * K_SIDE;
 
-    // Ground-plane projection: a world point (wx, wy) → screen. Depth ahead
-    // (north, relY>0) recedes toward the horizon and shrinks; behind (south)
-    // drops below the feet and grows.
-    const GROUND_Y = H * 0.84; // the walker's feet
-    const HORIZON = H * 0.32;
-    const SPAN = GROUND_Y - HORIZON;
-    const D = 16000; // world depth at which things are half-projected
-    const proj = (wx: number, wy: number): { sx: number; sy: number; sc: number } => {
-      const relY = wy - camCy;
-      let t = relY >= 0 ? relY / (relY + D) : (relY / D) * 0.45;
-      t = clamp(t, -0.45, 0.985);
-      return { sx: camX + wx * K_SIDE, sy: GROUND_Y - t * SPAN, sc: clamp(1 - t, 0.06, 1.55) };
-    };
+    // Flat 2.5D map: world (wx, wy) → screen. North (+y) is up; no perspective
+    // foreshortening (constant scale) so figures keep a steady size as in the
+    // original front view.
+    const sx = (wx: number): number => camX + wx * K_SIDE;
+    const sy = (wy: number): number => GROUND_Y - (wy - camCy) * VPIX;
 
     // lawn fills the screen; its pattern scrolls with the camera so motion shows
-    place(this.sideLawnTile, 0, 0, W, H, camX, -camCy * 0.01);
+    place(this.sideLawnTile, 0, 0, W, H, camX, GROUND_Y + camCy * VPIX);
 
     // roads: a horizontal band at each block boundary near the camera
     const STREET_HALF = STREET / 2;
     const byMid = Math.round(camCy / BLOCK_H);
     let ri = 0;
-    for (let by = byMid - 1; by <= byMid + 3 && ri < this.roadBands.length; by++) {
+    for (let by = byMid - 2; by <= byMid + 2 && ri < this.roadBands.length; by++) {
       if (by < 0 || by > BLOCKS_Y) continue;
-      const Sy = by * BLOCK_H;
-      const top = proj(0, Sy + STREET_HALF).sy;
-      const bot = proj(0, Sy - STREET_HALF).sy;
+      const top = sy(by * BLOCK_H + STREET_HALF);
+      const bot = sy(by * BLOCK_H - STREET_HALF);
       const r = this.roadBands[ri++]!;
-      if (bot <= top || top > H || bot < 0) {
+      if (top > H || bot < 0) {
         r.visible = false;
         continue;
       }
@@ -591,30 +602,24 @@ export class CityScene {
     }
     for (; ri < this.roadBands.length; ri++) this.roadBands[ri]!.visible = false;
 
-    // houses, placed + perspective-scaled by world coords (depth-sorted)
+    // houses: contain-fit into a lot box (so tall/narrow & wide/short arts both
+    // look proportionate), set back on their lawn, depth-sorted by screen y
+    const boxW = W * 0.32;
+    const boxH = H * 0.5;
     for (const { h, s } of this.sideHouses) {
-      const p = proj(h.x, h.y);
-      s.position.set(p.sx, p.sy);
-      s.scale.set(((H * HOUSE_SIDE_H_FRAC) / s.texture.height) * p.sc);
-      s.zIndex = p.sy;
-      s.visible = p.sc > 0.07;
+      s.scale.set(Math.min(boxW / s.texture.width, boxH / s.texture.height));
+      s.position.set(sx(h.x), sy(h.y));
+      s.zIndex = sy(h.y);
     }
     // parked copter, on its road
-    {
-      const p = proj(m.parkedX, m.parkedY);
-      this.heliParked.position.set(p.sx, p.sy);
-      fitWidth(this.heliParked, W * HELI_LAND_W_FRAC * p.sc);
-      this.heliParked.zIndex = p.sy;
-      this.heliParked.visible = m.mode === 'walking' && p.sc > 0.07;
-    }
+    this.heliParked.position.set(sx(m.parkedX), sy(m.parkedY));
+    fitWidth(this.heliParked, W * HELI_LAND_W_FRAC);
+    this.heliParked.zIndex = sy(m.parkedY);
+    this.heliParked.visible = m.mode === 'walking';
 
     this.avatar.position.set(0, 0);
-    // Tooly trails the walker on the ground
-    {
-      const p = proj(this.toolyX, m.cy);
-      fitHeight(this.tooly.sprite, H * 0.16 * p.sc);
-      this.tooly.sprite.position.set(p.sx, p.sy);
-    }
+    fitHeight(this.tooly.sprite, H * 0.18); // Tooly trails the walker on the ground
+    this.tooly.sprite.position.set(sx(this.toolyX), sy(m.cy));
 
     if (m.mode === 'landing') {
       fitWidth(this.heliLand.sprite, W * HELI_LAND_W_FRAC);
@@ -624,9 +629,9 @@ export class CityScene {
         topY + (1 - Math.min(m.landY, 1)) * (this.heliBaseY() - topY),
       );
     } else {
-      // walking: the walker sits at the ground line, at the followed x
-      fitHeight(this.person.sprite, H * 0.24);
-      this.person.sprite.position.set(camX + m.cx * K_SIDE, GROUND_Y);
+      // walking: constant size, moving on screen within the follow band
+      fitHeight(this.person.sprite, H * 0.26);
+      this.person.sprite.position.set(sx(m.cx), sy(m.cy));
     }
   }
 
