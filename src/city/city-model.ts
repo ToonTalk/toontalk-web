@@ -270,13 +270,22 @@ export class CityModel {
     }
   }
 
-  /** Walk freely about the whole city (+y = north). The avatar roams every
-   * street; the side view scrolls to follow it (renderStreet). House walls are
-   * solid — you slide along them and can only pass through the door column. */
+  /**
+   * Walk the city — port of `Programmer_City_Walking::react` (prgrmmr.cpp:5000):
+   * move in real coords (`x += delta_x; y += delta_y`, 5028-5029), clamp to the
+   * city bounds (5039-5056), and ease the heading with `dampen_turn` only after
+   * travelling `tile_width` (`minimum_distance_to_reorient`, 5031-5036) — not a
+   * snap. The camera-follow band (5057-5076) and house collisions
+   * (`handle_collisions`, 5082) live in the scene/`blockedByHouse`.
+   */
   walk(dx: number, dy = 0): void {
     if (this.mode !== 'walking' || (dx === 0 && dy === 0)) return;
-    const d = directionFromDelta(dx, dy);
-    if (d != null) this.dir = d;
+    this.minReorient -= Math.abs(dx) + Math.abs(dy);
+    if (this.minReorient < 0) {
+      this.minReorient = TILE_W;
+      const nd = directionFromDelta(dx, dy);
+      if (nd != null) this.dir = dampenTurn(nd, this.dir);
+    }
     let nx = clamp(this.cx + dx, 0, CITY_W);
     let ny = clamp(this.cy + dy, 0, CITY_H);
     // axis-separated collision so walking into a wall slides instead of sticking

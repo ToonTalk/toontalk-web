@@ -140,9 +140,11 @@ describe('CityModel landing / walking / room', () => {
     m.cx = 5000; // clear of the central houses, so nothing blocks the path
     m.cy = BLOCK_H;
     m.streetY = roadYFor(m.cy);
-    m.walk(0, 9_999_999); // far north
+    // holding north: roams to the edge, and the heading EASES to north via
+    // dampen_turn (one step per reorient) rather than snapping.
+    for (let i = 0; i < 4; i++) m.walk(0, 9_999_999);
     expect(m.cy).toBe(CITY_H); // roams clear to the city's north edge
-    expect((m.dir as Direction)).toBe(6); // North
+    expect((m.dir as Direction)).toBe(6); // eased to North
     expect(m.streetY % BLOCK_H).toBe(0); // current road tracks the block we're in
     m.callHelicopter();
     expect(m.mode).toBe('landing'); // takeoff replays the landing view in reverse
