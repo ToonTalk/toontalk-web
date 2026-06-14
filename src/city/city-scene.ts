@@ -40,13 +40,18 @@ export interface CitySceneCallbacks {
   onEscape?: () => void;
 }
 
-const K_SIDE = 0.0085; // screen px per city unit, street side view (houses ~a lot apart)
-const DEPTH = 0.012; // screen px per city unit of walking depth (toward houses)
+const K_SIDE = 0.04; // screen px per city unit, street side view (one house dominant)
+const DEPTH = 0.05; // screen px per city unit of walking depth (toward houses)
 const BRUSH_SCALE = 2; // the 8×8 lego brushes run ~2× (constant screen size)
 const HOUSE_UNITS = 24000; // a house-top's footprint in city units (≈ a lot width)
 const TREE_UNITS = 14000;
-const HELI_LAND_W = 560; // the landing/landed copter is BIG (near native art size)
-const WALK_BASE_FRAC = 0.86; // the walker's feet at street centre (fraction of H)
+// Street side view (original-land.jpg): mostly green lawn, a thin street at the
+// very bottom, big side houses set back, the person/copter in front (lower).
+const STREET_TOP_FRAC = 0.88; // green lawn above, gray street below
+const HOUSE_SIDE_BASE_FRAC = 0.62; // house baseline (set back on the lawn)
+const HOUSE_SIDE_H_FRAC = 0.58; // house height (big — often cut off at the top)
+const WALK_BASE_FRAC = 0.85; // the walker's feet, in front on the lawn
+const HELI_LAND_W_FRAC = 0.58; // the landing/landed copter is huge (fraction of W)
 
 // Max pointer speeds in screen-widths/sec (dampen_big_deltas; prgrmmr.cpp ctors)
 const FLY_SCREENS_PER_S = 1.6;
@@ -198,8 +203,7 @@ export class CityScene {
     this.heliLand = new DirectionalSprite(assets.heliLand, 80);
     this.person = new DirectionalSprite(assets.person, 95);
     this.tooly = new DirectionalSprite(assets.tooly, 110);
-    fitHeight(this.heliFly.sprite, 130);
-    fitWidth(this.heliLand.sprite, HELI_LAND_W);
+    fitHeight(this.heliFly.sprite, 130); // re-fit per frame in renderFlying/renderStreet
     fitHeight(this.person.sprite, 116);
     this.personBaseScale = this.person.sprite.scale.x;
     fitHeight(this.tooly.sprite, 64);
@@ -209,7 +213,6 @@ export class CityScene {
     this.tooly.sprite.anchor.set(0.5, 1);
     this.heliParked = new PIXI.Sprite(assets.heliParked);
     this.heliParked.anchor.set(0.5, 1);
-    this.heliParked.scale.set(HELI_LAND_W / this.heliParked.texture.width);
     this.sideWorld.addChild(this.heliParked);
     this.avatar.addChild(
       this.heliFly.sprite,
@@ -318,13 +321,13 @@ export class CityScene {
   }
 
   private streetTop(): number {
-    return this.renderer.height * 0.72;
+    return this.renderer.height * STREET_TOP_FRAC;
   }
   private walkBaseY(): number {
     return this.renderer.height * WALK_BASE_FRAC;
   }
   private heliBaseY(): number {
-    return this.renderer.height * 0.92;
+    return this.renderer.height * 0.9; // skids just above the street strip
   }
 
   // --- input helpers --------------------------------------------------------
@@ -519,25 +522,42 @@ export class CityScene {
     this.heliFly.sprite.position.set(W / 2, H / 2);
   }
 
-  /** Side-elevation street view (landing + walking). */
+  /** Side-elevation street view (landing + walking) — matches original-land.jpg:
+   * mostly green lawn, a thin street at the very bottom, big side houses set
+   * back, the person/copter in front. */
   private renderStreet(W: number, H: number): void {
     const m = this.model;
     const streetTop = this.streetTop();
     const camX = W / 2 - m.cx * K_SIDE;
-    place(this.sideLawnTile, 0, 0, W, streetTop, camX, 0);
-    place(this.sideStreetTile, 0, streetTop, W, H - streetTop, camX, 0);
+    place(this.sideLawnTile, 0, 0, W, streetTop, camX, 0); // green lawn fills most
+    place(this.sideStreetTile, 0, streetTop, W, H - streetTop, camX, 0); // thin street
+    const houseBaseY = H * HOUSE_SIDE_BASE_FRAC;
+    // fit each house into a box (preserving aspect) so the differently-shaped
+    // side arts (tall/narrow vs wide/short) don't distort or overlap.
+    const boxW = 25600 * K_SIDE * 0.9; // ≈ a lot's width on screen
+    const boxH = H * HOUSE_SIDE_H_FRAC;
     this.sideWorld.position.set(camX, 0);
     for (const child of this.sideWorld.children) {
-      if (child === this.heliParked) child.y = this.heliBaseY();
-      else child.y = streetTop + 6;
+      if (child === this.heliParked) {
+        child.y = this.heliBaseY();
+      } else {
+        const spr = child as PIXI.Sprite;
+        spr.scale.set(Math.min(boxW / spr.texture.width, boxH / spr.texture.height));
+        spr.y = houseBaseY;
+      }
     }
     this.heliParked.x = m.landX * K_SIDE;
+    fitWidth(this.heliParked, W * HELI_LAND_W_FRAC);
     this.avatar.position.set(0, 0);
     this.tooly.sprite.position.set(camX + this.toolyX * K_SIDE, this.walkBaseY());
 
     if (m.mode === 'landing') {
-      const topY = H * 0.18;
-      this.heliLand.sprite.position.set(W / 2, topY + (1 - Math.min(m.landY, 1)) * (this.heliBaseY() - topY));
+      fitWidth(this.heliLand.sprite, W * HELI_LAND_W_FRAC);
+      const topY = -this.heliLand.sprite.height * 0.1; // starts just above the top
+      this.heliLand.sprite.position.set(
+        W / 2,
+        topY + (1 - Math.min(m.landY, 1)) * (this.heliBaseY() - topY),
+      );
     } else {
       // walking: +y north → up the screen
       const depthY = -(m.cy - m.streetY) * DEPTH;
