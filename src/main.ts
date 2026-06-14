@@ -189,7 +189,7 @@ async function start(): Promise<void> {
     // Walking up to a house door, or sitting on the grass ('s'), drops you onto
     // a working floor — the room/World view. (Distinct per-house contents is a
     // later step; for now every house + the grass share the one floor.)
-    onEnter: () => enterRoom(),
+    onEnter: (where, house) => enterRoom(where === 'house' ? (house?.style ?? 'a') : 'a'),
     // Escape while walking the street raises the street menu.
     onEscape: () => showStreetMenu(),
   });
@@ -223,8 +223,10 @@ async function start(): Promise<void> {
     dragController.setEnabled(false);
     setHud(CITY_HUD);
   }
-  /** Sit down — switch to the working floor (room/World view). */
-  function enterRoom(): void {
+  /** Sit down — switch to the working floor (room/World view), with the floor
+   * coloured to match the house you entered (grass uses the default tan). */
+  function enterRoom(style: 'a' | 'b' | 'c' = 'a'): void {
+    room.setFloorStyle(style);
     city.setActive(false);
     room.setVisible(true);
     renderer.thingLayer.visible = true;

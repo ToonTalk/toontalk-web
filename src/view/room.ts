@@ -30,6 +30,19 @@ export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, 
       }
     }),
   );
+  // Per-house-style floor baseplates (a=tan, b=blue, c=green) so the working
+  // floor matches the house you entered (city-baked FLOOR arts).
+  await Promise.all(
+    (['a', 'b', 'c'] as const).map(async (s) => {
+      try {
+        const tex = await PIXI.Assets.load(`/assets/city/floor-${s}.png`);
+        tex.baseTexture.scaleMode = scaleMode;
+        map.set(`floor-${s}`, tex);
+      } catch {
+        /* fall back to the default tan floor */
+      }
+    }),
+  );
   return map;
 }
 
@@ -129,6 +142,13 @@ export class Room {
     this.floor.height = this.renderer.height;
     this.chrome.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.layoutChrome();
+  }
+
+  /** Set the floor baseplate to the entered house's style (a=tan, b=blue,
+   * c=green) so the working floor matches the house outside. */
+  setFloorStyle(style: 'a' | 'b' | 'c'): void {
+    const tex = this.room.get(`floor-${style}`) ?? this.room.get('floor');
+    if (tex) this.floor.texture = tex;
   }
 
   /** Show/hide the whole room (floor, chrome, hand cursor) — used when the
