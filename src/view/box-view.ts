@@ -16,11 +16,42 @@ const H = 84; // piece (box) height in px
 const ONE = { key: 'cubby1', aspect: 464 / 292, holeCx: 0.5 }; // first hole piece
 const REST = { key: 'cubbyr', aspect: 192 / 146, holeCx: 0.34 }; // each further hole
 
+/**
+ * Faithful port of cubby.cpp `closest_hole`:2605 + the end-branch of
+ * `item_released_on_top`:462-491. Given a drop point's box-local x, the box's
+ * left edge (`spanLeft`) and total width (`spanW`) and hole count `n`:
+ *   - x left of the box → raw index -1; x past the right edge → n; else
+ *     `floor((x-left)*n/width)` (closest_hole ignores y).
+ *   - landing on a real hole → that hole (fill / combine / nest).
+ *   - off an end: a **box** dropped clear of the end concatenates
+ *     (`add_to_side`); anything else "must have meant" the nearest end hole, so
+ *     clamp -1→0, n→n-1.
+ */
+export function resolveDropSlot(
+  localX: number,
+  n: number,
+  spanLeft: number,
+  spanW: number,
+  draggedIsBox: boolean,
+): { holeIndex: number | null; side: 'left' | 'right' } {
+  const dx = localX - spanLeft;
+  let idx: number;
+  if (n === 0 || dx < 0) idx = -1;
+  else if (dx >= spanW) idx = n;
+  else idx = Math.floor((dx * n) / spanW);
+  if (idx < 0) return draggedIsBox ? { holeIndex: null, side: 'left' } : { holeIndex: 0, side: 'left' };
+  if (idx >= n) return draggedIsBox ? { holeIndex: null, side: 'right' } : { holeIndex: n - 1, side: 'right' };
+  return { holeIndex: idx, side: localX < 0 ? 'left' : 'right' };
+}
+
 export class BoxView extends ThingView {
   /** Local-space x of each hole's centre, for hit-testing and wiggle. */
   private holeCenters: number[] = [];
   /** Per-hole content node + base position, for selection wiggle. */
   private holeNodes: Array<{ node: PIXI.Container; x: number; y: number } | null> = [];
+  /** Local-space left edge and total width of the row of pieces (cubby.cpp llx/width). */
+  private spanLeft = 0;
+  private spanW = 0;
 
   protected build(): void {
     const box = this.thing as Box;
@@ -39,6 +70,8 @@ export class BoxView extends ThingView {
     const wr = REST.aspect * H;
     const totalW = w1 + (n - 1) * wr;
     const left = -totalW / 2;
+    this.spanLeft = left;
+    this.spanW = totalW;
     const contentSize = H * 0.6;
 
     let x = left;
@@ -94,6 +127,22 @@ export class BoxView extends ThingView {
       }
     });
     return best;
+  }
+
+  /**
+   * Resolve a drop reference point to a hole or a side, the way the original
+   * does (cubby.cpp `closest_hole`:2605 + `item_released_on_top`:462-491):
+   *   - `closest_hole` maps x across the box: left of llx → -1, past the right
+   *     edge → number_of_holes, else `(dx*n)/width` (y is ignored).
+   *   - if it lands on a real hole → that hole (fill / combine / nest).
+   *   - if it falls off an end: only a non-blank **box** dropped clear of the
+   *     end concatenates (`add_to_side`); anything else "must have meant" the
+   *     nearest end hole, so we clamp -1→0 and N→N-1.
+   * `draggedIsBox` gates that box-only concatenation branch.
+   */
+  dropSlot(worldX: number, _worldY: number, draggedIsBox: boolean): { holeIndex: number | null; side: 'left' | 'right' } {
+    const localX = worldX - this.container.position.x;
+    return resolveDropSlot(localX, this.holeCenters.length, this.spanLeft, this.spanW, draggedIsBox);
   }
 
   /** The content node of a filled hole + its base position (for wiggle), or null. */

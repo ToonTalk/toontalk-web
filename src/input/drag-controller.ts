@@ -397,17 +397,19 @@ export class DragController {
       this.onGrab(null);
       return;
     }
-    this.resolve(tool.thing, target, this.contextFor(target, x, y));
+    this.resolve(tool.thing, target, this.contextFor(target, x, y, tool.thing));
   }
 
   /** Which box hole / which side a reference point (px,py) lands on, for a drop. */
-  private contextFor(target: Thing, px: number, py: number): DropContext {
+  private contextFor(target: Thing, px: number, py: number, dragged?: Thing): DropContext {
     const ctx: DropContext = {};
     const tv = this.views.get(target.id);
     if (tv instanceof BoxView) {
-      const hole = tv.holeIndexAt(px, py);
-      if (hole != null) ctx.holeIndex = hole;
-      else ctx.side = px < target.x ? 'left' : 'right';
+      // cubby.cpp: a box dropped clear of an end concatenates (join); anything
+      // landing over the row goes into the nearest hole (fill / combine / nest).
+      const slot = tv.dropSlot(px, py, dragged instanceof Box);
+      if (slot.holeIndex != null) ctx.holeIndex = slot.holeIndex;
+      else ctx.side = slot.side;
     } else {
       ctx.side = px < target.x ? 'left' : 'right';
     }
@@ -542,7 +544,7 @@ export class DragController {
     }
     if (bestArea <= 0) target = undefined;
 
-    this.resolve(dragged.thing, target, target ? this.contextFor(target, cx, cy) : {});
+    this.resolve(dragged.thing, target, target ? this.contextFor(target, cx, cy, dragged.thing) : {});
     this.onGrab(null);
   };
 }

@@ -55,16 +55,24 @@ pad — training captures no exact-value guard for it (`trainer.ts`
 
 ## Boxes (`box.htm`)
 
-✅ holes fill / combine-in-place. ✅ **join** — drop a box on another box's
-*edge* (not over a hole) → holes merge, side decides order (`Box.join`);
-dropping *over a hole* still nests/fills. ✅ **blank box** (`cubby.cpp`
-`set_to_future_value`, `Box.blank` + `Box.fill`): the toolbox hands out a blank
-box that sizes/fills itself from what you drop on it — a **number → that many
-empty holes** (clamped to `MAX_BOX_HOLES` 100), **text → one single-character
-pad per letter** (explode), a **robot team → a hole per robot** (`lineup`), a
-**notebook → a hole per page**. A non-blank box just fills the targeted hole.
-▢ **split** (the inverse — e.g. Bammer/cutting a box apart). Robots ignore hole
-labels — only hole count + contents matter (we have no labels, fine).
+✅ holes fill / combine-in-place. ✅ **join** — faithfully gated by the drop
+geometry of `cubby.cpp` `item_released_on_top`:462-491 + `closest_hole`:2605,
+ported as `resolveDropSlot`/`BoxView.dropSlot` (drag-controller `contextFor`):
+the dragged thing's **centre** is mapped across the box — left of the left edge
+→ -1, past the right edge → N, else `floor((x-llx)·N/width)`. Landing over a
+hole → that hole (fill / combine / **nest**, including a box dropped squarely on
+a hole). Falling off an end: **only a box concatenates** (`add_to_side` requires
+`kind_of()==CUBBY` and a non-blank target, side = which end), exactly as the
+original — anything else "must have meant" the nearest end hole and is clamped
+there (-1→0, N→N-1). ✅ **blank box** (`cubby.cpp` `set_to_future_value`,
+`Box.blank` + `Box.fill`): the toolbox hands out a blank box that sizes/fills
+itself from what you drop on it — a **number → that many empty holes** (clamped
+to `MAX_BOX_HOLES` 100), **text → one single-character pad per letter**
+(explode), a **robot team → a hole per robot** (`lineup`), a **notebook → a hole
+per page**. A non-blank box just fills the targeted hole.
+No box **split** exists in `cubby.cpp` — boxes only concatenate; the inverse is
+destruction (bomb/Dusty), not a box operation, so there is no gap here. Robots
+ignore hole labels — only hole count + contents matter (we have no labels, fine).
 
 ## Birds & nests (`bird.cpp`)
 
