@@ -352,7 +352,7 @@ async function start(): Promise<void> {
     switch (key) {
       case 'number': world.add(new NumberThing({ value: 1, x, y })); break;
       case 'text': world.add(new TextThing({ value: 'a', x, y })); break;
-      case 'box': world.add(new Box({ blank: true, x, y })); break; // size it by dropping a number/text/etc.
+      case 'box': world.add(new Box({ size: 1, x, y })); break; // cubby.h: 1 hole by default
       case 'nest': {
         // A fresh nest holds an egg (the nest view draws it). After a beat it
         // hatches and the bird flies to a nearby spot (bird.cpp hatch).
