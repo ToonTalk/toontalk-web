@@ -315,9 +315,12 @@ export class CityModel {
     this.insideHouse = null;
     this.mode = 'walking';
     if (h) {
-      // step back out the door, just south of (in front of) the house
+      // Step OUT to the street, well clear of (and facing away from) the door —
+      // not onto the doorstep — so you don't instantly walk back in. (The
+      // original drops you into the city in front of the house.)
       this.cx = h.x;
-      this.cy = h.y - DOOR_DEPTH * 1.5;
+      this.cy = h.y - (HOUSE_HD + STEP_OUT);
+      this.dir = 2; // facing south, away from the house
       this.streetY = roadYFor(this.cy);
     }
   }

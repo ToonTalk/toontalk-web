@@ -282,12 +282,13 @@ export class Room {
     div.endFill();
     box.addChild(div);
 
-    // 2x4 grid of tools. Matches the original toolbox grid (ToonTalk - claude 1):
-    // number, text, box, wand, scale, bird, truck, bomb.
+    // 2x4 grid of tool stacks, in the source order (constant.h:1049 +
+    // tools.cpp:4024): number, text / box, nest / scale, robot / truck, bomb.
+    // (The wand, vacuum, pump and notebook are FLOOR items, not toolbox stacks.)
     const grid: Array<{ pick?: string; label?: string; fill?: number; icon?: string }> = [
       { label: '1', fill: 0xbff2c9, pick: 'number' }, { label: 'A', fill: 0xf2ddc2, pick: 'text' },
-      { icon: 'box', pick: 'box' }, { icon: 'wand', pick: 'wand' },
-      { icon: 'scale', pick: 'scale' }, { icon: 'bird', pick: 'bird' },
+      { icon: 'box', pick: 'box' }, { icon: 'nest', pick: 'nest' },
+      { icon: 'scale', pick: 'scale' }, { icon: 'robot', pick: 'robot' },
       { icon: 'truck', pick: 'truck' }, { icon: 'bomb', pick: 'bomb' },
     ];
     grid.forEach((item, i) => {

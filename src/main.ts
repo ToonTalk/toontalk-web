@@ -13,7 +13,7 @@ import { NumberThing } from './model/number';
 import { TextThing } from './model/text';
 import { Box } from './model/box';
 import { Nest } from './model/nest';
-import { Bird } from './model/bird';
+import { Bird, hatchFromNest } from './model/bird';
 import { Wand } from './model/wand';
 import { Dusty } from './model/dusty';
 import { Bomb } from './model/bomb';
@@ -342,9 +342,17 @@ async function start(): Promise<void> {
       case 'text': world.add(new TextThing({ value: 'a', x, y })); break;
       case 'box': world.add(new Box({ size: 2, x, y })); break;
       case 'nest': {
+        // A fresh nest holds an egg (the nest view draws it). After a beat it
+        // hatches and the bird flies to a nearby spot (bird.cpp hatch).
         const nest = new Nest({ x, y });
         world.add(nest);
-        world.add(new Bird({ nests: [nest], x: x - 90, y: y - 40 }));
+        window.setTimeout(() => {
+          if (!world.all().includes(nest)) return; // nest was picked up/removed
+          const bx = x + 120;
+          const by = y - 80;
+          const bird = hatchFromNest(world, nest, bx, by);
+          if (bird) flyBird(renderer.thingLayer, x, y, bx, by, views.get(bird.id)?.container);
+        }, 650);
         break;
       }
       case 'scale': world.add(new Scale({ x, y })); break;
