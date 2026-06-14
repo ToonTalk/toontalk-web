@@ -47,13 +47,26 @@ bird/robot/tools/dragdrop`, `room.cpp/floor.cpp`.
   `react()` functions expect. (Partly in `city-scene.ts`.)
 
 ## Order (by testability) & status
-1. **Flying** — `screen.cpp` ✅ (camera.ts) · `block/city` constants ⚠ (in
-   city-model.ts, to be made literal) · `Programmer_City_Flying::react` ⚠
-   (approximated in city-model.ts) · `Sprite` shim ▢.
-2. **Landing** — `Programmer_City_Landing::react` ▢.
-3. **Walking** — `Programmer_City_Walking::react` ▢.
-4. **Rooms** — `room.cpp` + `Programmer_Room_Walking`/`At_Floor` ▢.
+1. **Flying — ✅ done (faithfully sourced).** constants (`src/port/constants.ts`
+   ← constant.h/globals.cpp/block.cpp) · Screen (`camera.ts` ← screen.cpp) ·
+   geometry (`city-model.ts` ← block.cpp:205 `city_location`, city.cpp:172
+   `build_initial_houses`, free-play **10×10** blocks) · `fly()` ← `Programmer_
+   City_Flying::react` (prgrmmr.cpp:3988), anchored with line refs.
+2. **Landing — analyzed, port next.** `Programmer_City_Landing::react`
+   (prgrmmr.cpp:4296): the copter moves in **real y** (`y += delta_y`,
+   `delta_y ± button_speed·duration/1000`); **`y>max_y && Δ>0 → FLYING_AGAIN`**,
+   **`y<min_y → LEAVE_HELICOPTER`**; horizontal mouse **pans the city** (shift
+   `min_x/max_x` + `tt_screen->move_by`) with the copter centred. Our `land()`
+   approximates this with a normalised `landY`; reconcile to real-y. (The
+   side-view *render* stays Pixi — CAMERA_IN_FRONT is platform.)
+3. **Walking** — `Programmer_City_Walking::react` (prgrmmr.cpp:5000) ▢.
+4. **Rooms** — `room.cpp` + `Programmer_Room_Walking` (5260) / `At_Floor` ▢.
 5. **Elements** — `cubby/number/text/bird/robot/tools` onto the `Sprite` shim ▢.
+
+The **`Sprite` base shim** (city coords / size / priority / `react·receive_item·
+copy·used`, Pixi-backed display) is still ▢ and is the prerequisite for porting
+elements faithfully (slice 5); landing/walking/rooms mostly need the Programmer
+state machine, not the full Sprite base.
 
 Keep the app working after each slice; per-element fidelity detail stays in
 `docs/elements.md`.
