@@ -7,6 +7,7 @@ import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Nest } from '../model/nest';
 import { renderThingDisplay } from './display';
+import { floorCamera } from './floor-camera';
 
 export class NestView extends ThingView {
   private itemNode: PIXI.Container | null = null;
@@ -19,8 +20,13 @@ export class NestView extends ThingView {
   /** True if a world-space point falls on the delivered item (for grabbing it). */
   pressedOnItem(worldX: number, worldY: number): boolean {
     if (!this.itemNode) return false;
-    const b = this.itemNode.getBounds();
-    return worldX >= b.x && worldX <= b.x + b.width && worldY >= b.y && worldY <= b.y + b.height;
+    const b = this.itemNode.getBounds(); // screen; shift into world (floor camera)
+    return (
+      worldX >= b.x + floorCamera.x &&
+      worldX <= b.x + b.width + floorCamera.x &&
+      worldY >= b.y + floorCamera.y &&
+      worldY <= b.y + b.height + floorCamera.y
+    );
   }
 
   protected build(): void {

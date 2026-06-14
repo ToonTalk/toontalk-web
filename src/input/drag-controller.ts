@@ -36,6 +36,7 @@ import { NestView } from '../view/nest-view';
 import { NotebookView } from '../view/notebook-view';
 import { renderThingDisplay } from '../view/display';
 import { tweenScale } from '../view/animation';
+import { floorCamera } from '../view/floor-camera';
 
 export type DropResolver = (dragged: Thing, target: Thing | undefined, ctx: DropContext) => void;
 export type TrainStep = (from: number, to: number) => void;
@@ -307,9 +308,16 @@ export class DragController {
     return view instanceof BoxView ? view : null;
   }
 
+  /** Cursor → world: the floor view is panned by the floor camera, so a screen
+   * point maps to a world point by adding the camera offset. All placement and
+   * hit-testing here works in WORLD coords. */
+  private worldPt(p: { x: number; y: number }): { x: number; y: number } {
+    return { x: p.x + floorCamera.x, y: p.y + floorCamera.y };
+  }
+
   private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
     if (!this.enabled) return;
-    const { x, y } = e.global;
+    const { x, y } = this.worldPt(e.global);
 
     // Training: begin a hole-to-hole demonstration, lifting a visible copy of
     // the grabbed hole's contents so the gesture is legible.
@@ -461,25 +469,25 @@ export class DragController {
 
   private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
     if (!this.enabled) return;
-    this.pointer = { x: e.global.x, y: e.global.y };
+    const w = this.worldPt(e.global);
+    this.pointer = w; // world coords (hit-testing adds the floor camera too)
     this.updateHoverTarget();
     // A held tool follows the cursor (it's in hand), even with no button down.
     if (this.heldTool) {
       this.world.moveThing(this.heldTool.thing.id, {
-        x: e.global.x + HELD_OFFSET.x,
-        y: e.global.y + HELD_OFFSET.y,
+        x: w.x + HELD_OFFSET.x,
+        y: w.y + HELD_OFFSET.y,
       });
       return;
     }
     if (this.trainer.active) {
-      if (this.trainGhost) this.trainGhost.position.set(e.global.x, e.global.y);
+      if (this.trainGhost) this.trainGhost.position.set(w.x, w.y);
       return;
     }
     if (!this.dragging) return;
-    const { x, y } = e.global;
     this.world.moveThing(this.dragging.thing.id, {
-      x: x + this.grabOffset.x,
-      y: y + this.grabOffset.y,
+      x: w.x + this.grabOffset.x,
+      y: w.y + this.grabOffset.y,
     });
   };
 
@@ -498,7 +506,8 @@ export class DragController {
       this.clearTrainGhost();
       if (this.trainFrom != null) {
         const bv = this.trainingBoxView();
-        const to = bv ? bv.holeIndexAt(e.global.x, e.global.y) : null;
+        const wp = this.worldPt(e.global);
+        const to = bv ? bv.holeIndexAt(wp.x, wp.y) : null;
         if (to != null && to !== this.trainFrom) this.onTrainStep(this.trainFrom, to);
         this.trainFrom = null;
       }

@@ -151,6 +151,12 @@ export class Room {
     if (tex) this.floor.texture = tex;
   }
 
+  /** Scroll the floor baseplate to match the floor camera (the toolbox chrome
+   * stays put), so the studs slide as you sit at different spots. */
+  setFloorPan(camX: number, camY: number): void {
+    this.floor.tilePosition.set(-camX, -camY);
+  }
+
   /** Show/hide the whole room (floor, chrome, hand cursor) — used when the
    * city scene is on top. Presentation only. */
   setVisible(v: boolean): void {

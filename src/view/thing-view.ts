@@ -10,6 +10,7 @@
 import * as PIXI from 'pixi.js';
 import type { Thing } from '../model/thing';
 import type { RenderTheme } from '../config/render-mode';
+import { floorCamera } from './floor-camera';
 
 export abstract class ThingView {
   readonly thing: Thing;
@@ -54,8 +55,15 @@ export abstract class ThingView {
 
   /** Hit test in world coordinates against the container's bounds. */
   containsPoint(x: number, y: number): boolean {
+    // (x, y) are WORLD coords; getBounds is screen (thingLayer is panned by the
+    // floor camera), so shift the bounds into world space before testing.
     const b = this.container.getBounds();
-    return x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height;
+    return (
+      x >= b.x + floorCamera.x &&
+      x <= b.x + b.width + floorCamera.x &&
+      y >= b.y + floorCamera.y &&
+      y <= b.y + b.height + floorCamera.y
+    );
   }
 
   setDragging(dragging: boolean): void {

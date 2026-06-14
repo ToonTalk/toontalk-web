@@ -31,6 +31,7 @@ import { Renderer } from './view/renderer';
 import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
 import { renderThingDisplay } from './view/display';
+import { floorCamera, FLOOR_W, FLOOR_H, clampFloorCamera } from './view/floor-camera';
 import { BoxView } from './view/box-view';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
@@ -176,6 +177,7 @@ async function start(): Promise<void> {
     theme,
     onGrab,
   );
+  (window as unknown as { __ttDrag?: unknown }).__ttDrag = dragController;
 
   // Houses are running processes: each tick, every house offers its box to its
   // robot team and the first matching robot runs (so a house keeps reacting).
@@ -193,17 +195,18 @@ async function start(): Promise<void> {
     // Walking up to a house door, or sitting on the grass ('s'), drops you onto
     // a working floor — the room/World view. (Distinct per-house contents is a
     // later step; for now every house + the grass share the one floor.)
-    onEnter: (where, house) => enterRoom(where === 'house' ? (house?.style ?? 'a') : 'c'),
+    onEnter: (where, house) =>
+      enterRoom(where === 'house' ? (house?.style ?? 'a') : 'c', city.model.ix, city.model.iy),
     // Escape while walking the street raises the street menu.
     onEscape: () => showStreetMenu(),
     // The room standing view shows the working floor's things in miniature, at
     // their floor positions (normalised to the canvas the floor view fills).
     floorItems: () => {
-      const fw = renderer.width || 1280;
-      const fh = renderer.height || 800;
+      // Positions are normalised to the whole (large) floor, so the room view
+      // shows the entire work area in miniature and you can sit anywhere on it.
       return world.all().map((t) => ({
-        fx: Math.max(0.02, Math.min(0.98, t.x / fw)),
-        fy: Math.max(0.05, Math.min(0.98, t.y / fh)),
+        fx: Math.max(0.02, Math.min(0.98, t.x / FLOOR_W)),
+        fy: Math.max(0.05, Math.min(0.98, t.y / FLOOR_H)),
         node: renderThingDisplay(t, textures, theme, 64),
       }));
     },
@@ -238,10 +241,25 @@ async function start(): Promise<void> {
     dragController.setEnabled(false);
     setHud(CITY_HUD);
   }
+  /** Point the floor camera at a spot on the big floor (top-left = world point),
+   * clamped to the walls; pan the things + baseplate, leave the toolbox on
+   * screen. */
+  function setFloorCamera(camX: number, camY: number): void {
+    const c = clampFloorCamera(camX, camY, renderer.width, renderer.height);
+    floorCamera.x = c.x;
+    floorCamera.y = c.y;
+    renderer.thingLayer.position.set(-c.x, -c.y);
+    room.setFloorPan(c.x, c.y);
+  }
+  (window as unknown as { __ttSetFloorCamera?: unknown }).__ttSetFloorCamera = setFloorCamera;
   /** Sit down — switch to the working floor (room/World view), with the floor
-   * coloured to match the house you entered (grass uses the default tan). */
-  function enterRoom(style: 'a' | 'b' | 'c' = 'a'): void {
+   * coloured to match the house you entered (grass uses the default tan), and
+   * the floor scrolled so where you sat (`sitFx`,`sitFy` ∈ 0..1 of the whole
+   * floor) is centred — the toolbox stays at hand, things stay where you left
+   * them. */
+  function enterRoom(style: 'a' | 'b' | 'c' = 'a', sitFx = 0.5, sitFy = 0.5): void {
     room.setFloorStyle(style);
+    setFloorCamera(sitFx * FLOOR_W - renderer.width / 2, sitFy * FLOOR_H - renderer.height / 2);
     city.setActive(false);
     room.setVisible(true);
     renderer.thingLayer.visible = true;
@@ -348,7 +366,11 @@ async function start(): Promise<void> {
   // Pull a fresh element out of the toolbox at (x, y) — an infinite stack, so
   // the toolbox keeps its copy. Spawned under the cursor; the drag controller
   // (same pointerdown, bubbled) then picks it up so it drags out of the box.
-  function spawnTool(key: string, x: number, y: number): void {
+  function spawnTool(key: string, sx: number, sy: number): void {
+    // The toolbox is screen-fixed; convert the click to world coords so a fresh
+    // element appears under the cursor even when the floor is scrolled.
+    const x = sx + floorCamera.x;
+    const y = sy + floorCamera.y;
     switch (key) {
       case 'number': world.add(new NumberThing({ value: 1, x, y })); break;
       case 'text': world.add(new TextThing({ value: 'a', x, y })); break;
@@ -390,11 +412,12 @@ async function start(): Promise<void> {
   // the vacuum (remove), and Pumpy the pump (resize). Everything else lives in
   // the toolbox/notebook chrome until you pull it out.
   function seedFloor(): void {
-    // The three hand tools lie out on the floor (bottom-left, as in the
-    // original): the magic wand, Dusty the vacuum, and Pumpy the pump.
-    world.add(new Wand({ x: 230, y: 470 }));
-    world.add(new Dusty({ x: 150, y: 600 }));
-    world.add(new Pumpy({ x: 320, y: 600 }));
+    // The three hand tools lie out on the floor near its centre (the floor is a
+    // large area, FLOOR_W×FLOOR_H; you sit where your stuff is): the magic wand,
+    // Dusty the vacuum, and Pumpy the pump.
+    world.add(new Wand({ x: FLOOR_W / 2 - 110, y: FLOOR_H / 2 - 40 }));
+    world.add(new Dusty({ x: FLOOR_W / 2 - 190, y: FLOOR_H / 2 + 90 }));
+    world.add(new Pumpy({ x: FLOOR_W / 2 + 20, y: FLOOR_H / 2 + 90 }));
   }
 
   function seedDemo(): void {
@@ -510,7 +533,7 @@ async function start(): Promise<void> {
   }
   function installMainNotebook(): Notebook {
     const nb = loadMainNotebook() ?? seedMainNotebook();
-    nb.moveTo({ x: 640, y: 650 }); // centre-bottom, as in the original floor
+    nb.moveTo({ x: FLOOR_W / 2, y: FLOOR_H / 2 + 200 }); // near the floor centre, below the tools
     world.add(nb);
     return nb;
   }

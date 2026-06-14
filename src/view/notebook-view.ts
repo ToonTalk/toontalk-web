@@ -7,6 +7,7 @@ import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Notebook } from '../model/notebook';
 import { renderThingDisplay } from './display';
+import { floorCamera } from './floor-camera';
 
 export class NotebookView extends ThingView {
   private pageNode: PIXI.Container | null = null;
@@ -14,8 +15,13 @@ export class NotebookView extends ThingView {
   /** True if a world-space point falls on the shown page (for grabbing a copy). */
   pressedOnPage(worldX: number, worldY: number): boolean {
     if (!this.pageNode) return false;
-    const b = this.pageNode.getBounds();
-    return worldX >= b.x && worldX <= b.x + b.width && worldY >= b.y && worldY <= b.y + b.height;
+    const b = this.pageNode.getBounds(); // screen; shift into world (floor camera)
+    return (
+      worldX >= b.x + floorCamera.x &&
+      worldX <= b.x + b.width + floorCamera.x &&
+      worldY >= b.y + floorCamera.y &&
+      worldY <= b.y + b.height + floorCamera.y
+    );
   }
 
   protected build(): void {
