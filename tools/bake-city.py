@@ -98,14 +98,57 @@ def load_bmp_2x_space(bmp, m25_dir, m22_dir):
     return None, False
 
 
-def bake_directional(sprite_geom, out_root, name, m25_dir, m22_dir, use_cycles=None):
-    """Bake a multi-cycle (directional) sprite. Geometry comes from sprite_geom
-    (the .TTS, parsed in 2x space already if from M25). use_cycles limits which
-    cycles to emit (and their output index). Returns a summary dict."""
+def opaque_centroid(img):
+    """Centroid of the opaque pixels — a stable anchor for animation frames
+    whose bounding box wobbles (e.g. spinning rotor blades)."""
+    px = img.load()
+    w, h = img.size
+    sx = sy = n = 0
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] > 24:
+                sx += x
+                sy += y
+                n += 1
+    return (sx / n, sy / n) if n else (w / 2.0, h / 2.0)
+
+
+def bake_directional(sprite_geom, out_root, name, m25_dir, m22_dir, use_cycles=None, align="origin"):
+    """Bake a multi-cycle (directional) sprite. align="origin" places frames by
+    the .TTS (ox,oy) logical origin; align="centroid" places them by their
+    opaque-pixel centroid so the body stays put while the rotor spins (fixes the
+    helicopter "jump")."""
     cycles = sprite_geom["cycles"]
     sel = use_cycles if use_cycles is not None else list(range(len(cycles)))
 
-    # Union bounding box across all selected frames (2x lower-left, y-up).
+    if align == "centroid":
+        cents = {}
+        hl = hr = ht = hb = 0.0
+        for ci in sel:
+            for fi, f in enumerate(cycles[ci]["frames"]):
+                im = f["img"]
+                cx, cy = opaque_centroid(im) if im is not None else (0, 0)
+                cents[(ci, fi)] = (cx, cy)
+                if im is not None:
+                    hl = max(hl, cx); hr = max(hr, im.width - cx)
+                    ht = max(ht, cy); hb = max(hb, im.height - cy)
+        W = int(round(hl + hr)); H = int(round(ht + hb))
+        anchor = [hl / W, ht / H]
+        counts = []
+        for out_i, ci in enumerate(sel):
+            cdir = os.path.join(out_root, name, str(out_i))
+            os.makedirs(cdir, exist_ok=True)
+            frames = cycles[ci]["frames"]
+            for fi, f in enumerate(frames):
+                canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+                if f["img"] is not None:
+                    cx, cy = cents[(ci, fi)]
+                    canvas.alpha_composite(f["img"], (int(round(hl - cx)), int(round(ht - cy))))
+                canvas.save(os.path.join(cdir, f"{fi:02d}.png"))
+            counts.append(len(frames))
+        return {"name": name, "w": W, "h": H, "anchor": anchor, "frameCounts": counts}
+
+    # align == "origin": union bounding box, placed by the (ox,oy) logical origin.
     minL = minB = 10**9
     maxR = maxT = -(10**9)
     for ci in sel:
@@ -115,7 +158,6 @@ def bake_directional(sprite_geom, out_root, name, m25_dir, m22_dir, use_cycles=N
             minB = min(minB, oy); maxT = max(maxT, oy + h)
     W = maxR - minL
     H = maxT - minB
-    # Logical origin (0,0) position within the canvas, as an anchor fraction.
     anchor = [(0 - minL) / W, (maxT - 0) / H]
 
     counts = []
@@ -206,12 +248,13 @@ def main():
     # Flying helicopter: M25 geometry (2x), M22 fallback for missing BMPs.
     fly = parse_tts(os.path.join(m25, "HELIOFLY.TTS"))
     prep_geom(fly, m25, m22, from_m25=True)
-    summary["heli-fly"] = bake_directional(fly, out, "heli-fly", m25, m22)
+    # centroid-align so the body stays put while the rotor spins (no "jump")
+    summary["heli-fly"] = bake_directional(fly, out, "heli-fly", m25, m22, align="centroid")
 
     # Landing helicopter: M22 only (no M25 TTS). Cycle 0 = hover (3 frames).
     land = parse_tts(os.path.join(m22, "HELIOLND.TTS"))
     prep_geom(land, m25, m22, from_m25=False)
-    sland = bake_directional(land, out, "heli-land", m25, m22, use_cycles=[0])
+    sland = bake_directional(land, out, "heli-land", m25, m22, use_cycles=[0], align="centroid")
     # collapse the single-"direction" output dir up one level (heli-land/0 -> heli-land)
     summary["heli-land"] = sland
 

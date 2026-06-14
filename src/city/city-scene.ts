@@ -97,7 +97,6 @@ export class CityScene {
   private toolyX = 0;
   private toolyIX = 0.4;
   private toolyIY = 0.8;
-  private personBaseScale = 1;
   /** Street-view camera centre (world x). Follows the walker within a band so
    * they move on screen before the world scrolls (prgrmmr.cpp min_x/max_x). */
   private streetCamCx = 0;
@@ -110,7 +109,6 @@ export class CityScene {
   private mouseDY = 0;
   private locked = false;
   private lockUnavailable = false;
-  private takingOff = false;
 
   constructor(
     private readonly renderer: Renderer,
@@ -177,9 +175,9 @@ export class CityScene {
     brick.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
     for (const f of Object.values(assets.floors)) f.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
     this.backWall = new PIXI.TilingSprite(brick, 64, 64);
-    this.backWall.tileScale.set(0.5);
-    const wallUV = (): Float32Array => new Float32Array([0, 0, 4, 0, 4, 3, 0, 3]);
-    const floorUV = new Float32Array([0, 0, 12, 0, 12, 9, 0, 9]);
+    this.backWall.tileScale.set(2.0); // big, clear brick courses (match original)
+    const wallUV = (): Float32Array => new Float32Array([0, 0, 1.3, 0, 1.3, 1.4, 0, 1.4]);
+    const floorUV = new Float32Array([0, 0, 4.5, 0, 4.5, 3.5, 0, 3.5]); // big lego studs
     const idx = (): Uint16Array => new Uint16Array([0, 1, 2, 0, 2, 3]);
     const mesh = (tex: PIXI.Texture, uv: Float32Array): PIXI.SimpleMesh =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -208,7 +206,6 @@ export class CityScene {
     this.tooly = new DirectionalSprite(assets.tooly, 110);
     fitHeight(this.heliFly.sprite, 130); // re-fit per frame in renderFlying/renderStreet
     fitHeight(this.person.sprite, 116);
-    this.personBaseScale = this.person.sprite.scale.x;
     fitHeight(this.tooly.sprite, 64);
     this.heliFly.sprite.anchor.set(0.5, 0.5);
     this.heliLand.sprite.anchor.set(0.5, 1);
@@ -304,7 +301,6 @@ export class CityScene {
     return this.active;
   }
   resume(): void {
-    this.takingOff = false;
     if (this.model.mode === 'inside') this.model.iy = 0.72;
     else this.model.standUp();
     this.streetCamCx = this.model.cx; // re-centre the street camera on the walker
@@ -385,15 +381,14 @@ export class CityScene {
       this.heliFly.update(dt, true);
       if ((this.model.mode as CityMode) === 'landing') this.toolyX = this.model.cx - BLOCK_W * 0.03;
     } else if (this.model.mode === 'landing') {
-      const up = this.takingOff || this.buttons.right || this.keys.has('ArrowUp');
-      const down = !this.takingOff && (this.buttons.left || this.keys.has('ArrowDown'));
+      const up = this.buttons.right || this.keys.has('ArrowUp');
+      const down = this.buttons.left || this.keys.has('ArrowDown');
       const dir: -1 | 0 | 1 = up ? 1 : down ? -1 : 0;
-      const drift = this.takingOff ? 0 : this.inputPxX(LAND_SCREENS_PER_S, dt) / K_SIDE;
+      const drift = this.inputPxX(LAND_SCREENS_PER_S, dt) / K_SIDE;
       const descentPx = this.heliBaseY() - this.renderer.height * 0.18;
-      const dLandY = this.takingOff ? 0 : -this.inputPxY(LAND_SCREENS_PER_S, dt) / descentPx;
+      const dLandY = -this.inputPxY(LAND_SCREENS_PER_S, dt) / descentPx;
       this.model.land(dir, dt, drift, dLandY);
       this.heliLand.update(dt, true);
-      if ((this.model.mode as CityMode) === 'flying') this.takingOff = false;
     } else if (this.model.mode === 'walking') {
       const px = this.inputPxX(WALK_SCREENS_PER_S, dt);
       const py = this.inputPxY(WALK_SCREENS_PER_S, dt);
@@ -401,8 +396,7 @@ export class CityScene {
       this.model.walk(px / K_SIDE, -py / DEPTH); // mouse up = north (+y)
       this.person.setDirection(this.model.dir);
       this.person.update(dt, moving);
-      if (this.model.boardHelicopter()) this.takingOff = true;
-      else this.model.enterHouse();
+      this.model.enterHouse(); // only triggers at a narrow door (DOOR_REACH)
       const behind = this.model.dir >= 5 || this.model.dir === 0 ? -BLOCK_W * 0.025 : BLOCK_W * 0.025;
       const target = this.model.cx + behind;
       this.toolyX += (target - this.toolyX) * Math.min(1, dt / 280);
@@ -563,6 +557,7 @@ export class CityScene {
     this.heliParked.x = m.landX * K_SIDE;
     fitWidth(this.heliParked, W * HELI_LAND_W_FRAC);
     this.avatar.position.set(0, 0);
+    fitHeight(this.tooly.sprite, H * 0.16);
     this.tooly.sprite.position.set(camX + this.toolyX * K_SIDE, this.walkBaseY());
 
     if (m.mode === 'landing') {
@@ -575,7 +570,7 @@ export class CityScene {
     } else {
       // walking: person at the camera-follow x; +y north → up the screen
       const depthY = -(m.cy - m.streetY) * DEPTH;
-      this.person.sprite.scale.set(this.personBaseScale);
+      fitHeight(this.person.sprite, H * 0.24);
       this.person.sprite.position.set(camX + m.cx * K_SIDE, this.walkBaseY() + depthY);
     }
   }
@@ -586,7 +581,7 @@ export class CityScene {
   private renderInterior(W: number, H: number): void {
     const m = this.model;
     const horizon = H * 0.56; // floor meets the back wall
-    const bwL = W * 0.12; // back wall extent (side walls show beyond it)
+    const bwL = W * 0.12; // back wall extent (side walls show, gently receding)
     const bwR = W * 0.88;
 
     // back wall (brick rectangle)
@@ -615,8 +610,9 @@ export class CityScene {
     const fy = (iy: number): number => horizon + (H - horizon) * iy;
     const depthScale = (iy: number): number => 0.6 + iy * 0.7;
     this.avatar.position.set(0, 0);
+    fitHeight(this.person.sprite, H * 0.34 * depthScale(m.iy));
     this.person.sprite.position.set(fx(m.ix, m.iy), fy(m.iy));
-    this.person.sprite.scale.set(this.personBaseScale * depthScale(m.iy));
+    fitHeight(this.tooly.sprite, H * 0.22 * depthScale(this.toolyIY));
     this.tooly.sprite.position.set(fx(this.toolyIX, this.toolyIY), fy(this.toolyIY));
   }
 

@@ -163,16 +163,15 @@ describe('CityModel landing / walking / room', () => {
     expect(m.mode).toBe('walking');
   });
 
-  it('boardHelicopter: into the parked copter starts take-off', () => {
+  it('enter only at the narrow door, not anywhere along the house', () => {
     const m = new CityModel();
     m.mode = 'walking';
-    m.streetY = BLOCK_H;
-    m.cy = BLOCK_H;
-    m.landX = 100000;
-    m.cx = 100000 + DOOR_REACH * 4; // away
-    expect(m.boardHelicopter()).toBe(false);
-    m.cx = 100000;
-    expect(m.boardHelicopter()).toBe(true);
-    expect(m.mode).toBe('landing');
+    const h = m.houses[1]!;
+    m.streetY = nearestStreetY(h.y);
+    m.cy = m.streetY + ENTER_DEPTH + 1; // walked up far enough
+    m.cx = h.x + DOOR_REACH + 1; // just past the door's edge → no entry
+    expect(m.enterableHouse()).toBeNull();
+    m.cx = h.x; // at the door
+    expect(m.enterableHouse()).toBe(h);
   });
 });

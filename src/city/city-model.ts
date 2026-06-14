@@ -45,7 +45,8 @@ const SCALE_DOUBLE_MS = 750; // ¾ s to double / halve (prgrmmr.cpp grow_value/s
 export const WALK_BAND_N = 8 * TILE_H; // depth north toward the house fronts
 export const WALK_BAND_S = 4 * TILE_H; // depth south toward the viewer
 export const ENTER_DEPTH = 6 * TILE_H; // walk this far north at a door → enter
-export const DOOR_REACH = 8 * TILE_W; // horizontal reach of a door / the copter
+export const DOOR_REACH = 2 * TILE_W; // narrow: only the DOOR is an entrance, not the whole house
+export const STEP_OUT = 9 * TILE_W; // how far beside the copter you step out on landing
 
 export interface House {
   bx: number;
@@ -209,9 +210,7 @@ export class CityModel {
     } else if (this.landY <= 0) {
       this.landY = 0;
       this.landX = this.cx;
-      // Step out well CLEAR of the board range, or we'd re-board (and "bounce")
-      // on the very next frame.
-      this.cx = clamp(this.landX + DOOR_REACH * 2.5, 0, CITY_W);
+      this.cx = clamp(this.landX + STEP_OUT, 0, CITY_W); // step out beside the copter
       this.mode = 'walking';
     }
   }
@@ -266,18 +265,6 @@ export class CityModel {
       this.streetY = nearestStreetY(h.y);
       this.cy = this.streetY;
     }
-  }
-
-  /** Walk into the parked copter (down by the street) → board & take off. */
-  boardHelicopter(): boolean {
-    if (this.mode !== 'walking') return false;
-    if (Math.abs(this.cx - this.landX) > DOOR_REACH) return false;
-    if (this.cy - this.streetY > WALK_BAND_N * 0.5) return false; // up at the houses, not the copter
-    this.cx = this.landX;
-    this.cy = this.streetY;
-    this.landY = 0.05;
-    this.mode = 'landing';
-    return true;
   }
 
   standUp(): void {
