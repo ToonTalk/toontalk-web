@@ -75,11 +75,12 @@ export class CityScene {
   private readonly sideStreetTile: PIXI.TilingSprite;
   private readonly sideWorld: PIXI.Container;
 
-  // room interior (standing before sitting)
+  // room interior (standing before sitting) — a perspective brick box
   private readonly interior: PIXI.Container;
-  private readonly floorTile: PIXI.TilingSprite;
-  private readonly wallStrip: PIXI.Sprite;
-  private readonly wallFill: PIXI.Graphics;
+  private readonly backWall: PIXI.TilingSprite;
+  private readonly leftWall: PIXI.SimpleMesh;
+  private readonly rightWall: PIXI.SimpleMesh;
+  private readonly floorMesh: PIXI.SimpleMesh;
   private readonly doorSprite: PIXI.Sprite;
 
   private readonly avatar: PIXI.Container;
@@ -159,16 +160,36 @@ export class CityScene {
     this.container.addChild(this.sideWorld);
     this.buildSideWorld();
 
-    // room interior
+    // room interior — a perspective box: white-brick back + side walls, a blue
+    // lego floor in perspective, and the red door on the LEFT (original-room.jpg).
     this.interior = new PIXI.Container();
     this.interior.visible = false;
     this.container.addChild(this.interior);
-    this.wallFill = new PIXI.Graphics();
-    this.floorTile = new PIXI.TilingSprite(assets.floors['a'] ?? PIXI.Texture.WHITE, 64, 64);
-    this.wallStrip = new PIXI.Sprite(assets.backwall);
+    const brick = assets.wall;
+    brick.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+    for (const f of Object.values(assets.floors)) f.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+    this.backWall = new PIXI.TilingSprite(brick, 64, 64);
+    this.backWall.tileScale.set(0.5);
+    const wallUV = (): Float32Array => new Float32Array([0, 0, 4, 0, 4, 3, 0, 3]);
+    const floorUV = new Float32Array([0, 0, 12, 0, 12, 9, 0, 9]);
+    const idx = (): Uint16Array => new Uint16Array([0, 1, 2, 0, 2, 3]);
+    const mesh = (tex: PIXI.Texture, uv: Float32Array): PIXI.SimpleMesh =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      new PIXI.SimpleMesh(tex, new Float32Array(8) as any, uv as any, idx() as any);
+    this.leftWall = mesh(brick, wallUV());
+    this.rightWall = mesh(brick, wallUV());
+    this.leftWall.tint = 0xcfcfcf; // side walls a touch darker for depth
+    this.rightWall.tint = 0xcfcfcf;
+    this.floorMesh = mesh(assets.floors['b'] ?? PIXI.Texture.WHITE, floorUV);
     this.doorSprite = new PIXI.Sprite(assets.roomdoor);
     this.doorSprite.anchor.set(0.5, 1);
-    this.interior.addChild(this.wallFill, this.floorTile, this.wallStrip, this.doorSprite);
+    this.interior.addChild(
+      this.backWall,
+      this.leftWall,
+      this.rightWall,
+      this.floorMesh,
+      this.doorSprite,
+    );
 
     // avatar
     this.avatar = new PIXI.Container();
@@ -525,35 +546,44 @@ export class CityScene {
     }
   }
 
-  /** The room you stand in after entering a house, before sitting at the floor. */
+  /** The room you stand in after entering a house, before sitting at the floor —
+   * a perspective brick box with a blue lego floor and the red door on the left
+   * (matches docs/ref/original-room.jpg). */
   private renderInterior(W: number, H: number): void {
     const m = this.model;
-    const wallBottom = H * 0.3;
-    this.wallFill.clear();
-    this.wallFill.beginFill(0x6b5240);
-    this.wallFill.drawRect(0, 0, W, wallBottom);
-    this.wallFill.endFill();
-    this.wallStrip.texture = this.assets.backwall;
-    this.wallStrip.width = W;
-    this.wallStrip.height = 40;
-    this.wallStrip.position.set(0, wallBottom - 40);
-    const style = m.insideHouse?.style ?? 'a';
-    this.floorTile.texture = this.assets.floors[style] ?? this.assets.floors['a']!;
-    this.floorTile.tileScale.set(0.6);
-    this.floorTile.position.set(0, wallBottom);
-    this.floorTile.width = W;
-    this.floorTile.height = H - wallBottom;
-    this.doorSprite.height = wallBottom * 0.92;
-    this.doorSprite.scale.x = this.doorSprite.scale.y;
-    this.doorSprite.position.set(W * 0.9, wallBottom + 6);
+    const horizon = H * 0.56; // floor meets the back wall
+    const bwL = W * 0.12; // back wall extent (side walls show beyond it)
+    const bwR = W * 0.88;
 
-    const sx = (ix: number): number => W * 0.12 + ix * W * 0.76;
-    const sy = (iy: number): number => wallBottom + 20 + iy * (H * 0.92 - (wallBottom + 20));
-    const depthScale = (iy: number): number => 0.82 + iy * 0.3;
+    // back wall (brick rectangle)
+    this.backWall.position.set(bwL, 0);
+    this.backWall.width = bwR - bwL;
+    this.backWall.height = horizon;
+    // side walls (brick quads receding to the screen edges)
+    setVerts(this.leftWall, [0, 0, bwL, 0, bwL, horizon, 0, H]);
+    setVerts(this.rightWall, [bwR, 0, W, 0, W, H, bwR, horizon]);
+    // floor trapezoid: narrow at the back (horizon), full width at the front
+    const style = m.insideHouse?.style ?? 'a';
+    this.floorMesh.texture = this.assets.floors[style] ?? this.assets.floors['a']!;
+    setVerts(this.floorMesh, [bwL, horizon, bwR, horizon, W, H, 0, H]);
+
+    // door on the LEFT wall, upright
+    this.doorSprite.scale.set((H * 0.4) / this.doorSprite.texture.height);
+    this.doorSprite.position.set(W * 0.1, horizon + (H - horizon) * 0.16);
+
+    // map interior coords (ix 0..1 left→right, iy 0..1 back→front) into the
+    // floor trapezoid, scaling the figures by depth for perspective.
+    const fx = (ix: number, iy: number): number => {
+      const left = bwL + (0 - bwL) * iy;
+      const right = bwR + (W - bwR) * iy;
+      return left + (right - left) * ix;
+    };
+    const fy = (iy: number): number => horizon + (H - horizon) * iy;
+    const depthScale = (iy: number): number => 0.6 + iy * 0.7;
     this.avatar.position.set(0, 0);
-    this.person.sprite.position.set(sx(m.ix), sy(m.iy));
+    this.person.sprite.position.set(fx(m.ix, m.iy), fy(m.iy));
     this.person.sprite.scale.set(this.personBaseScale * depthScale(m.iy));
-    this.tooly.sprite.position.set(sx(this.toolyIX), sy(this.toolyIY));
+    this.tooly.sprite.position.set(fx(this.toolyIX, this.toolyIY), fy(this.toolyIY));
   }
 
   destroy(): void {
@@ -577,6 +607,13 @@ function place(
   t.width = Math.max(0, w);
   t.height = Math.max(0, h);
   t.tilePosition.set(ox - x, oy - y);
+}
+
+/** Update a SimpleMesh's vertex positions (PIXI's typed-array getters need a cast). */
+function setVerts(mesh: PIXI.SimpleMesh, xy: number[]): void {
+  const buf = mesh.geometry.getBuffer('aVertexPosition');
+  (buf.data as unknown as Float32Array).set(xy);
+  buf.update();
 }
 
 function clampAbs(v: number, max: number): number {

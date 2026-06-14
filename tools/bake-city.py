@@ -242,6 +242,7 @@ def main():
     bake_static("FLOORB.BMP", os.path.join(out, "floor-b.png"), m25, m22, key=False)  # blue
     bake_static("FLOORD.BMP", os.path.join(out, "floor-c.png"), m25, m22, key=False)  # green
     bake_static("BACKWALL.BMP", os.path.join(out, "backwall.png"), m25, m22, key=False)
+    bake_static("WALL.BMP", os.path.join(out, "wall.png"), m25, m22, key=False)  # white brick
     bake_static("ROOMDOOR.BMP", os.path.join(out, "roomdoor.png"), m25, m22)
 
     # The Lego ground brushes (lawn/street/water patterns).

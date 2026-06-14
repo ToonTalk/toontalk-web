@@ -42,11 +42,14 @@ the city itself (`city.cpp`):
   - **H** → calls the helicopter back; **Esc** → the street menu.
   Trees are a web extra — **off by default** (`CityModel({trees})`).
 - **Room standing view** (`mode 'inside'`, `renderInterior`) — the missing
-  middle step, faithful to **`source/room.cpp` + `Programmer_Room_Walking`**:
-  after entering a house you **stand in the room** before sitting at the floor.
-  Drawn from baked interior art — the floor baseplate by house style
-  (`floor-{a,b,c}` = FLOORC/B/D; `create_floor` maps style→FLOOR background), a
-  back-wall band (`BACKWALL`) and the **door** (`ROOMDOOR`). You walk the room
+  middle step, faithful to **`source/room.cpp` + `Programmer_Room_Walking`** and
+  matched against `docs/ref/original-room.jpg`: after entering a house you
+  **stand in the room** before sitting at the floor. Rendered as a **perspective
+  brick box**: a white lego-brick back wall (`WALL.BMP`) + two receding
+  side-wall `SimpleMesh` quads, a **blue lego floor** as a perspective trapezoid
+  (`SimpleMesh`, studs larger at the front) by house style (`floor-{a,b,c}` =
+  FLOORC/B/D; `create_floor` maps style→FLOOR background), and the **red door on
+  the LEFT** (`ROOMDOOR`). You walk the room
   in normalised coords (`ix`/`iy`, slight depth perspective); `walkInside`
   returns **`'leave'`** at a side wall (→ back to the street at the house,
   `leaveRoom`) or **`'sit'`** at the front of the floor (→ `onEnter` → the
