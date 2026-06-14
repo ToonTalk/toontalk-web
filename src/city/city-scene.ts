@@ -479,7 +479,11 @@ export class CityScene {
     this.model.houses.forEach((h, i) => {
       const spr = this.flyHouses[i]!;
       spr.position.set(cam.sx(h.x), cam.sy(h.y));
-      spr.scale.set(cam.s(HOUSE_UNITS) / spr.texture.width);
+      // scale by the LARGER dimension so the different roof arts get comparable
+      // footprints (a short/wide roof shouldn't render tiny). Exact per-house
+      // sizes await city reference footage.
+      const maxDim = Math.max(spr.texture.width, spr.texture.height);
+      spr.scale.set(cam.s(HOUSE_UNITS) / maxDim);
     });
     this.model.trees.forEach((t, i) => {
       const spr = this.flyTrees[i]!;

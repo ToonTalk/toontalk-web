@@ -205,7 +205,9 @@ export class CityModel {
     } else if (this.landY <= 0) {
       this.landY = 0;
       this.landX = this.cx;
-      this.cx = clamp(this.landX + DOOR_REACH, 0, CITY_W);
+      // Step out well CLEAR of the board range, or we'd re-board (and "bounce")
+      // on the very next frame.
+      this.cx = clamp(this.landX + DOOR_REACH * 2.5, 0, CITY_W);
       this.mode = 'walking';
     }
   }
