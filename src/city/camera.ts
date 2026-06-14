@@ -22,9 +22,15 @@
  * aspect; a 4:3 canvas reproduces the 32000×24000 view exactly). Pure math —
  * unit-tested against those formulas. See `docs/port.md`.
  */
-export const IDEAL_W = 32000; // constant.h ideal_screen_width
-export const IDEAL_H = 24000; // constant.h ideal_screen_height
-export const GROUND_SCALE = 100; // constant.h ground_scale (100% = on the ground)
+// Constants come from the faithful port of constant.h (src/port/constants.ts).
+import {
+  IDEAL_SCREEN_WIDTH,
+  IDEAL_SCREEN_HEIGHT,
+  GROUND_SCALE as GROUND_SCALE_CONST,
+} from '../port/constants';
+export const IDEAL_W = IDEAL_SCREEN_WIDTH; // constant.h:326
+export const IDEAL_H = IDEAL_SCREEN_HEIGHT; // constant.h:327
+export const GROUND_SCALE = GROUND_SCALE_CONST; // constant.h:337
 
 export class Camera {
   cx = 0;

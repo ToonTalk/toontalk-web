@@ -132,7 +132,7 @@ when 1); applying Pumpy to the thing under its hose tip resizes it by its
 mode (bigger/smaller/wider/narrower/taller/shorter/good; clamp 0.4–3×). Mode
 keys: `+`/`b` bigger · `-` smaller · `w` wider · `n` narrower · `t` taller ·
 `s` shorter · `g` good (revert); **Tab** cycles. `PumpyView` shows a badge
-and scales the 800×600 art down to tool size.
+and draws the baked PUMP00 art (`pumpy.png`, 208×174) at native tool size.
 ▢ in-hole things ignore Pumpy size (the cubby fit-scale dominates); copies
 and box-fit don't carry Pumpy size.
 
