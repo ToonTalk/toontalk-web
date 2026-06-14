@@ -402,13 +402,18 @@ export class CityScene {
       this.heliFly.update(dt, true);
       if ((this.model.mode as CityMode) === 'landing') this.toolyX = this.model.cx - BLOCK_W * 0.03;
     } else if (this.model.mode === 'landing') {
-      const up = this.buttons.right || this.keys.has('ArrowUp');
-      const down = this.buttons.left || this.keys.has('ArrowDown');
-      const dir: -1 | 0 | 1 = up ? 1 : down ? -1 : 0;
-      const drift = this.inputPxX(LAND_SCREENS_PER_S, dt) / K_SIDE;
-      const descentPx = this.heliBaseY() - this.renderer.height * 0.18;
-      const dLandY = -this.inputPxY(LAND_SCREENS_PER_S, dt) / descentPx;
-      this.model.land(dir, dt, drift, dLandY);
+      if (this.model.takingOff) {
+        // takeoff = landing in reverse: rise automatically until airborne
+        this.model.land(1, dt, 0, 0);
+      } else {
+        const up = this.buttons.right || this.keys.has('ArrowUp');
+        const down = this.buttons.left || this.keys.has('ArrowDown');
+        const dir: -1 | 0 | 1 = up ? 1 : down ? -1 : 0;
+        const drift = this.inputPxX(LAND_SCREENS_PER_S, dt) / K_SIDE;
+        const descentPx = this.heliBaseY() - this.renderer.height * 0.18;
+        const dLandY = -this.inputPxY(LAND_SCREENS_PER_S, dt) / descentPx;
+        this.model.land(dir, dt, drift, dLandY);
+      }
       this.heliLand.update(dt, true);
     } else if (this.model.mode === 'walking') {
       const px = this.inputPxX(WALK_SCREENS_PER_S, dt);

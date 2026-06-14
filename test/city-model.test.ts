@@ -21,6 +21,8 @@ import {
   CITY_H,
   DOOR_REACH,
   DOOR_DEPTH,
+  HOUSE_HW,
+  HOUSE_HD,
   roadYFor,
 } from '../src/city/city-model';
 
@@ -132,9 +134,10 @@ describe('CityModel landing / walking / room', () => {
     expect(m.cx).toBeGreaterThan(m.landX);
   });
 
-  it('walking roams the whole city north–south; nearby copter / H flies again', () => {
+  it('walking roams the whole city north–south; H takes off (landing in reverse)', () => {
     const m = new CityModel();
     m.mode = 'walking';
+    m.cx = 5000; // clear of the central houses, so nothing blocks the path
     m.cy = BLOCK_H;
     m.streetY = roadYFor(m.cy);
     m.walk(0, 9_999_999); // far north
@@ -142,8 +145,28 @@ describe('CityModel landing / walking / room', () => {
     expect((m.dir as Direction)).toBe(6); // North
     expect(m.streetY % BLOCK_H).toBe(0); // current road tracks the block we're in
     m.callHelicopter();
+    expect(m.mode).toBe('landing'); // takeoff replays the landing view in reverse
+    expect(m.takingOff).toBe(true);
+    for (let i = 0; i < 100 && m.takingOff; i++) m.land(1, 100); // rise until airborne
     expect(m.mode).toBe('flying');
     expect(m.scale).toBe(LIFTOFF_SCALE);
+    expect(m.takingOff).toBe(false);
+  });
+
+  it('house walls block walking; the door column is passable', () => {
+    const m = new CityModel();
+    m.mode = 'walking';
+    const h = m.houses[1]!;
+    // approach the side wall from the south → blocked before passing through
+    m.cx = h.x + HOUSE_HW; // a wall, not the door
+    m.cy = h.y - HOUSE_HD - 10;
+    m.walk(0, HOUSE_HD * 2); // try to walk north into the wall
+    expect(m.cy).toBeLessThan(h.y); // didn't pass into/through the house
+    // the door column lets you walk up to the door
+    m.cx = h.x;
+    m.cy = h.y - HOUSE_HD - 10;
+    m.walk(0, HOUSE_HD); // walk north in the door column
+    expect(m.cy).toBeGreaterThan(h.y - HOUSE_HD); // advanced toward the door
   });
 
   it('walking back into the parked copter takes off', () => {

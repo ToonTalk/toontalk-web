@@ -49,6 +49,8 @@ export const DOOR_REACH = 1.6 * TILE_W; // door half-width: ONLY the door is an 
 export const DOOR_DEPTH = 2 * TILE_H; // and you must be standing at the house front (in y)
 export const STEP_OUT = 9 * TILE_W; // how far beside the copter you step out on landing
 export const HELI_REACH = 4 * TILE_W; // walk this close to the parked copter → it takes off
+export const HOUSE_HW = 6 * TILE_W; // house footprint half-width (solid; walls block you)
+export const HOUSE_HD = 4 * TILE_H; // house footprint half-depth
 
 /** The road (block boundary) along the SOUTH edge of the block containing `y`. */
 export function roadYFor(y: number): number {
@@ -148,6 +150,8 @@ export class CityModel {
   private minReorient = TILE_W;
   /** Normalized helicopter height while landing: 1 = top of view, 0 = street. */
   landY = 1;
+  /** During a takeoff we replay the landing view in reverse (copter rises). */
+  takingOff = false;
   /** The road the avatar is currently on (south edge of the block at cy). */
   streetY = roadYFor(CITY_H / 2);
   landX = CITY_W / 2;
@@ -208,6 +212,7 @@ export class CityModel {
       this.mode = 'flying';
       this.scale = LIFTOFF_SCALE;
       this.landY = 1;
+      this.takingOff = false;
       return;
     }
     this.landY = Math.min(this.landY, 1.05);
@@ -215,7 +220,8 @@ export class CityModel {
       this.mode = 'flying';
       this.scale = LIFTOFF_SCALE;
       this.landY = 1;
-    } else if (this.landY <= 0) {
+      this.takingOff = false;
+    } else if (this.landY <= 0 && !this.takingOff) {
       this.landY = 0;
       this.landX = this.cx;
       this.parkedX = this.cx; // the copter stays here on the road
@@ -227,14 +233,36 @@ export class CityModel {
   }
 
   /** Walk freely about the whole city (+y = north). The avatar roams every
-   * street; the side view scrolls to follow it (renderStreet). */
+   * street; the side view scrolls to follow it (renderStreet). House walls are
+   * solid — you slide along them and can only pass through the door column. */
   walk(dx: number, dy = 0): void {
     if (this.mode !== 'walking' || (dx === 0 && dy === 0)) return;
     const d = directionFromDelta(dx, dy);
     if (d != null) this.dir = d;
-    this.cx = clamp(this.cx + dx, 0, CITY_W);
-    this.cy = clamp(this.cy + dy, 0, CITY_H);
+    let nx = clamp(this.cx + dx, 0, CITY_W);
+    let ny = clamp(this.cy + dy, 0, CITY_H);
+    // axis-separated collision so walking into a wall slides instead of sticking
+    if (this.blockedByHouse(nx, this.cy)) nx = this.cx;
+    if (this.blockedByHouse(nx, ny)) ny = this.cy;
+    this.cx = nx;
+    this.cy = ny;
     this.streetY = roadYFor(this.cy);
+  }
+
+  /** True if (x, y) is inside a house's solid footprint. The central door column
+   * (|x−h.x| ≤ DOOR_REACH) stays passable so you can walk up to the door and
+   * enter; every other part of the house is a wall. */
+  private blockedByHouse(x: number, y: number): boolean {
+    for (const h of this.houses) {
+      if (
+        Math.abs(x - h.x) <= HOUSE_HW &&
+        Math.abs(y - h.y) <= HOUSE_HD &&
+        Math.abs(x - h.x) > DOOR_REACH
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Standing at a house's door (close in BOTH x and y) → you may enter it. */
@@ -301,11 +329,14 @@ export class CityModel {
 
   callHelicopter(): void {
     if (this.mode !== 'walking') return;
-    // take off from where the copter is parked
+    // Board the copter where it's parked and play the takeoff — the landing in
+    // reverse: the big side-view copter rises from the ground, then we're flying.
     this.cx = this.parkedX;
     this.cy = this.parkedY;
     this.streetY = roadYFor(this.cy);
-    this.mode = 'flying';
-    this.scale = LIFTOFF_SCALE;
+    this.landX = this.parkedX;
+    this.landY = 0; // on the ground
+    this.takingOff = true;
+    this.mode = 'landing'; // reuse the landing view; the scene drives the ascent
   }
 }
