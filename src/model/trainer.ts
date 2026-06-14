@@ -10,7 +10,14 @@ import type { World } from './world';
 import type { Box } from './box';
 import type { Thing } from './thing';
 import { Robot, applyAction, type ConditionHole, type RobotAction } from './robot';
+import { TextThing } from './text';
 import { recomputeScales } from './scale';
+
+/** A blank (empty) text pad is a wildcard in a condition, like an erased pad —
+ * it matches any text rather than guarding an exact value (text.htm). */
+function isWildcardPad(t: Thing): boolean {
+  return t.erased || (t instanceof TextThing && t.value === '');
+}
 
 interface Session {
   robot: Robot;
@@ -39,8 +46,9 @@ export class Trainer {
 
   /**
    * Begin training: capture the box's shape as the (future) robot condition.
-   * Non-erased holes also capture an exact-value guard; erased holes (Dusty)
-   * stay wildcards. So erase the things you want generalized before starting.
+   * Non-erased holes also capture an exact-value guard; erased holes (Dusty) and
+   * blank text pads stay wildcards. So erase (or blank) the things you want
+   * generalized before starting.
    */
   start(robot: Robot, box: Box): void {
     recomputeScales(box); // capture each scale's current tilt as the guard
@@ -48,7 +56,7 @@ export class Trainer {
       robot,
       box,
       condition: box.holes.map((h) => (h ? h.kind : null)),
-      exactValues: box.holes.map((h) => (h && !h.erased ? h.copy() : null)),
+      exactValues: box.holes.map((h) => (h && !isWildcardPad(h) ? h.copy() : null)),
       actions: [],
     };
   }

@@ -4,6 +4,7 @@ import { NumberThing } from '../src/model/number';
 import { Box } from '../src/model/box';
 import { Dusty } from '../src/model/dusty';
 import { Robot } from '../src/model/robot';
+import { TextThing } from '../src/model/text';
 import { Trainer } from '../src/model/trainer';
 import { resolveDrop } from '../src/model/interactions';
 
@@ -64,6 +65,21 @@ describe('training with erasing → generalization', () => {
     // Hole 0 was NOT erased → must equal 4; hole 1 was erased → any number.
     expect(robot.matches(numBox(4, 99))).toBe(true);
     expect(robot.matches(numBox(7, 99))).toBe(false);
+  });
+
+  it('a BLANK text pad is a wildcard, like an erased one (text.htm)', () => {
+    const w = new World();
+    const robot = new Robot();
+    // A box whose second hole holds a blank (empty) text pad = "any text here".
+    const box = new Box({ holes: [new NumberThing({ value: 4 }), new TextThing({ value: '' })] });
+    const t = new Trainer(w);
+    t.start(robot, box);
+    t.finish();
+    // Hole 1 matches any text (no exact-'' guard), hole 0 must equal 4.
+    expect(robot.matches(new Box({ holes: [new NumberThing({ value: 4 }), new TextThing({ value: 'hi' })] }))).toBe(true);
+    expect(robot.matches(new Box({ holes: [new NumberThing({ value: 9 }), new TextThing({ value: 'hi' })] }))).toBe(false);
+    // still text-kind: a number in hole 1 does not match
+    expect(robot.matches(numBox(4, 5))).toBe(false);
   });
 });
 

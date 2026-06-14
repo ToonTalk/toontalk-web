@@ -34,9 +34,14 @@ lives in `input/drag-controller.ts`.
 
 ## Text (`text.htm`)
 
-✅ drop side decides order (left=prepend, right=append).
-▢ a **blank pad acts as a wildcard** in robot conditions (like erased);
-▢ dropping a number on a blank pad converts it to text; ▢ editing.
+✅ concatenation — drop side decides order (left=prepend, right=append).
+✅ dropping a number on a **blank** text pad converts it to its digits as text
+(`interactions.ts`, loose pads and in box holes). ✅ **editing** — select a pad
+and type (chars append, Backspace deletes; `pad.cpp` via `editText`). ✅ a
+**blank (empty) text pad is a wildcard** in a robot condition, like an erased
+pad — training captures no exact-value guard for it (`trainer.ts`
+`isWildcardPad`), so it matches any text (still text-kind).
+▢ blank-pad wildcard across *kinds* (matches only text, not anything).
 
 ## Boxes (`box.htm`)
 
