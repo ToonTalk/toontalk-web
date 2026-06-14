@@ -219,7 +219,8 @@ export class Room {
     tray.beginFill(0x2b3037, 0.9);
     tray.drawRoundedRect(-26, -26, 52, 52, 7);
     tray.endFill();
-    // pumpy.png is a bad asset (a b/w manual screenshot), so draw a pump glyph.
+    // Pumpy keeps a crisp vector glyph at chip size: the detailed pump sprite
+    // (pumpy.png) reads muddy this small, the way the wand/dusty icons do.
     const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 42);
     c.addChild(tray, icon);
     const b = new PIXI.Graphics();
@@ -241,7 +242,8 @@ export class Room {
     return c;
   }
 
-  /** A simple bicycle-pump glyph for Pumpy (the bundled pumpy.png is unusable). */
+  /** A simple bicycle-pump glyph for the Pumpy toolbox chip — a crisp vector
+   * that stays legible at chip size, where the detailed pump sprite goes muddy. */
   private pumpGlyph(): PIXI.Container {
     const g = new PIXI.Graphics();
     g.beginFill(0x3a6ea5, 1); // barrel

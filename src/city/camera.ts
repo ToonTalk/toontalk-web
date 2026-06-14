@@ -8,13 +8,19 @@
  * screen exactly fills the view. `scale = 1000` (initial flying) shows 10× the
  * city. The view is centred on (cx, cy) and spans `IDEAL·scale/100` city units.
  *
- * World orientation matches the original `direction()` (utils.cpp): **+y is
- * NORTH (up)**. Screen y grows downward, so the camera flips y in projection.
+ * World orientation matches the original `direction()` (utils.cpp:1 —
+ * `delta_y > 0 → NORTH`): **+y is NORTH**. `screen.cpp` `screen_y` (1888) is a
+ * **DIB coordinate** and Windows DIBs are bottom-up (row 0 = bottom — see the
+ * "min_y → FG max_y" note, screen.cpp:1864), so city +y=NORTH displays at the
+ * *top*. We render in Pixi's top-down space, so we flip y in projection
+ * (`sy = h/2 − (y−cy)·pxPerUnit`); that flip *is* the DIB convention.
  *
- * We fit the ideal view to the canvas by HEIGHT with a uniform pixels-per-unit
- * (so sprites stay square on any window aspect; a 4:3 canvas reproduces the
- * original's 32000×24000 view exactly). Pure math — unit-tested against the
- * screen.cpp formulas.
+ * Faithful to screen.cpp: `update_viewing_region` (1831 — `half_width =
+ * ideal_w/200·scale`, `view.min = center − half`), `pixels_per_*_city_coordinate`
+ * (182, 187), `screen_x/screen_y` (1869, 1888). We fit the ideal view to the
+ * canvas by HEIGHT with a uniform pixels-per-unit (sprites stay square on any
+ * aspect; a 4:3 canvas reproduces the 32000×24000 view exactly). Pure math —
+ * unit-tested against those formulas. See `docs/port.md`.
  */
 export const IDEAL_W = 32000; // constant.h ideal_screen_width
 export const IDEAL_H = 24000; // constant.h ideal_screen_height

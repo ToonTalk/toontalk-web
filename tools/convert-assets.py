@@ -21,6 +21,7 @@ ASSETS = {
     "nest": "HATCH01.BMP",
     "bird": "FLY37.BMP",
     "wand": "USEWAND1.BMP",     # hand holding wand (real legowand.bmp is missing)
+    "pumpy": "PUMP00.BMP",      # Pumpy the bicycle pump, resting (PUMP* = pump cycle)
     # Staged for upcoming features (erasing / tools / scale / bomb):
     "dusty": "SUCK0.BMP",       # Dusty the vacuum, resting (SUCK* = suck animation)
     "bubble": "BUBBL10.BMP",    # thought bubble cloud (BIGBUBBL.BMP keys poorly)

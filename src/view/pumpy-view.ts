@@ -23,11 +23,11 @@ export class PumpyView extends ThingView {
     const pumpy = this.thing as Pumpy;
     const tex = this.textures.get('pumpy') ?? PIXI.Texture.WHITE;
 
-    const SCALE = 0.14; // pumpy.png is 800x600; bring it to tool size
+    // pumpy.png is the baked PUMP00 art (208x174) — shown at native tool size,
+    // like Dusty and the wand.
     if (this.theme.dropShadow) {
       const shadow = new PIXI.Sprite(tex);
       shadow.anchor.set(0.5);
-      shadow.scale.set(SCALE);
       shadow.tint = 0x000000;
       shadow.alpha = 0.25;
       shadow.position.set(3, 4);
@@ -35,7 +35,6 @@ export class PumpyView extends ThingView {
     }
     const sprite = new PIXI.Sprite(tex);
     sprite.anchor.set(0.5);
-    sprite.scale.set(SCALE);
     this.container.addChild(sprite);
 
     const badge = new PIXI.Graphics();
