@@ -198,6 +198,36 @@ describe('CityModel state machine', () => {
     expect(m.enterableHouse()).toBeNull();
   });
 
+  it('enterHouse: walking up to a door steps INTO the room (standing view)', () => {
+    const m = new CityModel();
+    m.mode = 'walking';
+    const h = m.houses[0]!;
+    m.streetY = nearestStreetY(h.y);
+    m.cx = h.x;
+    m.cy = m.streetY - ENTER_DEPTH - 5;
+    expect(m.enterHouse()).toBe(true);
+    expect(m.mode).toBe('inside');
+    expect(m.insideHouse).toBe(h);
+    expect(m.iy).toBeLessThan(1); // standing, not yet at the floor front
+  });
+
+  it('walkInside: a side wall leaves to the street; the front sits at the floor', () => {
+    const m = new CityModel();
+    m.mode = 'inside';
+    m.insideHouse = m.houses[2]!;
+    m.ix = 0.5;
+    m.iy = 0.5;
+    expect(m.walkInside(0, 0.6)).toBe('sit'); // walked to the front of the floor
+    m.mode = 'inside';
+    m.insideHouse = m.houses[2]!;
+    m.ix = 0.5;
+    m.iy = 0.5;
+    expect(m.walkInside(-1, 0)).toBe('leave'); // walked out a side wall
+    expect(m.mode).toBe('walking'); // back on the street
+    expect(m.insideHouse).toBeNull();
+    expect(m.cx).toBe(m.houses[2]!.x); // at the house we came from
+  });
+
   it('boardHelicopter: walking into the parked copter starts take-off', () => {
     const m = new CityModel();
     m.mode = 'walking';

@@ -211,7 +211,8 @@ async function start(): Promise<void> {
     `ToonTalk City — fly · land · walk\n` +
     `click the city to take the controls (the mouse is captured; Esc = menu)\n` +
     `mouse / arrow keys steer · left button / ↓ descends · right button / Shift / ↑ climbs\n` +
-    `street: walk both ways · up to a door enters the house · 's' sits on the grass\n` +
+    `street: walk both ways · up to a door enters the house's room · 's' sits on the grass\n` +
+    `in the room: walk to the front of the floor (or 's') to sit & work · Esc steps back out\n` +
     `walk into the parked copter to take off · H calls the helicopter · Esc = leave menu`;
 
   /** Show the city (street/flying); hide the room/World and its input. */
@@ -298,7 +299,7 @@ async function start(): Promise<void> {
   }
   function showRoomMenu(): void {
     showMenu('Sitting down', [
-      { label: 'Stand up & leave', onClick: () => returnToStreet() },
+      { label: 'Stand up', onClick: () => returnToStreet() },
       { label: 'Save', onClick: () => document.getElementById('save-btn')?.click() },
       { label: 'Keep working', onClick: () => {} },
     ]);

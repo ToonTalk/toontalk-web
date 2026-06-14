@@ -39,6 +39,11 @@ export interface CityAssets {
    * streetSide, water1, water2, water4.
    */
   brushes: Record<string, PIXI.Texture>;
+  /** Room interior (standing view before sitting): floor baseplate by house
+   * style, the back-wall strip, and the door. */
+  floors: Record<string, PIXI.Texture>;
+  backwall: PIXI.Texture;
+  roomdoor: PIXI.Texture;
 }
 
 export interface DirSpec {
@@ -120,8 +125,19 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
     brushes[key] = t ?? white;
   }
 
+  const floors: Record<string, PIXI.Texture> = {
+    a: (await loadTex('/assets/city/floor-a.png', scaleMode)) ?? white,
+    b: (await loadTex('/assets/city/floor-b.png', scaleMode)) ?? white,
+    c: (await loadTex('/assets/city/floor-c.png', scaleMode)) ?? white,
+  };
+  const backwall = (await loadTex('/assets/city/backwall.png', scaleMode)) ?? white;
+  const roomdoor = (await loadTex('/assets/city/roomdoor.png', scaleMode)) ?? white;
+
   return {
     brushes,
+    floors,
+    backwall,
+    roomdoor,
     heliFly,
     heliLand,
     person,

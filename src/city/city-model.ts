@@ -22,7 +22,9 @@
 
 /** 8 compass headings, in the original's Direction enum order (cycle index). */
 export type Direction = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7; // E,SE,S,SW,W,NW,N,NE
-export type CityMode = 'flying' | 'landing' | 'walking';
+// flying/landing/walking are outdoors; 'inside' is standing in a house's room
+// (Programmer_Room_Walking) — you walk here before sitting down at the floor.
+export type CityMode = 'flying' | 'landing' | 'walking' | 'inside';
 export type HouseStyle = 'a' | 'b' | 'c';
 
 // --- city geometry (rectangular: 4:3 blocks, 3×3 of them) -----------------
@@ -138,6 +140,11 @@ export class CityModel {
   streetY = nearestStreetY(CITY_H / 2);
   /** Where the helicopter parked (world x) — it stays there while you walk. */
   landX = CITY_W / 2;
+  /** The house whose room you're standing in ('inside' mode), or null. */
+  insideHouse: House | null = null;
+  /** Interior position, normalised: ix 0..1 left→right, iy 0..1 back→front. */
+  ix = 0.5;
+  iy = 0.8;
   readonly houses: House[];
   readonly trees: Tree[];
 
@@ -215,12 +222,61 @@ export class CityModel {
 
   /**
    * The house whose door the walker has walked up to (deep enough north and
-   * within the door's reach), or null. The scene enters it.
+   * within the door's reach), or null.
    */
   enterableHouse(): House | null {
     if (this.mode !== 'walking') return null;
     if (this.cy > this.streetY - ENTER_DEPTH) return null;
     return this.houses.find((h) => Math.abs(this.cx - h.x) <= DOOR_REACH) ?? null;
+  }
+
+  /**
+   * Walk up to a door → step INTO the room (the standing view), where you walk
+   * around before sitting at the floor (Programmer_Room_Walking). Returns
+   * whether we entered.
+   */
+  enterHouse(): boolean {
+    const h = this.enterableHouse();
+    if (!h) return false;
+    this.insideHouse = h;
+    this.ix = 0.5;
+    this.iy = 0.78; // just inside, near the door at the front
+    this.dir = 6; // facing into the room (north)
+    this.mode = 'inside';
+    return true;
+  }
+
+  /**
+   * Walk around inside the room. Returns 'leave' (reached a side wall → back
+   * out to the street), 'sit' (reached the front of the floor → sit down), or
+   * null. (source Programmer_Room_Walking::react: side edge → LEAVING_ROOM,
+   * front/bottom → SITTING_DOWN.)
+   */
+  walkInside(dx: number, dy: number): 'leave' | 'sit' | null {
+    if (this.mode !== 'inside') return null;
+    const d = directionFromDelta(dx, dy);
+    if (d != null) this.dir = d;
+    this.ix += dx;
+    this.iy += dy;
+    if (this.ix <= 0 || this.ix >= 1) {
+      this.leaveRoom();
+      return 'leave';
+    }
+    this.iy = clamp(this.iy, 0.08, 1);
+    return this.iy >= 1 ? 'sit' : null;
+  }
+
+  /** Leave the room back to the street, at the house we came in from. */
+  leaveRoom(): void {
+    if (this.mode !== 'inside') return;
+    const h = this.insideHouse;
+    this.insideHouse = null;
+    this.mode = 'walking';
+    if (h) {
+      this.cx = h.x;
+      this.streetY = nearestStreetY(h.y);
+      this.cy = this.streetY;
+    }
   }
 
   /**

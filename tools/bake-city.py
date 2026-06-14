@@ -180,11 +180,16 @@ def bake_brushes(source_dir, m25_dir, out_dir):
         im.convert("RGB").save(os.path.join(out_dir, f"{name}.png"))
 
 
-def bake_static(bmp, out_path, m25_dir, m22_dir, max_dim=None):
-    img, _ = load_bmp_2x_space(bmp, m25_dir, m22_dir)
-    if img is None:
+def bake_static(bmp, out_path, m25_dir, m22_dir, max_dim=None, key=True):
+    """Bake one bitmap to a PNG. key=True applies the black transparency key
+    (sprites); key=False keeps it opaque (room floors / wall backdrops)."""
+    p = os.path.join(m25_dir, bmp)
+    if not os.path.exists(p):
+        p = os.path.join(m22_dir, bmp)
+    if not os.path.exists(p):
         print(f"  MISSING static {bmp}")
         return None
+    img = key_black(Image.open(p)) if key else Image.open(p).convert("RGBA")
     if max_dim:
         img.thumbnail((max_dim, max_dim))
     img.save(out_path)
@@ -230,6 +235,14 @@ def main():
     bake_static("HSB20.BMP", os.path.join(out, "house-b-side.png"), m25, m22)
     bake_static("HSC20.BMP", os.path.join(out, "house-c-side.png"), m25, m22)
     bake_static("HELIHLM7.BMP", os.path.join(out, "heli-parked.png"), m25, m22)
+
+    # Room interior (you stand here after entering a house, before sitting):
+    # the floor baseplate per house style, a back-wall strip, and the door.
+    bake_static("FLOORC.BMP", os.path.join(out, "floor-a.png"), m25, m22, key=False)  # tan
+    bake_static("FLOORB.BMP", os.path.join(out, "floor-b.png"), m25, m22, key=False)  # blue
+    bake_static("FLOORD.BMP", os.path.join(out, "floor-c.png"), m25, m22, key=False)  # green
+    bake_static("BACKWALL.BMP", os.path.join(out, "backwall.png"), m25, m22, key=False)
+    bake_static("ROOMDOOR.BMP", os.path.join(out, "roomdoor.png"), m25, m22)
 
     # The Lego ground brushes (lawn/street/water patterns).
     source_dir = os.path.join(os.path.dirname(os.path.abspath(m25)), "source")

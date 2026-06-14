@@ -33,12 +33,28 @@ the city itself (`city.cpp`):
   (`model.walk(dx, dy)` — fully 8-directional, depth clamped to `[streetY −
   WALK_BAND_N, streetY + WALK_BAND_S]`), with **Tooly the toolbox following**
   (TOOLBOXS, 8-dir animated). Walking:
-  - **up to a house door** (`enterableHouse`) → enters it → the room/World;
-  - **'s'** → sits on the grass → also the room/World (`onEnter('grass')`);
+  - **up to a house door** (`enterableHouse`) → `enterHouse()` steps you INTO
+    the **room standing view** (mode `'inside'`, below) — *not* straight to the
+    floor;
+  - **'s'** → sits on the grass → the room/World floor (`onEnter('grass')`);
   - **into the parked copter** (`boardHelicopter`) → auto take-off (the scene
     holds the climb until airborne, `takingOff`);
   - **H** → calls the helicopter back; **Esc** → the street menu.
   Trees are a web extra — **off by default** (`CityModel({trees})`).
+- **Room standing view** (`mode 'inside'`, `renderInterior`) — the missing
+  middle step, faithful to **`source/room.cpp` + `Programmer_Room_Walking`**:
+  after entering a house you **stand in the room** before sitting at the floor.
+  Drawn from baked interior art — the floor baseplate by house style
+  (`floor-{a,b,c}` = FLOORC/B/D; `create_floor` maps style→FLOOR background), a
+  back-wall band (`BACKWALL`) and the **door** (`ROOMDOOR`). You walk the room
+  in normalised coords (`ix`/`iy`, slight depth perspective); `walkInside`
+  returns **`'leave'`** at a side wall (→ back to the street at the house,
+  `leaveRoom`) or **`'sit'`** at the front of the floor (→ `onEnter` → the
+  working floor / World). `'s'` also sits; **Esc** steps back out. Standing up
+  from the floor (`resume`) returns here, not straight to the street — matching
+  `at_floor → stand up → room_walking`. Note: our existing `src/view/room.ts`
+  is the *floor working* chrome (`Programmer_At_Floor` + `Floor`) — a different
+  view from this room.
 - **Input is the original's RELATIVE_MOUSE_MODE** (the default,
   globals.cpp:729): click the city to capture the mouse (Pointer Lock, cursor
   hidden, like `show_cursor(FALSE)`); raw mouse **movement** then steers

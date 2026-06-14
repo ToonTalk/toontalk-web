@@ -81,13 +81,23 @@ export class CityScene {
   private readonly sideStreetTile: PIXI.TilingSprite;
   private readonly sideWorld: PIXI.Container; // houses (side art), parked heli, Tooly
 
+  // room-interior view (standing in a house before sitting at the floor)
+  private readonly interior: PIXI.Container;
+  private readonly floorTile: PIXI.TilingSprite;
+  private readonly wallStrip: PIXI.Sprite; // BACKWALL across the top
+  private readonly wallFill: PIXI.Graphics; // plain wall above the strip
+  private readonly doorSprite: PIXI.Sprite; // ROOMDOOR — the way out
+
   private readonly avatar: PIXI.Container;
   private readonly heliFly: DirectionalSprite;
   private readonly heliLand: DirectionalSprite;
   private readonly heliParked: PIXI.Sprite;
   private readonly person: DirectionalSprite;
   private readonly tooly: DirectionalSprite;
-  private toolyX = 0; // Tooly's own world x (trails the person)
+  private toolyX = 0; // Tooly's own world x (trails the person, street view)
+  private toolyIX = 0.4; // Tooly's interior position (trails the person inside)
+  private toolyIY = 0.8;
+  private personBaseScale = 1; // the walking person's natural scale (interior scales by depth)
 
   private active = false;
   private buttons = { left: false, right: false };
@@ -147,6 +157,17 @@ export class CityScene {
     this.container.addChild(this.sideWorld);
     this.buildSideWorld();
 
+    // --- room interior (standing view) ---
+    this.interior = new PIXI.Container();
+    this.interior.visible = false;
+    this.container.addChild(this.interior);
+    this.wallFill = new PIXI.Graphics();
+    this.floorTile = new PIXI.TilingSprite(assets.floors['a'] ?? PIXI.Texture.WHITE, 64, 64);
+    this.wallStrip = new PIXI.Sprite(assets.backwall);
+    this.doorSprite = new PIXI.Sprite(assets.roomdoor);
+    this.doorSprite.anchor.set(0.5, 1);
+    this.interior.addChild(this.wallFill, this.floorTile, this.wallStrip, this.doorSprite);
+
     this.avatar = new PIXI.Container();
     this.container.addChild(this.avatar);
     this.heliFly = new DirectionalSprite(assets.heliFly, 70);
@@ -156,6 +177,7 @@ export class CityScene {
     fitHeight(this.heliFly.sprite, 130);
     fitWidth(this.heliLand.sprite, HELI_LAND_W); // big when landing
     fitHeight(this.person.sprite, 116);
+    this.personBaseScale = this.person.sprite.scale.x;
     fitHeight(this.tooly.sprite, 64);
     this.heliFly.sprite.anchor.set(0.5, 0.5);
     this.heliLand.sprite.anchor.set(0.5, 1);
@@ -165,8 +187,14 @@ export class CityScene {
     this.heliParked.anchor.set(0.5, 1);
     this.heliParked.scale.set(HELI_LAND_W / this.heliParked.texture.width); // big when landed
     this.sideWorld.addChild(this.heliParked);
-    this.sideWorld.addChild(this.tooly.sprite);
-    this.avatar.addChild(this.heliFly.sprite, this.heliLand.sprite, this.person.sprite);
+    // Tooly + the person live in the avatar layer (screen space) so they show in
+    // both the street and the room; the avatar layer is positioned per mode.
+    this.avatar.addChild(
+      this.heliFly.sprite,
+      this.heliLand.sprite,
+      this.person.sprite,
+      this.tooly.sprite,
+    );
 
     renderer.app.stage.addChild(this.container);
 
@@ -208,12 +236,17 @@ export class CityScene {
       }
       if (e.key.startsWith('Arrow')) e.preventDefault();
       if (e.key.toLowerCase() === 'h') this.model.callHelicopter();
-      if (e.key === 'Escape' && this.model.mode === 'walking') {
-        if (this.locked) document.exitPointerLock?.(); // free the mouse for the menu
-        this.cb.onEscape?.();
+      if (e.key === 'Escape') {
+        if (this.model.mode === 'walking') {
+          if (this.locked) document.exitPointerLock?.(); // free the mouse for the menu
+          this.cb.onEscape?.();
+        } else if (this.model.mode === 'inside') {
+          this.model.leaveRoom(); // step back out to the street
+        }
       }
-      if (e.key.toLowerCase() === 's' && this.model.mode === 'walking') {
-        this.cb.onEnter?.('grass'); // sit down on the grass
+      if (e.key.toLowerCase() === 's') {
+        if (this.model.mode === 'walking') this.cb.onEnter?.('grass'); // sit on the grass
+        else if (this.model.mode === 'inside') this.cb.onEnter?.('house', this.model.insideHouse ?? undefined); // sit at the floor
       }
     });
     window.addEventListener('keyup', (e) => {
@@ -243,11 +276,14 @@ export class CityScene {
     return this.active;
   }
 
-  /** Come back to walking the street after a house/grass visit — the walker
-   * steps back onto the street so they don't immediately re-enter the door. */
+  /** Come back after sitting at the floor. If we entered a house we return to
+   * the room standing view (stepped back from the floor so we don't instantly
+   * re-sit, matching at_floor → stand up → room_walking); if we sat on the
+   * grass we return to the street. */
   resume(): void {
-    this.model.standUp();
     this.takingOff = false;
+    if (this.model.mode === 'inside') this.model.iy = 0.72; // back off the floor front
+    else this.model.standUp();
     this.setActive(true);
   }
 
@@ -360,7 +396,7 @@ export class CityScene {
       this.model.land(dir, dt, drift, dLandY);
       this.heliLand.update(dt, true);
       if ((this.model.mode as CityMode) === 'flying') this.takingOff = false; // airborne
-    } else {
+    } else if (this.model.mode === 'walking') {
       // walking the street (side view) — fully 8-directional
       const px = this.inputPxX(WALK_SCREENS_PER_S, dt);
       const keyVy = (this.keyRamp('ArrowDown') - this.keyRamp('ArrowUp')) * WALK_SCREENS_PER_S;
@@ -370,12 +406,12 @@ export class CityScene {
       this.person.setDirection(this.model.dir);
       this.person.update(dt, Math.abs(px) > 0.4 || Math.abs(py) > 0.4);
 
-      // Walked into the parked copter → take off. Walked up to a door → enter.
+      // Walked into the parked copter → take off. Walked up to a door → step
+      // into the room (the standing view) before sitting at the floor.
       if (this.model.boardHelicopter()) {
         this.takingOff = true;
       } else {
-        const house = this.model.enterableHouse();
-        if (house) this.cb.onEnter?.('house', house);
+        this.model.enterHouse();
       }
 
       // Tooly trails the walker: eases toward a point just behind them.
@@ -385,6 +421,25 @@ export class CityScene {
       this.toolyX += step;
       this.tooly.setDirection(step > 0 ? 0 : 4);
       this.tooly.update(dt, Math.abs(step) > 0.25);
+    }
+    // Standing in the room: walk around, then sit at the floor or leave.
+    if (this.model.mode === 'inside') {
+      const px = this.inputPxX(WALK_SCREENS_PER_S, dt);
+      const keyVy = (this.keyRamp('ArrowDown') - this.keyRamp('ArrowUp')) * WALK_SCREENS_PER_S;
+      const py = this.mouseDY + (keyVy * this.renderer.height * dt) / 1000;
+      const moving = Math.abs(px) > 0.4 || Math.abs(py) > 0.4;
+      // interior coords are normalised; convert screen px → 0..1 over the room
+      const result = this.model.walkInside(px / (this.renderer.width * 0.7), py / (this.renderer.height * 0.6));
+      this.person.setDirection(this.model.dir);
+      this.person.update(dt, moving);
+      // Tooly trails in interior space too.
+      const tb = this.model.dir >= 5 || this.model.dir === 0 ? -0.08 : 0.08;
+      this.toolyIX += (this.model.ix + tb - this.toolyIX) * Math.min(1, dt / 280);
+      this.toolyIY += (this.model.iy - this.toolyIY) * Math.min(1, dt / 280);
+      this.tooly.setDirection(this.model.dir);
+      this.tooly.update(dt, moving);
+      if (result === 'sit') this.cb.onEnter?.('house', this.model.insideHouse ?? undefined);
+      // 'leave' already flipped the model back to 'walking'; nothing to do.
     }
 
     this.mouseDX = 0;
@@ -396,19 +451,25 @@ export class CityScene {
   private syncModeVisibility(): void {
     const m = this.model.mode;
     const flying = m === 'flying';
+    const street = m === 'landing' || m === 'walking';
+    const inside = m === 'inside';
     this.waterTile.visible = flying;
     this.lawnTile.visible = flying;
     for (const s of this.streetTilesV) s.visible = flying;
     for (const s of this.streetTilesH) s.visible = flying;
     this.decor.visible = flying;
-    this.sideLawnTile.visible = !flying;
-    this.sideStreetTile.visible = !flying;
-    this.sideWorld.visible = !flying;
+    this.sideLawnTile.visible = street;
+    this.sideStreetTile.visible = street;
+    this.sideWorld.visible = street;
+    this.interior.visible = inside;
     this.heliFly.sprite.visible = flying;
     this.heliLand.sprite.visible = m === 'landing';
     this.heliParked.visible = m === 'walking';
-    this.person.sprite.visible = m === 'walking';
-    this.tooly.sprite.visible = m === 'walking';
+    // the lego person + Tooly appear both on the street and in the room
+    this.person.sprite.visible = m === 'walking' || inside;
+    this.tooly.sprite.visible = m === 'walking' || inside;
+    // Tooly lives in sideWorld (street) but is repositioned to the avatar layer
+    // feel via render(); keep it parented to sideWorld and just toggle here.
   }
 
   private render(): void {
@@ -468,6 +529,11 @@ export class CityScene {
       return;
     }
 
+    if (m.mode === 'inside') {
+      this.renderInterior(W, H);
+      return;
+    }
+
     // Street view: camera follows the copter (landing) / the walker (walking).
     // The backdrop is the GREEN LEGO lawn brush (the original front view clears
     // with the lawn brush — no blue sky), with the street brush at the bottom.
@@ -480,11 +546,11 @@ export class CityScene {
     this.sideWorld.position.set(camX, 0);
     for (const child of this.sideWorld.children) {
       if (child === this.heliParked) child.y = this.heliBaseY();
-      else if (child === this.tooly.sprite) child.y = this.walkBaseY();
       else child.y = streetTop + 6; // houses stand on the lawn/street line
     }
     this.heliParked.x = m.landX * K_SIDE;
-    this.tooly.sprite.x = this.toolyX * K_SIDE;
+    this.avatar.position.set(0, 0); // screen space
+    this.tooly.sprite.position.set(camX + this.toolyX * K_SIDE, this.walkBaseY());
 
     if (m.mode === 'landing') {
       // The copter descends at the camera centre: landY 1 = near the top,
@@ -499,9 +565,48 @@ export class CityScene {
       // walking: the person is screen-centred horizontally; vertical position
       // reflects how far they've walked toward the houses (depth).
       const depthY = (m.cy - m.streetY) * DEPTH;
+      this.person.sprite.scale.set(this.personBaseScale); // undo interior perspective
       this.person.sprite.position.set(W / 2, this.walkBaseY() + depthY);
       this.avatar.position.set(0, 0);
     }
+  }
+
+  /** The room you stand in after entering a house (Programmer_Room_Walking):
+   * the floor baseplate (by house style) with a back wall and the door. You
+   * walk here, then walk to the front of the floor (or click/key) to sit. */
+  private renderInterior(W: number, H: number): void {
+    const m = this.model;
+    const wallBottom = H * 0.3; // floor starts here
+    // back wall: a plain band with the BACKWALL strip along its foot
+    this.wallFill.clear();
+    this.wallFill.beginFill(0x6b5240); // warm wall colour behind the strip
+    this.wallFill.drawRect(0, 0, W, wallBottom);
+    this.wallFill.endFill();
+    this.wallStrip.texture = this.assets.backwall;
+    this.wallStrip.width = W;
+    this.wallStrip.height = 40;
+    this.wallStrip.position.set(0, wallBottom - 40);
+    // floor: the lego baseplate (by style), tiled across the lower area
+    const style = m.insideHouse?.style ?? 'a';
+    this.floorTile.texture = this.assets.floors[style] ?? this.assets.floors['a']!;
+    this.floorTile.tileScale.set(0.6);
+    this.floorTile.position.set(0, wallBottom);
+    this.floorTile.width = W;
+    this.floorTile.height = H - wallBottom;
+    // door (the way out) on the right wall
+    this.doorSprite.height = wallBottom * 0.92;
+    this.doorSprite.scale.x = this.doorSprite.scale.y;
+    this.doorSprite.position.set(W * 0.9, wallBottom + 6);
+
+    // map interior coords → screen; a little perspective scaling by depth
+    const sx = (ix: number): number => W * 0.12 + ix * W * 0.76;
+    const sy = (iy: number): number => wallBottom + 20 + iy * (H * 0.92 - (wallBottom + 20));
+    const depthScale = (iy: number): number => 0.82 + iy * 0.3;
+
+    this.avatar.position.set(0, 0);
+    this.person.sprite.position.set(sx(m.ix), sy(m.iy));
+    this.person.sprite.scale.set(this.personBaseScale * depthScale(m.iy));
+    this.tooly.sprite.position.set(sx(this.toolyIX), sy(this.toolyIY));
   }
 
   destroy(): void {
