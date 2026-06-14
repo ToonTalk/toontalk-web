@@ -80,7 +80,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Truck / House | ✅ | module ✅ · extras (picture, address) ▢ |
 | Notebook | ✅ | main = real save model ✅ · modules + `fromModule` recursion ✅ · sub-notebooks ▢ |
 | Sensors | ✅ | media sensors ▢ · joystick ▢ |
-| City (fly/land/walk) | ✅ | rectangular 3×3, 3 houses, green-Lego street, big copter, 8-way walk, **room standing view** (room.cpp) → sit at floor, board copter, Esc menus ✅ · per-house contents ▢ · audio ▢ |
+| City (fly/land/walk) | ✅ | **faithful port** vs the reference video: real camera/coords (screen.cpp), flying (set_scale, dampen_turn), landing, walking (camera-follow band), perspective room (room.cpp), floor coloured by house style ✅ · per-house contents ▢ · audio ▢ · floor-view toolbox/notebook polish (phase 5) ▢ |
 | Room shell | ✅ | holdwand anchors ⚠ · near-empty room seed ▢ |
 | Animations | ⚠ | explode ✅ · dusty-suck ✅ · bird flight ▢ · nest hatch ▢ |
 
