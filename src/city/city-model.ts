@@ -10,34 +10,45 @@
  * inside keep their prior logic for now (rescaled to real units) — they get the
  * same faithful-port treatment in later phases.
  */
-import { IDEAL_W, GROUND_SCALE } from './camera';
+import {
+  TILE_WIDTH,
+  TILE_HEIGHT,
+  DEFAULT_BLOCK_WIDTH,
+  IDEAL_BLOCK_HEIGHT,
+  HOUSES_TO_A_BLOCK,
+  CITY_SIZE,
+  GROUND_SCALE,
+  INITIAL_SCALE as INITIAL_SCALE_CONST,
+  MIN_FLYING_SCALE as MIN_FLYING_SCALE_CONST,
+  maxFlyingScale,
+} from '../port/constants';
 
 /** 8 compass headings in the original's Direction enum order. */
 export type Direction = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7; // E,SE,S,SW,W,NW,N,NE
 export type CityMode = 'flying' | 'landing' | 'walking' | 'inside';
 export type HouseStyle = 'a' | 'b' | 'c';
 
-// --- city geometry (globals.cpp / block.cpp) -------------------------------
-export const TILE_W = 1600; // constant.h tile_width
-export const TILE_H = 1200; // constant.h tile_height
-export const BLOCK_W = 4 * IDEAL_W; // globals.cpp tt_default_block_width = 4·ideal_w = 128000
-export const BLOCK_H = IDEAL_W; // block.cpp ideal_block_height = ideal_screen_width = 32000
-export const HOUSES_PER_BLOCK = 4; // globals.cpp tt_houses_to_a_block
-// The original city extends well past the view at flying altitude (the flyover
-// is a green street-grid to every edge, no water in sight). Our blocks are wide
-// & short (4:1), so we need many rows to fill the view's height — the few
-// houses sit in the centre block, the rest is empty green like the original.
-export const BLOCKS_X = 5;
-export const BLOCKS_Y = 14;
+// --- city geometry (constant.h / globals.cpp / block.cpp), via the port ----
+export const TILE_W = TILE_WIDTH; // constant.h:332
+export const TILE_H = TILE_HEIGHT; // constant.h:333
+export const BLOCK_W = DEFAULT_BLOCK_WIDTH; // globals.cpp:559 (4·ideal_w = 128000)
+export const BLOCK_H = IDEAL_BLOCK_HEIGHT; // block.cpp:37 (ideal_w = 32000)
+export const HOUSES_PER_BLOCK = HOUSES_TO_A_BLOCK; // globals.cpp:524 (4)
+// Free-play city is tt_city_width × tt_city_height = 10×10 blocks (globals.cpp:
+// 260-261); city.cpp only shrinks it to 3×3 in PUZZLE mode. Blocks are 4:1
+// (wide & short), so the city is wide & short; the 3 starter houses sit on the
+// centre block, the rest is empty green grid (build_initial_houses, city.cpp:172).
+export const BLOCKS_X = CITY_SIZE; // 10
+export const BLOCKS_Y = CITY_SIZE; // 10
 export const CITY_W = BLOCKS_X * BLOCK_W;
 export const CITY_H = BLOCKS_Y * BLOCK_H;
 export const STREET = 4 * TILE_W; // drawn street width (≈ a lane)
 
 // --- flying altitude (prgrmmr.cpp) -----------------------------------------
 export { GROUND_SCALE };
-export const MIN_FLYING_SCALE = GROUND_SCALE; // tt_min_flying_scale = ground_scale → land
-export const INITIAL_SCALE = 10 * GROUND_SCALE; // constant.h initial_scale (1000)
-export const MAX_FLYING_SCALE = BLOCKS_X * 125 * HOUSES_PER_BLOCK; // prgrmmr.cpp max_scale (1500)
+export const MIN_FLYING_SCALE = MIN_FLYING_SCALE_CONST; // globals.cpp:562 = ground_scale → land
+export const INITIAL_SCALE = INITIAL_SCALE_CONST; // constant.h:338 (1000)
+export const MAX_FLYING_SCALE = maxFlyingScale(BLOCKS_X, BLOCKS_Y); // prgrmmr.cpp:3918 (10·125·4)
 export const LIFTOFF_SCALE = 3 * GROUND_SCALE; // climb clear of the landing threshold on takeoff
 const SCALE_DOUBLE_MS = 750; // ¾ s to double / halve (prgrmmr.cpp grow_value/shrink_value)
 
