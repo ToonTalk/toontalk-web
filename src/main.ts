@@ -70,6 +70,7 @@ async function start(): Promise<void> {
   // Clicking a toolbox/tool icon pulls a fresh element onto the floor.
   const roomTextures = await loadRoomTextures(theme);
   const room = new Room(renderer, roomTextures, textures, theme, (key, x, y) => spawnTool(key, x, y));
+  (window as unknown as { __ttRoom?: unknown }).__ttRoom = room;
   window.addEventListener('resize', () => room.resize());
 
   // Replace the OS cursor with ToonTalk's hand, which tracks the pointer.
@@ -257,7 +258,7 @@ async function start(): Promise<void> {
    * the floor scrolled so where you sat (`sitFx`,`sitFy` ∈ 0..1 of the whole
    * floor) is centred — the toolbox stays at hand, things stay where you left
    * them. */
-  function enterRoom(style: 'a' | 'b' | 'c' = 'a', sitFx = 0.5, sitFy = 0.5): void {
+  function enterRoom(style: 'a' | 'b' | 'c' = 'b', sitFx = 0.5, sitFy = 0.5): void {
     room.setFloorStyle(style);
     setFloorCamera(sitFx * FLOOR_W - renderer.width / 2, sitFy * FLOOR_H - renderer.height / 2);
     city.setActive(false);

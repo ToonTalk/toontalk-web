@@ -122,6 +122,8 @@ export class Room {
   private pose: HandPose = 'open';
   private handX = 0;
   private handY = 0;
+  /** Tooly starts closed (the green box-creature); click opens the tray. */
+  private toolboxOpen = false;
 
   private applyPose(pose: HandPose): void {
     this.pose = pose;
@@ -189,14 +191,23 @@ export class Room {
   private layoutChrome(): void {
     const W = this.renderer.width;
 
+    // Tooly the toolbox lives at hand (top-right, screen-fixed so it "follows"
+    // you). Closed it's the green box-creature; click it to OPEN the tray with
+    // the tool stacks + the hand tools (faithful to the original — Video 8). The
+    // tools stay inside Tooly (hidden) until it's open.
+    if (!this.toolboxOpen) {
+      const tooly = this.makeToolyClosed();
+      tooly.position.set(W - 130, 150);
+      this.chrome.addChild(tooly);
+      return;
+    }
+
     const toolbox = this.makeToolbox();
     toolbox.position.set(W - 170, 180);
     this.chrome.addChild(toolbox);
 
-    // The hand tools LIVE WITH the toolbox (they move with it / stay at hand):
-    // the magic wand, Dusty the vacuum, and Pumpy the pump, in a row under the
-    // toolbox. They're chrome (screen-fixed) so they follow you as the floor
-    // scrolls — picking one pulls a fresh tool out at the cursor.
+    // The hand tools: the magic wand, Dusty the vacuum, and Pumpy the pump, in a
+    // row under the open tray — picking one pulls a fresh copy out at the cursor.
     const tools: Array<[string, string]> = [
       ['wand', 'C'],
       ['dusty', 'S'],
@@ -209,6 +220,50 @@ export class Room {
     });
     // The `claude 1` main notebook is the real interactive World object (filed
     // pages persist), so it's not chrome.
+  }
+
+  /** Open/close Tooly (rebuild the chrome). */
+  private toggleToolbox(): void {
+    this.toolboxOpen = !this.toolboxOpen;
+    this.chrome.removeChildren().forEach((c) => c.destroy({ children: true }));
+    this.layoutChrome();
+  }
+
+  /** Closed Tooly — the green plasticine box-creature: rounded green body, red
+   * top handle, a grey front latch, and two little feet (Video Project 8). Click
+   * to open. */
+  private makeToolyClosed(): PIXI.Container {
+    const c = new PIXI.Container();
+    const g = new PIXI.Graphics();
+    g.beginFill(0x000000, 0.25); // ground shadow
+    g.drawRoundedRect(-66 + 6, -40 + 10, 132, 84, 22);
+    g.endFill();
+    g.beginFill(0x2b6155, 1); // feet (dark teal), behind the body
+    g.drawRoundedRect(-46, 54, 26, 20, 9);
+    g.drawRoundedRect(20, 54, 26, 20, 9);
+    g.endFill();
+    g.beginFill(0x3f9e87, 1); // upper body (teal green)
+    g.drawRoundedRect(-66, -40, 132, 100, 22);
+    g.endFill();
+    g.beginFill(0x357f6e, 1); // lower body band (darker, the lid seam)
+    g.drawRoundedRect(-66, 18, 132, 42, 22);
+    g.endFill();
+    g.beginFill(0xc23b34, 1); // red handle
+    g.drawRoundedRect(-32, -54, 64, 16, 8);
+    g.endFill();
+    g.beginFill(0x3f9e87, 1); // handle opening (body colour)
+    g.drawRoundedRect(-20, -47, 40, 7, 4);
+    g.endFill();
+    g.lineStyle(2, 0x8a9096, 1); // grey front latch
+    g.beginFill(0xc3c7cb, 1);
+    g.drawRoundedRect(-22, 22, 44, 22, 4);
+    g.endFill();
+    c.addChild(g);
+    c.hitArea = new PIXI.Rectangle(-66, -54, 132, 128);
+    c.eventMode = 'static';
+    c.cursor = 'pointer';
+    c.on('pointerdown', () => this.toggleToolbox());
+    return c;
   }
 
   /** A toolbox hand-tool chip (chrome): the tool's icon + a small mode badge;
@@ -305,6 +360,9 @@ export class Room {
     lid.position.set(w / 2 + h * 0.27, -h * 0.04);
     lid.rotation = 0.5;
     lid.scale.set(0.58, 0.96); // narrow → reads as an open lid seen at an angle
+    lid.eventMode = 'static'; // click the lid to close Tooly
+    lid.cursor = 'pointer';
+    lid.on('pointerdown', () => this.toggleToolbox());
     box.addChild(lid);
     const hinges = new PIXI.Graphics();
     for (let k = -1; k <= 1; k++) {
