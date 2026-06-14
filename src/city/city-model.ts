@@ -182,9 +182,16 @@ export class CityModel {
   }
 
   /**
-   * Flying — port of Programmer_City_Flying::react. `panX`/`panY` are WORLD
-   * deltas (the scene converts mouse pixels → world via the camera, so they are
-   * already altitude-scaled). `altitude` +1 climbs (scale grows), -1 descends.
+   * Flying — port of `Programmer_City_Flying::react` (prgrmmr.cpp:3988).
+   * - `altitude` +1 climbs / -1 descends: `grow_value`/`shrink_value`, ¾ s to
+   *   double/halve, duration capped at 750 (4036, 4047), clamped to
+   *   `[tt_min_flying_scale, max_scale]` (4037, 4048).
+   * - heading eases via `dampen_turn` only after travelling `tile_width`
+   *   (`minimum_distance_to_reorient`, 4023-4028).
+   * - pan: the original does `delta = delta*scale/ground_scale` (4072, 4091) so
+   *   you cover more ground when higher; here the scene pre-scales mouse px →
+   *   world via the camera, so `panX`/`panY` arrive already altitude-scaled.
+   * - descend to `tt_min_flying_scale` → `LANDING` (4048-4050).
    */
   fly(panX: number, panY: number, altitude: -1 | 0 | 1, dtMs: number): void {
     if (this.mode !== 'flying') return;
