@@ -490,7 +490,7 @@ async function start(): Promise<void> {
   }
   function installMainNotebook(): Notebook {
     const nb = loadMainNotebook() ?? seedMainNotebook();
-    nb.moveTo({ x: 500, y: 600 });
+    nb.moveTo({ x: 640, y: 650 }); // centre-bottom, as in the original floor
     world.add(nb);
     return nb;
   }

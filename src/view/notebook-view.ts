@@ -37,8 +37,10 @@ export class NotebookView extends ThingView {
 
     const page = nb.current();
     if (page) {
-      const node = renderThingDisplay(page, this.textures, this.theme, sprite.height * 0.5);
-      node.position.set(0, -sprite.height * 0.05);
+      // Sit the current page's contents ON the left leaf (not over the central
+      // spiral binding), as in the original open notebook.
+      const node = renderThingDisplay(page, this.textures, this.theme, sprite.height * 0.46);
+      node.position.set(-sprite.width * 0.24, -sprite.height * 0.04);
       this.container.addChild(node);
       this.pageNode = node;
     }

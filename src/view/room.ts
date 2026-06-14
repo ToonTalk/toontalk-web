@@ -182,18 +182,13 @@ export class Room {
 
   private layoutChrome(): void {
     const W = this.renderer.width;
-    const H = this.renderer.height;
 
     const toolbox = this.makeToolbox();
     toolbox.position.set(W - 170, 180);
     this.chrome.addChild(toolbox);
-
-    const nb = this.makeNotebook();
-    nb.position.set(W * 0.5, H - nb.height / 2 - 14);
-    this.chrome.addChild(nb);
-    // The wand and the vacuum are NOT chrome — they're the real hand tools that
-    // lie out on the floor (seeded in the World, bottom-left), so we don't draw
-    // duplicates here.
+    // The notebook, wand and vacuum are NOT chrome — they're the real interactive
+    // objects seeded in the World (the `claude 1` main notebook centre-bottom, the
+    // three hand tools bottom-left), so we don't draw chrome duplicates here.
   }
 
   /** A studded grey lego panel (used for the toolbox lid). */
@@ -225,52 +220,85 @@ export class Room {
     const cols = 2;
     const rows = 4;
     const cell = 56;
-    const gap = 7;
-    const pad = 14;
+    const gap = 10;
+    const pad = 16;
     const w = cols * cell + (cols - 1) * gap + pad * 2;
     const h = rows * cell + (rows - 1) * gap + pad * 2;
+    const depth = 16; // how tall the tray's 3-D front/side walls read
 
-    // Open lid: a studded panel hinged up to the right and behind the tray.
-    const lid = this.studdedPanel(h * 0.95, h * 0.95);
-    lid.position.set(w / 2 + h * 0.34, -h * 0.16);
+    // Open lid: a studded lego panel hinged up to the right, tilted back so we
+    // see it edge-on (foreshortened), with hinge knobs joining it to the tray.
+    const lid = this.studdedPanel(h * 0.84, h * 0.92);
+    lid.position.set(w / 2 + h * 0.27, -h * 0.04);
     lid.rotation = 0.5;
-    lid.scale.set(0.92, 0.78); // slight foreshortening
+    lid.scale.set(0.58, 0.96); // narrow → reads as an open lid seen at an angle
     box.addChild(lid);
+    const hinges = new PIXI.Graphics();
+    for (let k = -1; k <= 1; k++) {
+      const hy = k * h * 0.26;
+      hinges.beginFill(0x9aa1ab, 1);
+      hinges.drawCircle(w / 2 + 3, hy, 7);
+      hinges.endFill();
+      hinges.beginFill(0x5b626c, 1);
+      hinges.drawCircle(w / 2 + 3, hy, 3.2);
+      hinges.endFill();
+    }
+    box.addChild(hinges);
 
-    // Charcoal lego tray with a bevelled rim.
+    // Tray as a 3-D lego box: a dark front/side wall offset downward for depth,
+    // a lighter top rim with studs around the border, and a recessed dark well.
     const tray = new PIXI.Graphics();
-    tray.beginFill(0x20242a, 0.35);
-    tray.drawRoundedRect(-w / 2 + 6, -h / 2 + 8, w, h, 10);
+    tray.beginFill(0x000000, 0.28); // ground shadow
+    tray.drawRoundedRect(-w / 2 + 8, -h / 2 + depth + 8, w, h, 12);
     tray.endFill();
-    tray.lineStyle(0);
-    tray.beginFill(0x2b3037, 1); // outer rim
-    tray.drawRoundedRect(-w / 2, -h / 2, w, h, 10);
+    tray.beginFill(0x252a31, 1); // front/side walls (the box's depth)
+    tray.drawRoundedRect(-w / 2, -h / 2 + depth, w, h, 12);
     tray.endFill();
-    tray.beginFill(0x474e57, 1); // inner face (lighter)
-    tray.drawRoundedRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10, 8);
+    tray.beginFill(0x3b424c, 1); // top rim (lit)
+    tray.drawRoundedRect(-w / 2, -h / 2, w, h, 12);
+    tray.endFill();
+    tray.beginFill(0x4a525d, 1); // rim highlight (top edge)
+    tray.drawRoundedRect(-w / 2 + 3, -h / 2 + 3, w - 6, 6, 4);
+    tray.endFill();
+    tray.beginFill(0x191d22, 1); // recessed well
+    tray.drawRoundedRect(-w / 2 + pad - 6, -h / 2 + pad - 6, w - 2 * (pad - 6), h - 2 * (pad - 6), 8);
     tray.endFill();
     box.addChild(tray);
 
-    // 2x4 grid of recessed slots holding the tools.
-    // Matches the original toolbox grid (ToonTalk - claude 1): number, text,
-    // box, wand, scale, bird, truck, bomb.
+    const left = -w / 2 + pad;
+    const top = -h / 2 + pad;
+    // Raised lego dividers between the compartments (so each tool sits in its
+    // own recess, like the original).
+    const div = new PIXI.Graphics();
+    div.beginFill(0x444b55, 1);
+    for (let c = 1; c < cols; c++) {
+      const x = left + c * cell + (c - 0.5) * gap;
+      div.drawRoundedRect(x - gap / 2, -h / 2 + pad - 6, gap, h - 2 * (pad - 6), 3);
+    }
+    for (let r = 1; r < rows; r++) {
+      const y = top + r * cell + (r - 0.5) * gap;
+      div.drawRoundedRect(-w / 2 + pad - 6, y - gap / 2, w - 2 * (pad - 6), gap, 3);
+    }
+    div.endFill();
+    box.addChild(div);
+
+    // 2x4 grid of tools. Matches the original toolbox grid (ToonTalk - claude 1):
+    // number, text, box, wand, scale, bird, truck, bomb.
     const grid: Array<{ pick?: string; label?: string; fill?: number; icon?: string }> = [
       { label: '1', fill: 0xbff2c9, pick: 'number' }, { label: 'A', fill: 0xf2ddc2, pick: 'text' },
       { icon: 'box', pick: 'box' }, { icon: 'wand', pick: 'wand' },
       { icon: 'scale', pick: 'scale' }, { icon: 'bird', pick: 'bird' },
       { icon: 'truck', pick: 'truck' }, { icon: 'bomb', pick: 'bomb' },
     ];
-    const left = -w / 2 + pad;
-    const top = -h / 2 + pad;
     grid.forEach((item, i) => {
       const cx = left + (i % cols) * (cell + gap) + cell / 2;
       const cy = top + Math.floor(i / cols) * (cell + gap) + cell / 2;
 
       const slot = new PIXI.Graphics();
-      slot.beginFill(0x20242a, 1); // recessed dark
+      slot.beginFill(0x14171c, 1); // recessed dark compartment floor
       slot.drawRoundedRect(cx - cell / 2, cy - cell / 2, cell, cell, 5);
       slot.endFill();
-      slot.lineStyle(1, 0x565e69, 0.8); // top-left highlight rim
+      slot.lineStyle(1.5, 0x101318, 0.5); // inner shadow at the top-left
       slot.moveTo(cx - cell / 2 + 2, cy + cell / 2 - 2);
       slot.lineTo(cx - cell / 2 + 2, cy - cell / 2 + 2);
       slot.lineTo(cx + cell / 2 - 2, cy - cell / 2 + 2);
@@ -326,23 +354,6 @@ export class Room {
     return c;
   }
 
-  private makeNotebook(): PIXI.Container {
-    const c = new PIXI.Container();
-    const s = new PIXI.Sprite(this.room.get('notebook') ?? PIXI.Texture.WHITE);
-    s.anchor.set(0.5);
-    s.scale.set(1.5);
-    c.addChild(s);
-    const title = new PIXI.Text('claude 1', {
-      fontFamily: this.theme.fontFamily,
-      fontSize: 18,
-      fill: 0x222222,
-      fontWeight: 'bold',
-    });
-    title.anchor.set(0.5);
-    title.position.set(0, s.height / 2 - 18);
-    c.addChild(title);
-    return c;
-  }
 
   destroy(): void {
     this.floor.destroy();
