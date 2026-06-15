@@ -44,10 +44,17 @@ LOG10, BITWISE_*) are set via a menu we don't have; ▢ operation *chaining*
 
 ## Text (`text.htm`)
 
-✅ concatenation — drop side decides order (left=prepend, right=append).
-✅ dropping a number on a **blank** text pad converts it to its digits as text
-(`interactions.ts`, loose pads and in box holes). ✅ **editing** — select a pad
-and type (chars append, Backspace deletes; `pad.cpp` via `editText`). ✅ a
+✅ concatenation — drop side decides order (left=prepend, right=append), via
+`on_right_side` geometry (text.cpp:991). ✅ dropping a number on a **blank** text
+pad converts it to its digits as text (`interactions.ts`, loose pads and in box
+holes). ✅ dropping a number on a **non-blank** pad **advances the edge character
+through the alphabet** by the integer's value (text.cpp `compute_new_text`:
+1043-1075 → `next_in_alphabet`): right-side shifts the last char, left-side the
+first, wrapping around the 89-char ring `A-Z a-z <space..@> {|}~` (`model/
+alphabet.ts`, a port of utils.cpp `initialize_alphabet`:5294). Only a plain
+integer qualifies — a fraction or an out-of-range value is refused, exactly like
+the original (`current_long_value` fails → ignored). ✅ **editing** — select a
+pad and type (chars append, Backspace deletes; `pad.cpp` via `editText`). ✅ a
 **blank (empty) text pad is a wildcard** in a robot condition, like an erased
 pad — training captures no exact-value guard for it (`trainer.ts`
 `isWildcardPad`), so it matches any text (still text-kind).

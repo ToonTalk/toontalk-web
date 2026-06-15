@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/model/world';
 import { NumberThing } from '../src/model/number';
+import { Rational } from '../src/model/rational';
 import { TextThing } from '../src/model/text';
 import { Box } from '../src/model/box';
 import { Robot } from '../src/model/robot';
@@ -59,11 +60,28 @@ describe('resolveDrop: numbers', () => {
     expect(w.get(num.id)).toBeUndefined();
   });
 
-  it('leaves a NON-blank text pad alone when a number is dropped', () => {
+  it('advances the edge char of a NON-blank text pad (text.cpp next_in_alphabet)', () => {
+    const w = new World();
+    const pad = w.add(new TextThing({ value: 'cat' })) as TextThing;
+    const num = w.add(new NumberThing({ value: 1 })) as NumberThing;
+    // dropped on the right (default) → last char advances: t -> u
+    expect(resolveDrop(w, num, pad, { side: 'right' })).toBe('combined');
+    expect(pad.value).toBe('cau');
+    expect(w.get(num.id)).toBeUndefined();
+  });
+
+  it('shifts the first char when dropped on the left side', () => {
+    const w = new World();
+    const pad = w.add(new TextThing({ value: 'cat' })) as TextThing;
+    resolveDrop(w, w.add(new NumberThing({ value: 1 })), pad, { side: 'left' });
+    expect(pad.value).toBe('dat'); // c -> d
+  });
+
+  it('refuses a fraction dropped on a text pad', () => {
     const w = new World();
     const pad = w.add(new TextThing({ value: 'x' })) as TextThing;
-    const num = w.add(new NumberThing({ value: 42 })) as NumberThing;
-    expect(resolveDrop(w, num, pad)).toBe('none');
+    const frac = w.add(new NumberThing({ value: new Rational(1n, 2n) })) as NumberThing;
+    expect(resolveDrop(w, frac, pad)).toBe('none');
     expect(pad.value).toBe('x');
   });
 });
@@ -206,9 +224,10 @@ describe('resolveDrop: blank box (set_to_future_value)', () => {
 describe('resolveDrop: no-ops', () => {
   it('does nothing for incompatible types', () => {
     const w = new World();
-    const text = w.add(new TextThing({ value: 'x' })) as TextThing;
     const num = w.add(new NumberThing({ value: 1 })) as NumberThing;
-    expect(resolveDrop(w, num, text)).toBe('none');
+    const text = w.add(new TextThing({ value: 'x' })) as TextThing;
+    // text dropped on a number is not a defined interaction
+    expect(resolveDrop(w, text, num)).toBe('none');
     expect(w.size).toBe(2);
   });
 

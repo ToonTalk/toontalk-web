@@ -11,6 +11,7 @@ import type { World } from './world';
 import type { Thing } from './thing';
 import { NumberThing } from './number';
 import { TextThing, type Side } from './text';
+import { shiftEdgeChar } from './alphabet';
 import { Box } from './box';
 import { Wand } from './wand';
 import { Bird } from './bird';
@@ -338,6 +339,20 @@ export function resolveDrop(
     return 'combined';
   }
 
+  // Number on a NON-blank text pad → advance the edge character through the
+  // alphabet by the integer's value (text.cpp compute_new_text:1043-1075 via
+  // next_in_alphabet). The drop side picks the edge: right→last char, left→
+  // first. Only a plain integer that fits a machine word qualifies; fractions
+  // and out-of-range values are refused (current_long_value fails → ignored).
+  if (dragged instanceof NumberThing && target instanceof TextThing) {
+    const shift = integerShift(dragged);
+    if (shift == null) return 'none';
+    target.value = shiftEdgeChar(target.value, ctx.side ?? 'right', shift);
+    world.remove(dragged.id);
+    world.notifyChanged(target);
+    return 'combined';
+  }
+
   // Number on number → arithmetic.
   if (target instanceof NumberThing && dragged instanceof NumberThing) {
     dragged.applyTo(target);
@@ -372,5 +387,25 @@ function combineInPlace(occupant: Thing, dragged: Thing, ctx: DropContext): bool
     occupant.value = dragged.value.toString();
     return true;
   }
+  // A number on a non-blank text pad in a hole → advance the edge char.
+  if (occupant instanceof TextThing && dragged instanceof NumberThing) {
+    const shift = integerShift(dragged);
+    if (shift == null) return false;
+    occupant.value = shiftEdgeChar(occupant.value, ctx.side ?? 'right', shift);
+    return true;
+  }
   return false;
+}
+
+/**
+ * The shift amount a number contributes when dropped on a text pad, or null if
+ * it can't (a fraction, or beyond a safe integer — text.cpp rejects when
+ * `current_long_value` fails). next_in_alphabet wraps mod the ring, so the exact
+ * magnitude past the ring size doesn't matter, only that it's a whole number.
+ */
+function integerShift(n: NumberThing): number | null {
+  if (!n.value.isInteger()) return null;
+  const num = n.value.num;
+  if (num > BigInt(Number.MAX_SAFE_INTEGER) || num < BigInt(Number.MIN_SAFE_INTEGER)) return null;
+  return Number(num);
 }
