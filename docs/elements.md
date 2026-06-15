@@ -114,16 +114,31 @@ fill a nest).
 
 ## Robots (`robot.htm`)
 
-✅ train by example; condition = box shape; erasing generalizes; thought
-bubble shows the condition. ✅ **finish key**: Escape finishes training
-(matches the manual; Backspace cancels as a web-only helper since the manual
-has no cancel gesture). ✅ **teams** (robot.cpp `next_robot`): drop robot on
-robot → the dragged robot (+ its team) lines up behind the target
-(`Robot.team`); a box is offered front-to-back via `runRobot` → `lineup()`,
-first trained matching robot runs, else nothing (waits). Teammates aren't
-world things; the view stacks them behind the lead.
-▢ negation via a team + marker. ▢ recursion via the wand's 'S' mode copying
-the robot+team.
+Audited against `robot.htm` + `robot.cpp` (2026-06-15): the core is faithful at
+the modelled (flat-box) level; the gaps below are real, large simplifications,
+not quick fixes.
+✅ **train by example** — drop a box on a fresh robot (interactions `train`);
+condition = box shape; **counting holes from the left** (actions index holes).
+✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
+right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
+Dusty** — erasing a hole clears its value guard (the manual's "suck things out of
+the thought bubble"). ✅ **finish key**: Escape finishes training (Backspace
+cancels as a web-only helper). ✅ **teams**: drop robot on robot → the dragged
+robot (+ its team) lines up behind the target (`Robot.team`, front-to-back); a
+box is offered front-to-back via `runRobot`→`lineup()`, first trained matching
+robot runs (the manual's "front robot… if it doesn't match, pass it along"). ✅
+**copy** — the wand copies the lead robot (C/O) or the whole team (S), matching
+"a copy of himself and his teammates". ✅ **module recursion** — `fromModule`
+drops a copy of a house-module page into a hole.
+⚠ **matching is non-recursive**: a `box`/`number` hole matches by kind (+ exact
+value), but a nested box isn't matched recursively against an inner thought-
+bubble shape; comparison guards (`<`/`>`) come only via a `Scale` in the box, not
+a general per-hole comparator. ▢ **waiting**: the original *suspends* a robot on
+an unfilled nest and resumes it when a bird delivers (`suspend`:1969 /
+`no_longer_suspended`:2128 — the manual's "he'll wait around"); we run
+synchronously and just decline if nothing matches. ▢ negation via a team +
+marker. ▢ wand-'S' *self-copy during a run* (recursion by copying the running
+robot+team, vs. our module-page recursion).
 
 ## Scale (`scale.htm`)
 
