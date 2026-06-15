@@ -23,7 +23,7 @@ import { Truck } from '../model/truck';
 import { Bomb } from '../model/bomb';
 import { renderThingDisplay } from './display';
 
-const ROOM_KEYS = ['floor', 'toolbox', 'toolbox-open', 'notebook', 'hand', 'hand-grab', 'hand-wand', 'truck'] as const;
+const ROOM_KEYS = ['floor', 'toolbox', 'toolbox-open', 'notebook', 'hand', 'hand-point', 'hand-grab', 'hand-wand', 'truck'] as const;
 
 export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, PIXI.Texture>> {
   const scaleMode =
@@ -78,9 +78,10 @@ interface PoseSpec {
   top: number;
 }
 const HAND_POSES: Record<HandPose, PoseSpec> = {
-  // Default: point with the leftmost finger — hotspot at that fingertip (0.24w,
-  // 0.17h). The wrist stub is at ~0.68w, so the sleeve sits 0.44w right of it.
-  open: { key: 'hand', anchor: [0.24, 0.17], scale: 1.15, cx: 0.44, w: 0.32, top: 0.74 },
+  // Empty: the POINTING hand (HAND04) — index extended, others curled, like the
+  // original's idle cursor. Hotspot at the fingertip (top); red wrist stub at the
+  // bottom-centre.
+  open: { key: 'hand-point', anchor: [0.5, 0.08], scale: 1.05, cx: 0.06, w: 0.3, top: 0.72 },
   grab: { key: 'hand-grab', anchor: [0.5, 0.2], scale: 1.2, cx: 0.24, w: 0.41, top: 0.62 },
   // Holding the wand: the hand grips it on the right, tip points left (hotspot);
   // wrist is far right (~0.83w). Wide sprite, so scaled down. (May need tuning.)
