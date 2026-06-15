@@ -95,11 +95,12 @@ export function resolveDrop(
       return dusty.mode === 'suck' ? 'sucked' : 'erased';
     }
 
-    // SUCK: vacuum the target (or a box hole's contents) into the stomach.
+    // SUCK: vacuum up whatever is under the nose — a thing in a box hole if the
+    // pointer is over a FILLED hole, otherwise the whole target (an empty box,
+    // a loose number/text/box, etc.). Goes into the stomach (reverse spits back).
     if (dusty.mode === 'suck') {
-      if (target instanceof Box && ctx.holeIndex != null) {
-        const v = target.contentsAt(ctx.holeIndex);
-        if (!v) return 'none';
+      if (target instanceof Box && ctx.holeIndex != null && !target.isHoleEmpty(ctx.holeIndex)) {
+        const v = target.contentsAt(ctx.holeIndex)!;
         target.take(ctx.holeIndex);
         recomputeScales(target);
         world.notifyChanged(target);
@@ -134,8 +135,8 @@ export function resolveDrop(
       return 'erased';
     }
     let victim: Thing | null = target;
-    if (target instanceof Box && ctx.holeIndex != null) {
-      victim = target.contentsAt(ctx.holeIndex);
+    if (target instanceof Box && ctx.holeIndex != null && !target.isHoleEmpty(ctx.holeIndex)) {
+      victim = target.contentsAt(ctx.holeIndex); // a filled hole under the nose
     }
     if (!victim) return 'none';
     victim.erased = !victim.erased;

@@ -70,6 +70,9 @@ export class DragController {
   private numEdit: { id: string; text: string } | null = null;
   /** A tool (wand/Dusty/Pumpy) held on the cursor; click/space applies it. */
   private heldTool: ThingView | null = null;
+  /** True between a toolbox pickup's pointer-down and -up, so the very click that
+   * pulled the tool out can't also "apply"/drop it (the pickup may double-fire). */
+  private justGrabbedTool = false;
   /** When false (e.g. the city scene is on top), ignore all pointer/key input. */
   private enabled = true;
 
@@ -345,9 +348,10 @@ export class DragController {
     }
 
     // Holding a tool: this click applies it to the thing under the tip, or puts
-    // the tool down on empty floor. (Space does the same — see onKeyDown.)
+    // the tool down on empty floor. (Space does the same — see onKeyDown.) The
+    // click that pulled the tool out of Tooly is ignored once (justGrabbedTool).
     if (this.heldTool) {
-      this.applyHeldTool(x, y);
+      if (!this.justGrabbedTool) this.applyHeldTool(x, y);
       return;
     }
 
@@ -395,6 +399,7 @@ export class DragController {
     const view = this.views.get(thing.id);
     if (!view) return;
     this.heldTool = view;
+    this.justGrabbedTool = true; // ignore this same click's apply/drop on the stage
     view.container.zIndex = 1000;
     if (this.pointer.x >= 0) {
       this.world.moveThing(thing.id, { x: this.pointer.x + HELD_OFFSET.x, y: this.pointer.y + HELD_OFFSET.y });
@@ -414,8 +419,8 @@ export class DragController {
    * Apply the held tool to the thing under the tip (the pointer), via the normal
    * drop rules (wand copies, Dusty erases/sucks/spits, Pumpy resizes); the tool
    * **stays in hand** so you can keep using it. A click/space over empty floor
-   * does nothing (the tool is kept — press Escape to put it down); this also
-   * means the very click that pulled the tool out of Tooly can't drop it.
+   * puts the tool down (so does Escape). The pickup click can't reach here
+   * (guarded by justGrabbedTool), so it won't self-drop.
    */
   private applyHeldTool(x: number, y: number): void {
     const tool = this.heldTool;
@@ -425,7 +430,10 @@ export class DragController {
       const view = this.views.get(thing.id);
       return view ? view.containsPoint(p.x, p.y) : false;
     });
-    if (!target) return; // nothing under the tool — keep it in hand (Esc to drop)
+    if (!target) {
+      this.putDownTool(); // clicked empty floor → set the tool down
+      return;
+    }
     this.resolve(tool.thing, target, this.contextFor(target, x, y, tool.thing));
   }
 
@@ -531,6 +539,7 @@ export class DragController {
 
   private onPointerUp = (e: PIXI.FederatedPointerEvent): void => {
     if (!this.enabled) return;
+    this.justGrabbedTool = false; // the pickup gesture is over; future clicks apply/drop
     this.numEdit = null; // a drop may change a pad's value — end any number edit
     // Training: complete a hole-to-hole demonstration.
     if (this.trainer.active) {
