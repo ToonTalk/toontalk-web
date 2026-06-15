@@ -83,4 +83,11 @@ cycle — the spec stores the resulting `anchor`. `playOnce(name, parent, x,
 y)` plays a cycle once and self-removes — used for one-shot effects: **bomb
 explosion** (`explode`, EXPLODE.TTS) on a detonation, and **Dusty suck**
 (`dusty-suck`, SUCK0–7) on an erase, both fired from main's drop resolver by
-`DropResult`. ▢ Remaining: bird flight on delivery, nest hatch.
+`DropResult`.
+- **Lego→clay morph** (`mouse`, MOUSEHAM cycle = MOUSE01–04, the mouse with the
+  big red hammer; MOUSE01 from M22 upscaled): `morphFromToolbox` is a port of
+  mouse.cpp `call_in_a_mouse` — pulling an element from Tooly drops a flat lego
+  brick (CUBBYB) at the spot, the bam-mouse runs in from off-screen, "bams" it,
+  and the clay element pops in as the mouse runs out. A `setTimeout` safety
+  always reveals the element even if the ticker stalls.
+▢ Remaining: bird flight on delivery, nest hatch.

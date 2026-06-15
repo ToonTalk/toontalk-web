@@ -26,6 +26,9 @@ const ANIMATIONS: AnimSpec[] = [
   { name: 'explode', frames: 5, frameMs: 80, anchor: [0.5, 0.5] }, // EXPLODE.TTS
   { name: 'dusty-suck', frames: 7, frameMs: 70, anchor: [0.5, 0.5] }, // SUCK0–7
   { name: 'bird-fly', frames: 6, frameMs: 90, anchor: [0.5, 0.5] }, // BIRD.TTS flight
+  // MOUSEHAM: the mouse with the big red hammer that "bams" a lego brick into
+  // its clay form (call_in_a_mouse). Anchor on the mouse body (bottom-centre).
+  { name: 'mouse', frames: 4, frameMs: 100, anchor: [0.5, 0.6] },
 ];
 
 const specs = new Map<string, AnimSpec>(ANIMATIONS.map((a) => [a.name, a]));
@@ -111,6 +114,104 @@ export function tweenScale(node: PIXI.Container, from: number, to: number, ms = 
     if (t >= 1) PIXI.Ticker.shared.remove(step);
   };
   PIXI.Ticker.shared.add(step);
+}
+
+/**
+ * The "bam" mouse runs in from `from`, reaches `bam` (where it swings its
+ * hammer — `onBam` fires), then runs out to `out` and removes itself
+ * (mouse.cpp `call_in_a_mouse`). All points are in `parent`'s coordinate space.
+ */
+function runMouse(
+  parent: PIXI.Container,
+  from: { x: number; y: number },
+  bam: { x: number; y: number },
+  out: { x: number; y: number },
+  onBam: () => void,
+): void {
+  const texs = loaded.get('mouse');
+  const spec = specs.get('mouse');
+  if (!texs || texs.length === 0 || !spec) {
+    onBam(); // no art — just morph, no mouse
+    return;
+  }
+  const sprite = new PIXI.AnimatedSprite(texs);
+  sprite.anchor.set(spec.anchor[0], spec.anchor[1]);
+  sprite.scale.set(0.55);
+  sprite.animationSpeed = 1000 / spec.frameMs / 60;
+  sprite.loop = true;
+  sprite.zIndex = 9997;
+  sprite.position.set(from.x, from.y);
+  parent.addChild(sprite);
+  sprite.play();
+
+  const inMs = 360;
+  const outMs = 300;
+  const start = performance.now();
+  let bammed = false;
+  const step = (): void => {
+    if (sprite.destroyed) {
+      PIXI.Ticker.shared.remove(step);
+      return;
+    }
+    const now = performance.now() - start;
+    if (now <= inMs) {
+      const t = now / inMs;
+      const e = 1 - (1 - t) * (1 - t); // ease-out as it runs in
+      sprite.position.set(from.x + (bam.x - from.x) * e, from.y + (bam.y - from.y) * e);
+    } else {
+      if (!bammed) {
+        bammed = true;
+        onBam();
+      }
+      const t = Math.min(1, (now - inMs) / outMs);
+      const e = t * t; // ease-in as it runs back out
+      sprite.position.set(bam.x + (out.x - bam.x) * e, bam.y + (out.y - bam.y) * e);
+      if (t >= 1) {
+        PIXI.Ticker.shared.remove(step);
+        sprite.destroy();
+      }
+    }
+  };
+  PIXI.Ticker.shared.add(step);
+}
+
+/**
+ * Lego→clay morph when an element is pulled from Tooly: a flat lego brick
+ * (`legoTex`, e.g. CUBBYB) sits at the spot while the bam-mouse runs in; on the
+ * bam the brick is replaced by the clay element (`clay`), which pops to full
+ * size. `from`/`out` are the mouse's off-screen entry/exit, in `parent` space.
+ */
+export function morphFromToolbox(
+  parent: PIXI.Container,
+  clay: PIXI.Container,
+  legoTex: PIXI.Texture | undefined,
+  worldX: number,
+  worldY: number,
+  from: { x: number; y: number },
+  out: { x: number; y: number },
+): void {
+  clay.visible = false; // hidden until the bam reveals the clay form
+  let lego: PIXI.Sprite | null = null;
+  if (legoTex && legoTex !== PIXI.Texture.WHITE) {
+    lego = new PIXI.Sprite(legoTex);
+    lego.anchor.set(0.5);
+    lego.width = 60;
+    lego.height = 42;
+    lego.position.set(worldX, worldY);
+    lego.zIndex = 60;
+    parent.addChild(lego);
+  }
+  let revealed = false;
+  const reveal = (): void => {
+    if (revealed) return;
+    revealed = true;
+    if (lego && !lego.destroyed) lego.destroy();
+    if (clay.destroyed) return;
+    clay.visible = true;
+    tweenScale(clay, 0.3, 1, 200); // brick → full clay
+  };
+  runMouse(parent, from, { x: worldX, y: worldY }, out, reveal);
+  window.setTimeout(reveal, 1500); // safety: never leave the element hidden
 }
 
 /** Play a named cycle once at (x, y) on `parent`, removing it when finished. */

@@ -389,7 +389,12 @@ export class Room {
       hit.hitArea = new PIXI.Rectangle(-W * 0.1, -H * 0.075, W * 0.2, H * 0.15);
       hit.eventMode = 'static';
       hit.cursor = 'grab';
-      hit.on('pointerdown', (e) => this.onPick(pick, e.global.x, e.global.y));
+      // Handle here and don't bubble: the pick "births" the element in place
+      // (lego brick + bam-mouse morph), rather than the stage dragging it away.
+      hit.on('pointerdown', (e) => {
+        e.stopPropagation();
+        this.onPick(pick, e.global.x, e.global.y);
+      });
       box.addChild(hit);
     }
     return box;
