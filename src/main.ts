@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-15c (tools stay in hand; Esc drops)';
+const BUILD = 'build 2026-06-15d (grey lego Tooly, open by default)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -272,7 +272,7 @@ async function start(): Promise<void> {
    * the floor scrolled so where you sat (`sitFx`,`sitFy` ∈ 0..1 of the whole
    * floor) is centred — the toolbox stays at hand, things stay where you left
    * them. */
-  function enterRoom(style: 'a' | 'b' | 'c' = 'b', sitFx = 0.5, sitFy = 0.5): void {
+  function enterRoom(style: 'a' | 'b' | 'c' = 'a', sitFx = 0.5, sitFy = 0.5): void {
     room.setFloorStyle(style);
     setFloorCamera(sitFx * FLOOR_W - renderer.width / 2, sitFy * FLOOR_H - renderer.height / 2);
     city.setActive(false);

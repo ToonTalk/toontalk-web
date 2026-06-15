@@ -123,7 +123,7 @@ export class Room {
   private handX = 0;
   private handY = 0;
   /** Tooly starts closed (the green box-creature); click opens the tray. */
-  private toolboxOpen = false;
+  private toolboxOpen = true;
 
   private applyPose(pose: HandPose): void {
     this.pose = pose;
@@ -230,37 +230,28 @@ export class Room {
     this.layoutChrome();
   }
 
-  /** Closed Tooly — the green plasticine box-creature: rounded green body, red
-   * top handle, a grey front latch, and two little feet (Video Project 8). Click
-   * to open. */
+  /** Closed Tooly — the real claymation toolbox (toolbox.png from M22): a
+   * blue-grey lego box with a red handle and little feet. Click to open. */
   private makeToolyClosed(): PIXI.Container {
     const c = new PIXI.Container();
-    const g = new PIXI.Graphics();
-    g.beginFill(0x000000, 0.25); // ground shadow
-    g.drawRoundedRect(-66 + 6, -40 + 10, 132, 84, 22);
-    g.endFill();
-    g.beginFill(0x2b6155, 1); // feet (dark teal), behind the body
-    g.drawRoundedRect(-46, 54, 26, 20, 9);
-    g.drawRoundedRect(20, 54, 26, 20, 9);
-    g.endFill();
-    g.beginFill(0x3f9e87, 1); // upper body (teal green)
-    g.drawRoundedRect(-66, -40, 132, 100, 22);
-    g.endFill();
-    g.beginFill(0x357f6e, 1); // lower body band (darker, the lid seam)
-    g.drawRoundedRect(-66, 18, 132, 42, 22);
-    g.endFill();
-    g.beginFill(0xc23b34, 1); // red handle
-    g.drawRoundedRect(-32, -54, 64, 16, 8);
-    g.endFill();
-    g.beginFill(0x3f9e87, 1); // handle opening (body colour)
-    g.drawRoundedRect(-20, -47, 40, 7, 4);
-    g.endFill();
-    g.lineStyle(2, 0x8a9096, 1); // grey front latch
-    g.beginFill(0xc3c7cb, 1);
-    g.drawRoundedRect(-22, 22, 44, 22, 4);
-    g.endFill();
-    c.addChild(g);
-    c.hitArea = new PIXI.Rectangle(-66, -54, 132, 128);
+    const tex = this.room.get('toolbox');
+    if (tex && tex !== PIXI.Texture.WHITE) {
+      const s = new PIXI.Sprite(tex);
+      s.anchor.set(0.5);
+      s.scale.set(160 / Math.max(s.width, 1)); // display ~160px wide
+      c.addChild(s);
+      c.hitArea = new PIXI.Rectangle(-s.width / 2, -s.height / 2, s.width, s.height);
+    } else {
+      const g = new PIXI.Graphics(); // fallback if the bitmap is missing
+      g.beginFill(0x6b8aa0, 1);
+      g.drawRoundedRect(-66, -40, 132, 92, 14);
+      g.endFill();
+      g.beginFill(0xc23b34, 1);
+      g.drawRoundedRect(-30, -52, 60, 14, 7);
+      g.endFill();
+      c.addChild(g);
+      c.hitArea = new PIXI.Rectangle(-66, -54, 132, 110);
+    }
     c.eventMode = 'static';
     c.cursor = 'pointer';
     c.on('pointerdown', () => this.toggleToolbox());
@@ -329,9 +320,9 @@ export class Room {
   private studdedPanel(
     w: number,
     h: number,
-    base = 0x3f9e87,
-    studLight = 0x5fb8a2,
-    studDark = 0x2f7a68,
+    base = 0x8d8896,
+    studLight = 0xa7a2b0,
+    studDark = 0x6a6675,
   ): PIXI.Container {
     const c = new PIXI.Container();
     const g = new PIXI.Graphics();
@@ -394,16 +385,16 @@ export class Room {
     tray.beginFill(0x000000, 0.28); // ground shadow
     tray.drawRoundedRect(-w / 2 + 8, -h / 2 + depth + 8, w, h, 12);
     tray.endFill();
-    tray.beginFill(0x2b6155, 1); // front/side walls (the box's green depth)
+    tray.beginFill(0x4e535a, 1); // front/side walls (the box's grey lego depth)
     tray.drawRoundedRect(-w / 2, -h / 2 + depth, w, h, 12);
     tray.endFill();
-    tray.beginFill(0x3f9e87, 1); // top rim (Tooly green, lit)
+    tray.beginFill(0x8f949c, 1); // top rim (grey lego, lit)
     tray.drawRoundedRect(-w / 2, -h / 2, w, h, 12);
     tray.endFill();
-    tray.beginFill(0x57b29c, 1); // rim highlight (top edge)
+    tray.beginFill(0xaab0b8, 1); // rim highlight (top edge)
     tray.drawRoundedRect(-w / 2 + 3, -h / 2 + 3, w - 6, 6, 4);
     tray.endFill();
-    tray.beginFill(0x173d34, 1); // recessed well (dark green interior)
+    tray.beginFill(0x2f3338, 1); // recessed well (dark grey interior)
     tray.drawRoundedRect(-w / 2 + pad - 6, -h / 2 + pad - 6, w - 2 * (pad - 6), h - 2 * (pad - 6), 8);
     tray.endFill();
     box.addChild(tray);
@@ -413,7 +404,7 @@ export class Room {
     // Raised lego dividers between the compartments (so each tool sits in its
     // own recess, like the original).
     const div = new PIXI.Graphics();
-    div.beginFill(0x357f6e, 1); // green dividers
+    div.beginFill(0x6e727a, 1); // grey dividers
     for (let c = 1; c < cols; c++) {
       const x = left + c * cell + (c - 0.5) * gap;
       div.drawRoundedRect(x - gap / 2, -h / 2 + pad - 6, gap, h - 2 * (pad - 6), 3);
@@ -429,7 +420,7 @@ export class Room {
     // tools.cpp:4024): number, text / box, nest / scale, robot / truck, bomb.
     // (The wand, vacuum, pump and notebook are FLOOR items, not toolbox stacks.)
     const grid: Array<{ pick?: string; label?: string; fill?: number; icon?: string }> = [
-      { label: '1', fill: 0xbff2c9, pick: 'number' }, { label: 'A', fill: 0xf2ddc2, pick: 'text' },
+      { label: '1', fill: 0xbff2c9, pick: 'number' }, { label: 'A', fill: 0xf6c9e0, pick: 'text' },
       { icon: 'box', pick: 'box' }, { icon: 'nest', pick: 'nest' },
       { icon: 'scale', pick: 'scale' }, { icon: 'robot', pick: 'robot' },
       { icon: 'truck', pick: 'truck' }, { icon: 'bomb', pick: 'bomb' },
@@ -439,10 +430,10 @@ export class Room {
       const cy = top + Math.floor(i / cols) * (cell + gap) + cell / 2;
 
       const slot = new PIXI.Graphics();
-      slot.beginFill(0x123029, 1); // recessed dark-green compartment floor
+      slot.beginFill(0x26292e, 1); // recessed dark-grey compartment floor
       slot.drawRoundedRect(cx - cell / 2, cy - cell / 2, cell, cell, 5);
       slot.endFill();
-      slot.lineStyle(1.5, 0x0c211c, 0.5); // inner shadow at the top-left
+      slot.lineStyle(1.5, 0x14161a, 0.5); // inner shadow at the top-left
       slot.moveTo(cx - cell / 2 + 2, cy + cell / 2 - 2);
       slot.lineTo(cx - cell / 2 + 2, cy - cell / 2 + 2);
       slot.lineTo(cx + cell / 2 - 2, cy - cell / 2 + 2);
