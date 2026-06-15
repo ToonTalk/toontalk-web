@@ -23,7 +23,7 @@ import { Truck } from '../model/truck';
 import { Bomb } from '../model/bomb';
 import { renderThingDisplay } from './display';
 
-const ROOM_KEYS = ['floor', 'toolbox', 'notebook', 'hand', 'hand-grab', 'hand-wand', 'truck'] as const;
+const ROOM_KEYS = ['floor', 'toolbox', 'toolbox-open', 'notebook', 'hand', 'hand-grab', 'hand-wand', 'truck'] as const;
 
 export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, PIXI.Texture>> {
   const scaleMode =
@@ -356,7 +356,45 @@ export class Room {
     return c;
   }
 
+  /** Tooly open: the real cropped photo of the original toolbox if we have it,
+   * else the drawn grey-lego reconstruction. */
   private makeToolbox(): PIXI.Container {
+    const tex = this.room.get('toolbox-open');
+    if (tex && tex !== PIXI.Texture.WHITE) return this.makeToolboxImage(tex);
+    return this.makeToolboxDrawn();
+  }
+
+  /** The open toolbox as the original artwork (cropped from the reference) with
+   * invisible hit areas over each compartment that pick that element. */
+  private makeToolboxImage(tex: PIXI.Texture): PIXI.Container {
+    const box = new PIXI.Container();
+    const sprite = new PIXI.Sprite(tex);
+    sprite.anchor.set(0.5);
+    sprite.scale.set(300 / Math.max(sprite.width, 1)); // ~300px wide
+    box.addChild(sprite);
+    const W = sprite.width;
+    const H = sprite.height;
+    // Compartment centres as fractions of the image (measured from the crop):
+    // number, text / box, nest / scale, robot / truck, bomb.
+    const slots: Array<[string, number, number]> = [
+      ['number', 0.26, 0.27], ['text', 0.49, 0.27],
+      ['box', 0.27, 0.45], ['nest', 0.49, 0.45],
+      ['scale', 0.27, 0.59], ['robot', 0.48, 0.60],
+      ['truck', 0.27, 0.74], ['bomb', 0.49, 0.74],
+    ];
+    for (const [pick, fx, fy] of slots) {
+      const hit = new PIXI.Container();
+      hit.position.set((fx - 0.5) * W, (fy - 0.5) * H);
+      hit.hitArea = new PIXI.Rectangle(-W * 0.1, -H * 0.075, W * 0.2, H * 0.15);
+      hit.eventMode = 'static';
+      hit.cursor = 'grab';
+      hit.on('pointerdown', (e) => this.onPick(pick, e.global.x, e.global.y));
+      box.addChild(hit);
+    }
+    return box;
+  }
+
+  private makeToolboxDrawn(): PIXI.Container {
     const box = new PIXI.Container();
     const cols = 2;
     const rows = 4;

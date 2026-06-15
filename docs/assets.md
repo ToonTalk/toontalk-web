@@ -37,6 +37,14 @@
 - Room art is in `public/assets/room/`
   (`floor/toolbox/notebook/hand/wandbar/truck.png`), converted from M25
   (toolbox+wand came from **M22** — missing from M25).
+- `room/toolbox-open.png` is the **open Tooly**, cropped from the reference
+  capture (`ToonTalk … claude 1 ….mp4`, frame ~4s) with the tan-lego
+  background flood-filled to transparent (PIL). There is **no** open-toolbox
+  bitmap in M25/M22 — `TOOLBOXA.TTS` is Tooly's 8-direction *walking* frames —
+  so the open box (drawn at runtime by the original) is reproduced from the
+  photo. `room.ts` `makeToolboxImage` overlays invisible per-compartment hit
+  areas (number/text/box/nest/scale/robot/truck/bomb) for picking; falls back
+  to the drawn grey-lego `makeToolboxDrawn` if the png is missing.
 
 ## Render modes
 
