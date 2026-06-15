@@ -379,6 +379,24 @@ export class DragController {
   }
 
   /**
+   * Put a tool straight into the hand — used when one is taken out of the
+   * toolbox, matching the original where a tool comes out of Tooly already held.
+   * It then follows the cursor; the next click (or space) applies it, and the
+   * mode keys (S/R/E for Dusty, C/O/S wand, Pumpy keys) retune it.
+   */
+  holdTool(thing: Thing): void {
+    if (!this.isTool(thing)) return;
+    const view = this.views.get(thing.id);
+    if (!view) return;
+    this.heldTool = view;
+    view.container.zIndex = 1000;
+    if (this.pointer.x >= 0) {
+      this.world.moveThing(thing.id, { x: this.pointer.x + HELD_OFFSET.x, y: this.pointer.y + HELD_OFFSET.y });
+    }
+    this.onGrab(thing);
+  }
+
+  /**
    * Apply the held tool to the thing under the tip (the pointer), via the normal
    * drop rules (wand copies, Dusty erases/sucks/spits, Pumpy resizes); the tool
    * stays in hand. Clicking empty floor instead puts the tool down.

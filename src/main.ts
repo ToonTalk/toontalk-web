@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-15 (element audits)';
+const BUILD = 'build 2026-06-15b (tools come out in hand)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -76,7 +76,14 @@ async function start(): Promise<void> {
   // The ToonTalk room: tan floor, toolbox, notebook, tools, and the hand cursor.
   // Clicking a toolbox/tool icon pulls a fresh element onto the floor.
   const roomTextures = await loadRoomTextures(theme);
-  const room = new Room(renderer, roomTextures, textures, theme, (key, x, y) => spawnTool(key, x, y));
+  // Picking a tool out of Tooly puts it straight into the hand (like the
+  // original); picking an element drops it on the floor to drag.
+  const room = new Room(renderer, roomTextures, textures, theme, (key, x, y) => {
+    const made = spawnTool(key, x, y);
+    if (made instanceof Wand || made instanceof Dusty || made instanceof Pumpy) {
+      dragController.holdTool(made);
+    }
+  });
   (window as unknown as { __ttRoom?: unknown }).__ttRoom = room;
   window.addEventListener('resize', () => room.resize());
 
@@ -374,20 +381,21 @@ async function start(): Promise<void> {
   // Pull a fresh element out of the toolbox at (x, y) — an infinite stack, so
   // the toolbox keeps its copy. Spawned under the cursor; the drag controller
   // (same pointerdown, bubbled) then picks it up so it drags out of the box.
-  function spawnTool(key: string, sx: number, sy: number): void {
+  function spawnTool(key: string, sx: number, sy: number): Thing | null {
     // The toolbox is screen-fixed; convert the click to world coords so a fresh
     // element appears under the cursor even when the floor is scrolled.
     const x = sx + floorCamera.x;
     const y = sy + floorCamera.y;
+    let made: Thing | null = null;
     switch (key) {
-      case 'number': world.add(new NumberThing({ value: 1, x, y })); break;
-      case 'text': world.add(new TextThing({ value: 'a', x, y })); break;
-      case 'box': world.add(new Box({ size: 1, x, y })); break; // cubby.h: 1 hole by default
+      case 'number': made = world.add(new NumberThing({ value: 1, x, y })); break;
+      case 'text': made = world.add(new TextThing({ value: 'a', x, y })); break;
+      case 'box': made = world.add(new Box({ size: 1, x, y })); break; // cubby.h: 1 hole by default
       case 'nest': {
         // A fresh nest holds an egg (the nest view draws it). After a beat it
         // hatches and the bird flies to a nearby spot (bird.cpp hatch).
         const nest = new Nest({ x, y });
-        world.add(nest);
+        made = world.add(nest);
         window.setTimeout(() => {
           if (!world.all().includes(nest)) return; // nest was picked up/removed
           const bx = x + 120;
@@ -397,22 +405,23 @@ async function start(): Promise<void> {
         }, 650);
         break;
       }
-      case 'scale': world.add(new Scale({ x, y })); break;
-      case 'robot': world.add(new Robot({ x, y })); break;
-      case 'bomb': world.add(new Bomb({ x, y })); break;
-      case 'wand': world.add(new Wand({ x, y })); break;
-      case 'dusty': world.add(new Dusty({ x, y })); break;
-      case 'pumpy': world.add(new Pumpy({ x, y })); break;
-      case 'truck': world.add(new Truck({ x, y })); break;
+      case 'scale': made = world.add(new Scale({ x, y })); break;
+      case 'robot': made = world.add(new Robot({ x, y })); break;
+      case 'bomb': made = world.add(new Bomb({ x, y })); break;
+      case 'wand': made = world.add(new Wand({ x, y })); break;
+      case 'dusty': made = world.add(new Dusty({ x, y })); break;
+      case 'pumpy': made = world.add(new Pumpy({ x, y })); break;
+      case 'truck': made = world.add(new Truck({ x, y })); break;
       case 'bird': {
         const nest = new Nest({ x: x + 90, y: y + 40 });
         world.add(nest);
-        world.add(new Bird({ nests: [nest], x, y }));
+        made = world.add(new Bird({ nests: [nest], x, y }));
         break;
       }
-      default: return;
+      default: return null;
     }
     updateHud('none');
+    return made;
   }
 
   // The faithful initial floor: you sit down and your toolbox (Tooly) is there

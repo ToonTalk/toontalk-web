@@ -294,7 +294,12 @@ export class Room {
     c.hitArea = new PIXI.Rectangle(-30, -22, 64, 48);
     c.eventMode = 'static';
     c.cursor = 'grab';
-    c.on('pointerdown', (e) => this.onPick(pick, e.global.x, e.global.y));
+    // Handle the pick here and stop it bubbling to the stage, so the tool is put
+    // straight into the hand (via onPick) rather than the stage also reacting.
+    c.on('pointerdown', (e) => {
+      e.stopPropagation();
+      this.onPick(pick, e.global.x, e.global.y);
+    });
     return c;
   }
 
