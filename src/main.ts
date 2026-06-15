@@ -35,7 +35,7 @@ import { floorCamera, FLOOR_W, FLOOR_H, clampFloorCamera } from './view/floor-ca
 import { BoxView } from './view/box-view';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
-import { loadAnimations, playOnce, flyBird } from './view/animation';
+import { loadAnimations, playOnce, flyBird, tweenScale } from './view/animation';
 import { DragController } from './input/drag-controller';
 import { InputTracker } from './input/input-state';
 import { updateSensors } from './model/sensor-runtime';
@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-15j (held tools sit in the hand grip)';
+const BUILD = 'build 2026-06-15k (elements grow out of Tooly)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -80,6 +80,12 @@ async function start(): Promise<void> {
   // original); picking an element drops it on the floor to drag.
   const room = new Room(renderer, roomTextures, textures, theme, (key, x, y) => {
     const made = spawnTool(key, x, y);
+    if (!made) return;
+    // "Born" out of Tooly: the element grows from a small lego nub to its full
+    // clay size — a first-pass lego→clay transition (the full mouse-assisted
+    // morph is a follow-up).
+    const v = views.get(made.id);
+    if (v) tweenScale(v.container, 0.2, 1, 260);
     if (made instanceof Wand || made instanceof Dusty || made instanceof Pumpy) {
       dragController.holdTool(made);
     }
