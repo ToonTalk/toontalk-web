@@ -94,6 +94,11 @@ export class Room {
   private readonly cursor: PIXI.Container;
   private readonly handSprite: PIXI.Sprite;
   private readonly arm: PIXI.Graphics;
+  /** Tooly can be picked up and moved: drag state for the open-toolbox image. */
+  private tbBox?: PIXI.Container;
+  private tbDragging = false;
+  private tbOff = { x: 0, y: 0 };
+  private tbWired = false;
 
   constructor(
     private readonly renderer: Renderer,
@@ -271,24 +276,17 @@ export class Room {
 
   /** A toolbox hand-tool chip (chrome): the tool's icon + a small mode badge;
    * clicking pulls a fresh copy out at the cursor. */
-  /** A hand tool spilled onto the floor by the open Tooly. Idle, a tool reads as
-   * a chunky studded **lego brick** (its inert form, tool-tinted) with its icon
-   * and mode badge; clicking pulls a fresh *clay* copy into the hand. */
+  /** A hand tool spilled onto the floor by the open Tooly — just the tool's own
+   * sprite (no background), big enough to read, with a small mode badge; clicking
+   * pulls a fresh copy into the hand. */
   private makeToolChip(pick: string, badge: string, tilt = 0): PIXI.Container {
     const c = new PIXI.Container();
-    const tint: Record<string, [number, number, number]> = {
-      wand: [0xc7a23e, 0xe3c061, 0x9c7c22],
-      dusty: [0x9aa1ab, 0xc2c8d1, 0x6f7680],
-      pumpy: [0x3f74ad, 0x5e93c9, 0x2b5482],
-    };
-    const [base, light, dark] = tint[pick] ?? [0x8f949c, 0xb0b6bf, 0x6b7079];
-    c.addChild(this.studdedPanel(78, 60, base, light, dark)); // the lego brick
-    const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 46);
-    icon.position.set(0, -2);
+    const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 92);
+    if (pick === 'pumpy') icon.scale.set(2.4); // the vector glyph is small at native size
     c.addChild(icon);
     const b = new PIXI.Graphics();
     b.beginFill(0x223040, 0.95);
-    b.drawCircle(30, 22, 12);
+    b.drawCircle(32, 26, 12);
     b.endFill();
     const t = new PIXI.Text(badge, {
       fontFamily: this.theme.fontFamily,
@@ -297,10 +295,10 @@ export class Room {
       fontWeight: 'bold',
     });
     t.anchor.set(0.5);
-    t.position.set(30, 22);
+    t.position.set(32, 26);
     c.addChild(b, t);
     c.rotation = tilt;
-    c.hitArea = new PIXI.Rectangle(-42, -33, 84, 66);
+    c.hitArea = new PIXI.Rectangle(-48, -38, 96, 76);
     c.eventMode = 'static';
     c.cursor = 'grab';
     // Handle the pick here and stop it bubbling to the stage, so the tool is put
@@ -376,12 +374,35 @@ export class Room {
    * invisible hit areas over each compartment that pick that element. */
   private makeToolboxImage(tex: PIXI.Texture): PIXI.Container {
     const box = new PIXI.Container();
+    this.tbBox = box;
     const sprite = new PIXI.Sprite(tex);
     sprite.anchor.set(0.5);
     sprite.scale.set(420 / Math.max(sprite.width, 1)); // ~420px wide (matches the original's footprint)
     box.addChild(sprite);
     const W = sprite.width;
     const H = sprite.height;
+
+    // Tooly can be picked up: grabbing the toolbox body (not a compartment)
+    // drags the whole thing. Compartment hit areas sit on top and stopPropagation.
+    sprite.eventMode = 'static';
+    sprite.cursor = 'grab';
+    sprite.on('pointerdown', (e) => {
+      e.stopPropagation();
+      this.tbDragging = true;
+      this.tbOff = { x: box.position.x - e.global.x, y: box.position.y - e.global.y };
+    });
+    if (!this.tbWired) {
+      this.tbWired = true;
+      const stage = this.renderer.app.stage;
+      stage.on('pointermove', (e) => {
+        if (this.tbDragging && this.tbBox && !this.tbBox.destroyed) {
+          this.tbBox.position.set(e.global.x + this.tbOff.x, e.global.y + this.tbOff.y);
+        }
+      });
+      const stop = (): void => { this.tbDragging = false; };
+      stage.on('pointerup', stop);
+      stage.on('pointerupoutside', stop);
+    }
     // Compartment centres as fractions of the image (measured from the crop):
     // number, text / box, nest / scale, robot / truck, bomb.
     const slots: Array<[string, number, number]> = [

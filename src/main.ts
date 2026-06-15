@@ -35,7 +35,7 @@ import { floorCamera, FLOOR_W, FLOOR_H, clampFloorCamera } from './view/floor-ca
 import { BoxView } from './view/box-view';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
-import { loadAnimations, playOnce, flyBird, tweenScale, morphFromToolbox, runMouse } from './view/animation';
+import { loadAnimations, playOnce, flyBird, tweenScale, runMouse } from './view/animation';
 import { DragController } from './input/drag-controller';
 import { InputTracker } from './input/input-state';
 import { updateSensors } from './model/sensor-runtime';
@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-15m (arm join, lego tools, clean toolbox, mouse on combine)';
+const BUILD = 'build 2026-06-15n (toolbox solid+movable, tools bigger, mouse hits)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -87,13 +87,9 @@ async function start(): Promise<void> {
       if (v) tweenScale(v.container, 0.2, 1, 260);
       dragController.holdTool(made);
     } else if (v) {
-      // An element morphs lego→clay: the bam-mouse runs in to a lego brick at
-      // the spawn spot and "bams" it into the clay element (call_in_a_mouse).
-      morphFromToolbox(
-        renderer.thingLayer, v.container, textures.get('cubbyb'), made.x, made.y,
-        { x: floorCamera.x - 240, y: floorCamera.y + renderer.height + 200 },
-        { x: floorCamera.x + renderer.width + 240, y: floorCamera.y - 200 },
-      );
+      // Taking an element from Tooly: it just comes to life with a quick grow —
+      // no mouse (the bam-mouse is only for *combining* things).
+      tweenScale(v.container, 0.4, 1, 200);
     }
   });
   (window as unknown as { __ttRoom?: unknown }).__ttRoom = room;
