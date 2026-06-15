@@ -213,16 +213,16 @@ export class Room {
     }
 
     const toolbox = this.makeToolbox();
-    toolbox.position.set(W - 170, 180);
+    toolbox.position.set(W - 235, 245);
     this.chrome.addChild(toolbox);
 
-    // Opening Tooly SPILLS the hand tools out onto the floor around it (the wand,
+    // Opening Tooly SPILLS the hand tools out onto the floor below it (the wand,
     // Dusty the vacuum, Pumpy the pump), as in the original — each is its own
     // sprite at a tilt; picking one pulls a fresh copy out at the cursor.
     const spill: Array<[string, string, number, number, number]> = [
-      ['wand', 'C', W - 250, 360, -0.25],
-      ['dusty', 'S', W - 300, 450, 0.1],
-      ['pumpy', '+', W - 180, 470, 0.2],
+      ['wand', 'C', W - 330, 505, -0.25],
+      ['dusty', 'S', W - 235, 520, 0.1],
+      ['pumpy', '+', W - 150, 505, 0.2],
     ];
     for (const [pick, badge, x, y, tilt] of spill) {
       const chip = this.makeToolChip(pick, badge, tilt);
@@ -370,7 +370,7 @@ export class Room {
     const box = new PIXI.Container();
     const sprite = new PIXI.Sprite(tex);
     sprite.anchor.set(0.5);
-    sprite.scale.set(300 / Math.max(sprite.width, 1)); // ~300px wide
+    sprite.scale.set(420 / Math.max(sprite.width, 1)); // ~420px wide (matches the original's footprint)
     box.addChild(sprite);
     const W = sprite.width;
     const H = sprite.height;
