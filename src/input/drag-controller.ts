@@ -431,7 +431,17 @@ export class DragController {
       return view ? view.containsPoint(p.x, p.y) : false;
     });
     if (!target) {
-      this.putDownTool(); // clicked empty floor → set the tool down
+      // Dusty in REVERSE spits its last sucked thing onto the empty floor here
+      // (it stays in hand); any other tool/mode treats an empty-floor click as
+      // "put the tool down". (resolveDrop ignores a null target, so spit here.)
+      const t = tool.thing;
+      if (t instanceof Dusty && t.mode === 'reverse' && t.stomach.length > 0) {
+        const spat = t.stomach.pop()!;
+        spat.moveTo({ x, y });
+        this.world.add(spat);
+        return;
+      }
+      this.putDownTool();
       return;
     }
     this.resolve(tool.thing, target, this.contextFor(target, x, y, tool.thing));

@@ -15,7 +15,8 @@ const TEXTPLAT_INSETS = { left: 28, top: 26, right: 30, bottom: 28 };
 export class TextView extends ThingView {
   protected build(): void {
     const t = this.thing as TextThing;
-    const label = t.value.length > 0 ? t.value : ' ';
+    // Erased (Dusty) → a BLANK plate: "any text" for a robot.
+    const label = t.erased || t.value.length === 0 ? ' ' : t.value;
 
     let width: number;
     let height: number;

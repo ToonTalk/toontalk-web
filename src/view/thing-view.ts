@@ -35,9 +35,10 @@ export abstract class ThingView {
   /** Populate this.container with the visuals for this kind of thing. */
   protected abstract build(): void;
 
-  /** Erased things (Dusty) render faded to signal they're wildcards. */
+  /** Erased things (Dusty) are shown by *blank* art (a blank box/plate), not by
+   * transparency, so they read as solid "any value of this kind" wildcards. */
   protected baseAlpha(): number {
-    return this.thing.erased ? 0.4 : 1;
+    return 1;
   }
 
   /** Rebuild visuals after the underlying model changed. */

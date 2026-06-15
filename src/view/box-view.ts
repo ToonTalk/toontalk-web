@@ -74,6 +74,26 @@ export class BoxView extends ThingView {
     this.spanW = totalW;
     const contentSize = H * 0.6;
 
+    // An ERASED box (Dusty) shows the blank blue studded panel (CUBBYB) — the
+    // hole plates with no box walls/contents: a "any box of this size" wildcard.
+    const cubbyb = this.textures.get('cubbyb');
+    if (box.erased && cubbyb && cubbyb !== PIXI.Texture.WHITE) {
+      const panel = new PIXI.Sprite(cubbyb);
+      panel.width = totalW;
+      panel.height = H;
+      panel.position.set(left, -H / 2);
+      this.container.addChild(panel);
+      let hx = left;
+      for (let i = 0; i < n; i++) {
+        const spec = i === 0 ? ONE : REST;
+        const pieceW = i === 0 ? w1 : wr;
+        this.holeCenters[i] = hx + pieceW * spec.holeCx;
+        hx += pieceW;
+      }
+      this.container.alpha = 1;
+      return;
+    }
+
     let x = left;
     for (let i = 0; i < n; i++) {
       const spec = i === 0 ? ONE : REST;
