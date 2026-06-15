@@ -12,6 +12,16 @@
 import * as PIXI from 'pixi.js';
 import type { Renderer } from './renderer';
 import type { RenderTheme } from '../config/render-mode';
+import type { Thing } from '../model/thing';
+import { NumberThing } from '../model/number';
+import { TextThing } from '../model/text';
+import { Box } from '../model/box';
+import { Nest } from '../model/nest';
+import { Scale } from '../model/scale';
+import { Robot } from '../model/robot';
+import { Truck } from '../model/truck';
+import { Bomb } from '../model/bomb';
+import { renderThingDisplay } from './display';
 
 const ROOM_KEYS = ['floor', 'toolbox', 'notebook', 'hand', 'hand-grab', 'hand-wand', 'truck'] as const;
 
@@ -416,16 +426,14 @@ export class Room {
     div.endFill();
     box.addChild(div);
 
-    // 2x4 grid of tool stacks, in the source order (constant.h:1049 +
+    // 2x4 grid of element stacks, in the source order (constant.h:1049 +
     // tools.cpp:4024): number, text / box, nest / scale, robot / truck, bomb.
     // (The wand, vacuum, pump and notebook are FLOOR items, not toolbox stacks.)
-    const grid: Array<{ pick?: string; label?: string; fill?: number; icon?: string }> = [
-      { label: '1', fill: 0xbff2c9, pick: 'number' }, { label: 'A', fill: 0xf6c9e0, pick: 'text' },
-      { icon: 'box', pick: 'box' }, { icon: 'nest', pick: 'nest' },
-      { icon: 'scale', pick: 'scale' }, { icon: 'robot', pick: 'robot' },
-      { icon: 'truck', pick: 'truck' }, { icon: 'bomb', pick: 'bomb' },
-    ];
-    grid.forEach((item, i) => {
+    // Each icon is rendered with renderThingDisplay, so it's the *real* element
+    // art (green number plate, pink text plate, lego box, robot…) exactly as it
+    // appears once pulled onto the floor.
+    const picks = ['number', 'text', 'box', 'nest', 'scale', 'robot', 'truck', 'bomb'];
+    picks.forEach((pick, i) => {
       const cx = left + (i % cols) * (cell + gap) + cell / 2;
       const cy = top + Math.floor(i / cols) * (cell + gap) + cell / 2;
 
@@ -439,23 +447,36 @@ export class Room {
       slot.lineTo(cx + cell / 2 - 2, cy - cell / 2 + 2);
       box.addChild(slot);
 
-      const iconNode = item.label
-        ? this.makeLabelPad(item.label, item.fill ?? 0xffffff)
-        : this.makeIcon(item.icon, cell - 12);
+      const sample = this.sampleThing(pick);
+      const iconNode = sample
+        ? renderThingDisplay(sample, this.tools, this.theme, cell - 14)
+        : this.makeIcon(pick, cell - 12);
       iconNode.position.set(cx, cy);
       box.addChild(iconNode);
 
-      if (item.pick) {
-        const hit = new PIXI.Container();
-        hit.position.set(cx, cy);
-        hit.hitArea = new PIXI.Rectangle(-cell / 2, -cell / 2, cell, cell);
-        hit.eventMode = 'static';
-        const key = item.pick;
-        hit.on('pointerdown', (e) => this.onPick(key, e.global.x, e.global.y));
-        box.addChild(hit);
-      }
+      const hit = new PIXI.Container();
+      hit.position.set(cx, cy);
+      hit.hitArea = new PIXI.Rectangle(-cell / 2, -cell / 2, cell, cell);
+      hit.eventMode = 'static';
+      hit.on('pointerdown', (e) => this.onPick(pick, e.global.x, e.global.y));
+      box.addChild(hit);
     });
     return box;
+  }
+
+  /** A throwaway sample element for a toolbox slot, rendered with the real art. */
+  private sampleThing(pick: string): Thing | null {
+    switch (pick) {
+      case 'number': return new NumberThing({ value: 1 });
+      case 'text': return new TextThing({ value: 'A' });
+      case 'box': return new Box({ size: 1 });
+      case 'nest': return new Nest();
+      case 'scale': return new Scale();
+      case 'robot': return new Robot();
+      case 'truck': return new Truck();
+      case 'bomb': return new Bomb();
+      default: return null;
+    }
   }
 
   private makeIcon(key: string | undefined, size: number): PIXI.Container {
@@ -470,25 +491,6 @@ export class Room {
     }
     return c;
   }
-
-  private makeLabelPad(label: string, fill: number): PIXI.Container {
-    const c = new PIXI.Container();
-    const pad = new PIXI.Graphics();
-    pad.lineStyle(2, 0x4e9e63, 1);
-    pad.beginFill(fill, 1);
-    pad.drawRoundedRect(-17, -21, 34, 42, 3);
-    pad.endFill();
-    const t = new PIXI.Text(label, {
-      fontFamily: this.theme.fontFamily,
-      fontSize: 24,
-      fill: 0x102030,
-      fontWeight: 'bold',
-    });
-    t.anchor.set(0.5);
-    c.addChild(pad, t);
-    return c;
-  }
-
 
   destroy(): void {
     this.floor.destroy();
