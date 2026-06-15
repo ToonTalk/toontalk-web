@@ -73,7 +73,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Birds & nests | ✅ | FIFO (audited faithful), multi-nest, combine, hatch · accepts only pads/pics/boxes ✅ · flight anim/t-shirt/network ▢ · egg-on-reload ▢ |
 | Robots | ✅ | train/match/teams/copy/module-recursion ✅ (audited) · non-recursive matching ⚠ · wait-on-nest/negation/wand-S self-copy ▢ |
 | Scale | ✅ | `<` `>` `=` guards work |
-| Dusty | ✅ | E/S/R modes; we default erase (original: suck) |
+| Dusty | ✅ | S/R/E modes; defaults to **suck** (faithful, audited) |
 | Wand | ✅ | C/O/S modes |
 | Pumpy | ✅ | in-hole sizing ▢ |
 | Bomb | ⚠ | terminates a house ✅ · loose-object case simplified |

@@ -4,19 +4,22 @@
  *    by kind, not exact value); on a trained robot, clears its value guards.
  *  - **suck**: vacuum a thing up into Dusty's stomach (it leaves the world).
  *  - **reverse**: spit the last sucked thing back out.
- * Dusty itself is never consumed. (We default to *erase*, which our robot
- * wildcard workflow leans on; the original's nose-button default is suck.)
+ * Dusty itself is never consumed. The nose button cycles suck → reverse → erase
+ * and a fresh Dusty starts in **suck**, faithful to the original (tools.cpp Vacuum
+ * ctor `state = VACUUM_SUCK`:1458; the `VacuumState` enum tools.h:249 is
+ * `{VACUUM_SUCK, VACUUM_SPIT(=reverse), VACUUM_BLANK(=erase)}`).
  */
 import { Thing, type ThingKind, type ThingSnapshot } from './thing';
 
-export type VacuumMode = 'erase' | 'suck' | 'reverse';
+export type VacuumMode = 'suck' | 'reverse' | 'erase';
 
 export interface DustySnapshot extends ThingSnapshot {
   mode: VacuumMode;
   stomach: ThingSnapshot[];
 }
 
-const MODE_ORDER: VacuumMode[] = ['erase', 'suck', 'reverse'];
+// Order matches the VacuumState enum: SUCK, SPIT (reverse), BLANK (erase).
+const MODE_ORDER: VacuumMode[] = ['suck', 'reverse', 'erase'];
 
 export class Dusty extends Thing {
   readonly kind = 'dusty' as const;
@@ -26,7 +29,7 @@ export class Dusty extends Thing {
 
   constructor(opts: { id?: string; x?: number; y?: number; mode?: VacuumMode; stomach?: Thing[] } = {}) {
     super(opts);
-    this.mode = opts.mode ?? 'erase';
+    this.mode = opts.mode ?? 'suck';
     this.stomach = opts.stomach ?? [];
   }
 
@@ -34,7 +37,7 @@ export class Dusty extends Thing {
     return 'dusty';
   }
 
-  /** Cycle the nose button: erase → suck → reverse → erase. */
+  /** Cycle the nose button: suck → reverse → erase → suck. */
   cycleMode(): void {
     this.mode = MODE_ORDER[(MODE_ORDER.indexOf(this.mode) + 1) % MODE_ORDER.length]!;
   }

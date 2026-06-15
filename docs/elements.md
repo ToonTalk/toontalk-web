@@ -156,17 +156,19 @@ with a `swap` action; seeded).
 ## Dusty / vacuum (`dusty.htm`, `dusty.ts`) ✅
 
 **Held tool** (see *Tools are held* below). Has the **three modes** (set with
-the nose button — **E/S/R** keys; **Tab** cycles): **erase** (toggle erased /
-generalize a robot — default), **suck** (vacuum a thing or a box hole's
-contents into its `stomach`), **reverse** (spit the last sucked thing back
-out, into an empty hole or beside Dusty). `DustyView` shows the mode badge +
-stomach count. We default to **erase** (our wildcard workflow leans on it)
-though the original's default is suck.
-Manual note: the real Dusty has three modes via the nose button — Suck
-(remove, stored in its stomach), Reverse (spit back out), Erase. Authentic
-erase is a mode and restore is via Dusty-reverse or the wand's 'O' mode, not
-a toggle. **Suck (remove, restorable) is distinct from the Bomb (destroy,
-permanent)**.
+the nose button — **E/S/R** keys; **Tab** cycles): **suck** (vacuum a thing or a
+box hole's contents into its `stomach` — the **default**), **reverse** (spit the
+last sucked thing back out, into an empty hole or beside Dusty), **erase** (toggle
+erased / generalize a robot). `DustyView` shows the mode badge + stomach count.
+✅ **Audited 2026-06-15** and corrected to start in **suck**, faithful to the
+original — `tools.cpp` Vacuum ctor `state = VACUUM_SUCK`:1458, button label `'S'`,
+and the cycle order follows `VacuumState` (`{VACUUM_SUCK, VACUUM_SPIT(=reverse),
+VACUUM_BLANK(=erase)}`, tools.h:249). This also matches the `'S'` toolbox-chip
+badge the room already drew. (Previously we defaulted to erase as a deliberate
+deviation; Ken chose to match the manual.)
+Manual note: erase is a mode and restore is via Dusty-reverse or the wand's 'O'
+mode, not a toggle. **Suck (remove, restorable) is distinct from the Bomb
+(destroy, permanent)**.
 
 ## Wand (`wand.ts`) ✅
 
@@ -175,7 +177,9 @@ consumed, with **three modes** (press C/O/S to set, Tab cycles; `WandView`
 shows the badge): **C** copy + restore (un-erased — default); **O**
 "original" copies preserving the erased/wildcard state (per `picture.cpp`:
 original mode doesn't restore); **S** copy-self copies a robot *with its
-team* (C/O copy just the lead). Mode persists.
+team* (C/O copy just the lead). Mode persists. ✅ **Audited 2026-06-15**: the
+default **C** matches `tools.cpp` Copier ctor `state = COPIER_NORMAL`:3057, button
+`'C'`:3063 (`CopierState {COPIER_NORMAL, COPIER_ORIGINAL, …}`).
 
 ## Pumpy (`pumpy.ts`) ✅
 
@@ -188,6 +192,9 @@ keys: `+`/`b` bigger · `-` smaller · `w` wider · `n` narrower · `t` taller �
 and draws the baked PUMP00 art (`pumpy.png`, 208×174) at native tool size.
 ▢ in-hole things ignore Pumpy size (the cubby fit-scale dominates); copies
 and box-fit don't carry Pumpy size.
+✅ **Audited 2026-06-15**: the resize-mode set matches the original Expander
+(`tools.cpp` `ExpanderState` — bigger/smaller/wider/narrower/taller/shorter/
+good-size); only the niche in-hole sizing remains ▢.
 
 ## Tools are held, not dropped
 

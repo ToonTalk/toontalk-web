@@ -33,7 +33,7 @@ describe('Dusty erasing', () => {
   it('toggles erased on a loose thing', () => {
     const w = new World();
     const n = w.add(new NumberThing({ value: 7 })) as NumberThing;
-    const dusty = w.add(new Dusty()) as Dusty;
+    const dusty = w.add(new Dusty({ mode: 'erase' })) as Dusty;
     expect(resolveDrop(w, dusty, n)).toBe('erased');
     expect(n.erased).toBe(true);
     resolveDrop(w, dusty, n);
@@ -44,7 +44,7 @@ describe('Dusty erasing', () => {
   it('erases a thing inside a box hole', () => {
     const w = new World();
     const box = w.add(numBox(4, 5)) as Box;
-    const dusty = w.add(new Dusty()) as Dusty;
+    const dusty = w.add(new Dusty({ mode: 'erase' })) as Dusty;
     resolveDrop(w, dusty, box, { holeIndex: 1 });
     expect(box.contentsAt(1)!.erased).toBe(true);
     expect(box.contentsAt(0)!.erased).toBe(false);
@@ -92,7 +92,7 @@ describe('Dusty generalizes a trained robot', () => {
         exactValues: [new NumberThing({ value: 6 }), new NumberThing({ value: 7 })],
       }),
     ) as Robot;
-    const dusty = w.add(new Dusty()) as Dusty;
+    const dusty = w.add(new Dusty({ mode: 'erase' })) as Dusty;
     expect(robot.matches(numBox(1, 2))).toBe(false);
     expect(resolveDrop(w, dusty, robot)).toBe('erased');
     expect(robot.matches(numBox(1, 2))).toBe(true);

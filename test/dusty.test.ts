@@ -6,12 +6,12 @@ import { Dusty } from '../src/model/dusty';
 import { resolveDrop } from '../src/model/interactions';
 
 describe('Dusty modes', () => {
-  it('cycles erase → suck → reverse → erase', () => {
+  it('defaults to suck and cycles suck → reverse → erase → suck (VacuumState order)', () => {
     const d = new Dusty();
-    expect(d.mode).toBe('erase');
-    d.cycleMode(); expect(d.mode).toBe('suck');
+    expect(d.mode).toBe('suck'); // tools.cpp Vacuum ctor: state = VACUUM_SUCK
     d.cycleMode(); expect(d.mode).toBe('reverse');
     d.cycleMode(); expect(d.mode).toBe('erase');
+    d.cycleMode(); expect(d.mode).toBe('suck');
   });
 
   it('suck removes a loose thing into the stomach', () => {

@@ -61,10 +61,11 @@ describe('notebook', () => {
     const nb = w.add(
       new Notebook({ pages: [new NumberThing({ value: 1 }), new NumberThing({ value: 2 })], index: 0 }),
     ) as Notebook;
-    const dusty = w.add(new Dusty()) as Dusty; // default mode 'erase'
-    expect(resolveDrop(w, dusty, nb)).toBe('erased');
+    const dusty = w.add(new Dusty()) as Dusty; // default mode 'suck'
+    expect(resolveDrop(w, dusty, nb)).toBe('sucked');
     expect(nb.count).toBe(1);
     expect((nb.current() as NumberThing).value.toString()).toBe('2');
+    expect(dusty.stomach).toHaveLength(1); // the removed page is in the stomach
   });
 
   it('the main notebook round-trips (isMain + pages) via thingToJson', () => {
