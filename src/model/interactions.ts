@@ -273,8 +273,11 @@ export function resolveDrop(
     return 'stored';
   }
 
-  // Give a thing to a bird → it carries a copy to each of its nests.
+  // Give a thing to a bird → it carries a copy to each of its nests. A bird only
+  // accepts rectangular data — number/text pads, pictures, sounds and boxes
+  // (bird.cpp acceptable:5615); a robot, bomb, tool, bird or nest is refused.
   if (target instanceof Bird && target.nests.length > 0) {
+    if (!birdAccepts(dragged)) return 'none';
     for (const nest of target.nests) nest.receive(dragged.copy());
     world.remove(dragged.id);
     for (const nest of target.nests) world.notifyChanged(nest);
@@ -403,6 +406,15 @@ function combineInPlace(occupant: Thing, dragged: Thing, ctx: DropContext): bool
  * `current_long_value` fails). next_in_alphabet wraps mod the ring, so the exact
  * magnitude past the ring size doesn't matter, only that it's a whole number.
  */
+/**
+ * What a bird will carry (bird.cpp `acceptable`:5615): number/text pads,
+ * pictures, sounds and boxes — never a robot, bomb, tool, bird or nest. Pictures
+ * and sounds aren't modelled yet, so today that's numbers, text and boxes.
+ */
+function birdAccepts(thing: Thing): boolean {
+  return thing instanceof NumberThing || thing instanceof TextThing || thing instanceof Box;
+}
+
 function integerShift(n: NumberThing): number | null {
   if (!n.value.isInteger()) return null;
   const num = n.value.num;

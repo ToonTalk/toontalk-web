@@ -83,19 +83,32 @@ ignore hole labels — only hole count + contents matter (we have no labels, fin
 
 ## Birds & nests (`bird.cpp`)
 
-✅ a nest is a **FIFO queue** — birds deliver to the back (`receive`), things
-are read from the **front** (`front`/`takeFront`, oldest first), and the nest
-displays the front item. ✅ a delivered thing **fully covers** the nest
-(`renderThingDisplay(..., { scaleUp: true })`). ✅ resting bird is **MORP01**
-(standing); FLY* frames are flight only. ✅ **a bird feeds multiple nests**
-(`Bird.nests`): **copying a nest** (wand) adds the copy to its bird's nests,
-so giving to the bird delivers a copy to **every** nest — keeping copied
-channels in sync (the manual's "deliver to both"). ✅ **combine** — drop a
+Audited against `bird.htm` + `bird.cpp` (2026-06-15) — see the audit table in
+the commit; the one real divergence (birds accepting anything) is now fixed.
+✅ a nest is a **FIFO queue** — confirmed faithful: the original inserts at the
+end (`insert_at_end_of_contents`:3455 → `contents_stack->insert_at_end`) and
+reads/shows `first()` (3276), i.e. oldest first; the manual's "puts the new thing
+on the bottom of the stack" describes the same order. We deliver to the back
+(`receive`) and read the **front** (`front`/`takeFront`). ✅ a delivered thing
+**fully covers** the nest (`renderThingDisplay(..., { scaleUp: true })`). ✅
+resting bird is **MORP01** (standing); FLY* frames are flight only. ✅ **a bird
+only accepts pads, pictures, sounds and boxes** (`acceptable`:5615 — INTEGER /
+TEXT / SOUND / PICTURE / CUBBY; NEST, BIRD and everything else refused): a robot,
+bomb, tool, bird or nest given to a bird is now a no-op (`birdAccepts`), where we
+previously delivered anything. ✅ **a bird feeds multiple nests** (`Bird.nests`):
+**copying a nest** (wand) adds the copy to its bird's nests, so giving to the
+bird delivers a copy to **every** nest — keeping copied channels in sync (`all_
+nests` broadcast, 5733; the manual's "deliver to both"). ✅ **combine** — drop a
 nest on a nest: deliveries merge into the target and any feeding bird is
-re-pointed to it (one channel). ✅ **hatch** — `hatchFromNest`: pressing an
-empty nest with no bird gives a fresh bird that feeds it (an egg hatching),
-wired into the drag controller's `tryExtract`.
-▢ a nest saved without its bird reloads as a fresh egg → new bird.
+re-pointed to it (one channel; the original's `merge`/`forwarding_to`, 3341,
+simplified). ✅ **hatch** — `hatchFromNest`: pressing an empty nest with no bird
+gives a fresh bird that feeds it (an egg hatching, `hatch_bird`:3831), wired into
+the drag controller's `tryExtract`.
+▢ bird **flight animation** + return-to-origin (cosmetic). ▢ **t-shirt** (drop a
+picture / type text while holding) and **nest label** (type while holding) — both
+need media/labels we don't have. ▢ **network** birds (DirectPlay). ▢ recursion
+guard (`IDS_BIRD_RECUR_ABORT`:5716 — giving a bird a box containing its own
+nest). ▢ a nest saved without its bird reloads as a fresh egg → new bird.
 Birds/nests are ToonTalk's inter-process channel (a robot waits for a bird to
 fill a nest).
 

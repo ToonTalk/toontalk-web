@@ -3,6 +3,8 @@ import { World } from '../src/model/world';
 import { NumberThing } from '../src/model/number';
 import { Nest } from '../src/model/nest';
 import { Bird } from '../src/model/bird';
+import { Robot } from '../src/model/robot';
+import { Box } from '../src/model/box';
 import { Wand } from '../src/model/wand';
 import { resolveDrop } from '../src/model/interactions';
 
@@ -32,6 +34,20 @@ describe('bird feeds multiple nests after a nest is copied', () => {
     const gift = w.add(new NumberThing({ value: 1 }));
     expect(resolveDrop(w, gift, bird)).toBe('none');
     expect(w.get(gift.id)).toBeDefined();
+  });
+
+  it('refuses anything but pads/boxes (bird.cpp acceptable)', () => {
+    const w = new World();
+    const nest = w.add(new Nest()) as Nest;
+    const bird = w.add(new Bird({ nests: [nest] })) as Bird;
+    // a robot is not acceptable cargo — the bird refuses it
+    const robot = w.add(new Robot());
+    expect(resolveDrop(w, robot, bird)).toBe('none');
+    expect(w.get(robot.id)).toBeDefined();
+    expect(nest.contents).toHaveLength(0);
+    // a box, though, is fine
+    expect(resolveDrop(w, w.add(new Box({ size: 1 })), bird)).toBe('delivered');
+    expect(nest.contents).toHaveLength(1);
   });
 });
 
