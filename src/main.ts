@@ -45,6 +45,13 @@ import { loadCityAssets } from './city/city-sprites';
 import { BLOCK_W, BLOCK_H } from './city/city-model';
 import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
 
+/**
+ * A human-readable build tag shown in the HUD so you can confirm a hard-refresh
+ * actually picked up the latest code (vs. a cached page). Bump it whenever you
+ * want a visible "this is the new version" marker.
+ */
+const BUILD = 'build 2026-06-15 (element audits)';
+
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
   if (hud) hud.textContent = text;
@@ -596,12 +603,12 @@ async function start(): Promise<void> {
       return;
     }
     setHud(
-      `ToonTalk Web — Phase 4\n` +
+      `ToonTalk Web — Phase 4 · ${BUILD}\n` +
         `render mode: ${mode}\n` +
         `things: ${world.size}\n` +
         `trained robot + 2-number box → it adds · UNtrained robot + filled box → train it\n` +
-        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty erases · bomb destroys · robot on robot → team\n` +
-        `hold a number, press + − ×(x) ÷(/) % ^ = to set its op · − negates · number on a blank text pad → digits\n` +
+        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty sucks/erases · bomb destroys · robot on robot → team\n` +
+        `hold a number, press + − ×(x) ÷(/) % ^ = to set its op · − negates · number on a text pad → digits (blank) or next letter (non-blank)\n` +
         `a scale between two holes tips toward the bigger (robots can match the tilt) · drop a box on another box's edge to join` +
         (lastResult && lastResult !== 'none' && lastResult !== 'train'
           ? `\nlast drop: ${lastResult}`
