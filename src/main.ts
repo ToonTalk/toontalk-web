@@ -35,7 +35,7 @@ import { floorCamera, FLOOR_W, FLOOR_H, clampFloorCamera } from './view/floor-ca
 import { BoxView } from './view/box-view';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
-import { loadAnimations, playOnce, flyBird, tweenScale, morphFromToolbox } from './view/animation';
+import { loadAnimations, playOnce, flyBird, tweenScale, morphFromToolbox, runMouse } from './view/animation';
 import { DragController } from './input/drag-controller';
 import { InputTracker } from './input/input-state';
 import { updateSensors } from './model/sensor-runtime';
@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-15l (mouse morphs lego->clay)';
+const BUILD = 'build 2026-06-15m (arm join, lego tools, clean toolbox, mouse on combine)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -185,6 +185,21 @@ async function start(): Promise<void> {
         for (const nest of target.nests.slice(1)) {
           flyBird(renderer.thingLayer, target.x, target.y, nest.x, nest.y);
         }
+      }
+      // The bam-mouse also runs in when two pieces of data are combined —
+      // arithmetic, text concat, box join/hole-combine (call_in_a_mouse).
+      if (
+        (result === 'combined' || result === 'joined') &&
+        (target instanceof NumberThing || target instanceof TextThing || target instanceof Box)
+      ) {
+        const tv = views.get(target.id);
+        runMouse(
+          renderer.thingLayer,
+          { x: floorCamera.x - 240, y: floorCamera.y + renderer.height + 200 },
+          { x: target.x, y: target.y },
+          { x: floorCamera.x + renderer.width + 240, y: floorCamera.y - 200 },
+          () => { if (tv && !tv.container.destroyed) tweenScale(tv.container, 1.25, 1, 150); },
+        );
       }
       if (result === 'train') {
         const robot = (dragged instanceof Robot ? dragged : target) as Robot;

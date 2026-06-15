@@ -121,7 +121,7 @@ export function tweenScale(node: PIXI.Container, from: number, to: number, ms = 
  * hammer — `onBam` fires), then runs out to `out` and removes itself
  * (mouse.cpp `call_in_a_mouse`). All points are in `parent`'s coordinate space.
  */
-function runMouse(
+export function runMouse(
   parent: PIXI.Container,
   from: { x: number; y: number },
   bam: { x: number; y: number },
@@ -144,8 +144,8 @@ function runMouse(
   parent.addChild(sprite);
   sprite.play();
 
-  const inMs = 360;
-  const outMs = 300;
+  const inMs = 720;
+  const outMs = 540;
   const start = performance.now();
   let bammed = false;
   const step = (): void => {

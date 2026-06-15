@@ -81,7 +81,7 @@ const HAND_POSES: Record<HandPose, PoseSpec> = {
   // Empty: the POINTING hand (HAND04) — index extended, others curled, like the
   // original's idle cursor. Hotspot at the fingertip (top); red wrist stub at the
   // bottom-centre.
-  open: { key: 'hand-point', anchor: [0.5, 0.08], scale: 1.05, cx: 0.06, w: 0.3, top: 0.72 },
+  open: { key: 'hand-point', anchor: [0.5, 0.08], scale: 1.05, cx: 0.24, w: 0.26, top: 0.8 },
   grab: { key: 'hand-grab', anchor: [0.5, 0.2], scale: 1.2, cx: 0.24, w: 0.41, top: 0.62 },
   // Holding the wand: the hand grips it on the right, tip points left (hotspot);
   // wrist is far right (~0.83w). Wide sprite, so scaled down. (May need tuning.)
@@ -271,29 +271,36 @@ export class Room {
 
   /** A toolbox hand-tool chip (chrome): the tool's icon + a small mode badge;
    * clicking pulls a fresh copy out at the cursor. */
-  /** A hand tool spilled onto the floor by the open Tooly — the tool's own
-   * sprite (no UI tray) at a slight tilt, with a small mode badge; clicking pulls
-   * a fresh copy out at the cursor. */
+  /** A hand tool spilled onto the floor by the open Tooly. Idle, a tool reads as
+   * a chunky studded **lego brick** (its inert form, tool-tinted) with its icon
+   * and mode badge; clicking pulls a fresh *clay* copy into the hand. */
   private makeToolChip(pick: string, badge: string, tilt = 0): PIXI.Container {
     const c = new PIXI.Container();
-    // Pumpy keeps a crisp vector glyph (the detailed pump sprite goes muddy small).
-    const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 56);
+    const tint: Record<string, [number, number, number]> = {
+      wand: [0xc7a23e, 0xe3c061, 0x9c7c22],
+      dusty: [0x9aa1ab, 0xc2c8d1, 0x6f7680],
+      pumpy: [0x3f74ad, 0x5e93c9, 0x2b5482],
+    };
+    const [base, light, dark] = tint[pick] ?? [0x8f949c, 0xb0b6bf, 0x6b7079];
+    c.addChild(this.studdedPanel(78, 60, base, light, dark)); // the lego brick
+    const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 46);
+    icon.position.set(0, -2);
     c.addChild(icon);
     const b = new PIXI.Graphics();
-    b.beginFill(0x223040, 0.92);
-    b.drawCircle(22, 18, 11);
+    b.beginFill(0x223040, 0.95);
+    b.drawCircle(30, 22, 12);
     b.endFill();
     const t = new PIXI.Text(badge, {
       fontFamily: this.theme.fontFamily,
-      fontSize: 13,
+      fontSize: 15,
       fill: 0xffffff,
       fontWeight: 'bold',
     });
     t.anchor.set(0.5);
-    t.position.set(22, 18);
+    t.position.set(30, 22);
     c.addChild(b, t);
     c.rotation = tilt;
-    c.hitArea = new PIXI.Rectangle(-30, -22, 64, 48);
+    c.hitArea = new PIXI.Rectangle(-42, -33, 84, 66);
     c.eventMode = 'static';
     c.cursor = 'grab';
     // Handle the pick here and stop it bubbling to the stage, so the tool is put
