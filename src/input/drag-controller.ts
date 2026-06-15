@@ -169,8 +169,14 @@ export class DragController {
   private onKeyDown = (e: KeyboardEvent): void => {
     if (!this.enabled || this.trainer.active || e.ctrlKey || e.metaKey || e.altKey) return;
 
-    // Holding a tool: space applies it (like a click); letters set its mode.
+    // Holding a tool: space applies it (like a click); Escape puts it down;
+    // letters set its mode.
     if (this.heldTool) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this.putDownTool();
+        return;
+      }
       if (e.key === ' ') {
         e.preventDefault();
         this.applyHeldTool(this.pointer.x, this.pointer.y);
@@ -396,10 +402,20 @@ export class DragController {
     this.onGrab(thing);
   }
 
+  /** Put the held tool down (release it where it is). */
+  private putDownTool(): void {
+    if (!this.heldTool) return;
+    this.heldTool.container.zIndex = 0;
+    this.heldTool = null;
+    this.onGrab(null);
+  }
+
   /**
    * Apply the held tool to the thing under the tip (the pointer), via the normal
    * drop rules (wand copies, Dusty erases/sucks/spits, Pumpy resizes); the tool
-   * stays in hand. Clicking empty floor instead puts the tool down.
+   * **stays in hand** so you can keep using it. A click/space over empty floor
+   * does nothing (the tool is kept — press Escape to put it down); this also
+   * means the very click that pulled the tool out of Tooly can't drop it.
    */
   private applyHeldTool(x: number, y: number): void {
     const tool = this.heldTool;
@@ -409,12 +425,7 @@ export class DragController {
       const view = this.views.get(thing.id);
       return view ? view.containsPoint(p.x, p.y) : false;
     });
-    if (!target) {
-      tool.container.zIndex = 0;
-      this.heldTool = null;
-      this.onGrab(null);
-      return;
-    }
+    if (!target) return; // nothing under the tool — keep it in hand (Esc to drop)
     this.resolve(tool.thing, target, this.contextFor(target, x, y, tool.thing));
   }
 
