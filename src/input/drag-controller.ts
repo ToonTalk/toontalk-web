@@ -49,7 +49,9 @@ interface WiggleTarget {
 }
 
 /** A held tool is drawn up-and-right of the pointer, so its tip is at the cursor. */
-const HELD_OFFSET = { x: 40, y: -34 };
+// Where a held tool sits relative to the cursor: down into the hand's curled
+// grip (the hand cursor is drawn on top, so the fingers wrap over it).
+const HELD_OFFSET = { x: -16, y: 42 };
 
 export class DragController {
   private dragging: ThingView | null = null;

@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-15i (bigger toolbox; pointing hand when empty)';
+const BUILD = 'build 2026-06-15j (held tools sit in the hand grip)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
