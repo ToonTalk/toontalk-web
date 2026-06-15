@@ -67,13 +67,29 @@ bird/robot/tools/dragdrop`, `room.cpp/floor.cpp`.
    (5337-5365), heading eased via dampen_turn (5286-5292). `AT_FLOOR` /
    `set_sit_corner` → the floor camera (`view/floor-camera.ts`); the perspective
    room + floor miniatures render in Pixi (room.cpp display is platform).
-5. **Elements — next.** `cubby/number/text/bird/robot/tools` onto the `Sprite`
-   shim ▢.
+5. **Elements — ✅ audited (2026-06-15).** Each element file was checked against
+   its manual page + the C++ and brought faithful, with line-ref anchors and
+   tests; per-element detail + remaining ▢ gaps live in `docs/elements.md`:
+   - `number.cpp` — common ops (`+ * / % ^ =`) map 1:1 (d43c454); advanced
+     menu-set ops ▢.
+   - `cubby.cpp` — box drop geometry ported from `closest_hole`/`item_released_
+     on_top` so a box dropped clear of an end **joins** (was nesting); no `split`
+     exists in the original.
+   - `text.cpp` — a number on a non-blank pad **advances the edge char**
+     (`next_in_alphabet`, the 89-char ring); was a no-op.
+   - `bird.cpp` — FIFO confirmed faithful; birds now accept only pads/pictures/
+     sound/boxes (`acceptable`).
+   - `robot.cpp` — train/match/teams/copy/module-recursion faithful; non-
+     recursive matching ⚠ and async **wait-on-nest** (`suspend`) ▢.
+   - `tools.cpp` — Dusty now defaults to **suck** (`VACUUM_SUCK`); wand (`COPIER_
+     NORMAL`) + Pumpy faithful.
 
-The **`Sprite` base shim** (city coords / size / priority / `react·receive_item·
-copy·used`, Pixi-backed display) is still ▢ and is the prerequisite for porting
-elements faithfully (slice 5); the navigation slices (1-4) needed only the
-Programmer state machine, which is now faithfully ported.
+A formal **`Sprite` base shim** (city coords / size / priority / `react·receive_
+item·copy·used`, Pixi-backed display) was *not* needed: our pure `model/` already
+captures each element's logic, so the audits ported behavior directly onto it.
+Building the explicit Sprite base remains optional ▢ (only if a future element
+needs the full city-coordinate/priority machinery). The navigation slices (1-4)
+needed only the Programmer state machine, which is faithfully ported.
 
 Keep the app working after each slice; per-element fidelity detail stays in
 `docs/elements.md`.
