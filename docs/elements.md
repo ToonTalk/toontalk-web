@@ -127,15 +127,27 @@ fill a nest).
 
 ## Robots (`robot.htm`)
 
-Audited against `robot.htm` + `robot.cpp` (2026-06-15): the core is faithful at
-the modelled (flat-box) level; the gaps below are real, large simplifications,
-not quick fixes.
-✅ **train by example** — drop a fresh (untrained) robot on a box, or a box on
-it (interactions `train`); condition = box shape; **counting holes from the
-left** (actions index holes). Discoverability: grabbing an untrained robot now
-HUD-prompts the gesture (drop on a box → demonstrate hole→hole → Esc); the
-deeper, visual "robot watches in a thought bubble" UX of the original is still ▢
-(a reference video of the original's training flow would pin the exact gestures).
+Audited against `robot.htm` + `robot.cpp` (re-audited 2026-06-16 against the
+manual page): the core is faithful at the modelled (flat-box) level; the gaps
+below are real, large simplifications, not quick fixes. The manual's loop is
+"drop a box on him → you enter his thoughts and control him → he'll remember
+everything → press Esc → he's fussy and only works on a box like the one in his
+thought bubble; use Dusty to suck things out of that box to generalise."
+✅ **train by example** — the manual's gesture is **drop a box on the robot**
+(we also accept robot-onto-box for convenience); `interactions` returns `train`
+for a box meeting an *untrained* robot (locked by a test). Condition = the box's
+shape, **counting holes from the left** (actions index holes). Grabbing an
+untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
+/ generalise (Dusty) / Esc.
+  - ⚠ **what's demonstrable**: the trainer records **hole→hole** drags only —
+    `combine` (onto a filled hole) and `move` (onto an empty one) — which covers
+    the canonical "add/▢join the two numbers" robot. The manual also lets you
+    *put external things into* a hole and *take things out of* a box, and use
+    tools mid-demo (wand copy, Dusty erase); those map to the existing `remove`/
+    `swap` actions + tool actions but **aren't capturable by example yet** (▢).
+  - ▢ **"enter his thoughts"**: the original opens the robot's thought bubble as
+    the editing context; we train on the floor box (the robot sits above it) and
+    only show the learned condition in the bubble *after* `finish()`, not live.
 ✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
 right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
 Dusty** — erasing a hole clears its value guard (the manual's "suck things out of

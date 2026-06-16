@@ -4,10 +4,33 @@ import { NumberThing } from '../src/model/number';
 import { TextThing } from '../src/model/text';
 import { Box } from '../src/model/box';
 import { Robot, runRobot, trainByExample } from '../src/model/robot';
+import { resolveDrop } from '../src/model/interactions';
 
 function twoNumberBox(a: number, b: number): Box {
   return new Box({ holes: [new NumberThing({ value: a }), new NumberThing({ value: b })] });
 }
+
+describe('training gesture (robot.htm "drop a box on him")', () => {
+  it('starts training when a box meets an untrained robot — either direction', () => {
+    const w = new World();
+    const r1 = w.add(new Robot({})); // fresh, untrained
+    const r2 = w.add(new Robot({}));
+    // Manual's canonical: drop a box ON the robot.
+    expect(resolveDrop(w, twoNumberBox(3, 4), r1)).toBe('train');
+    // The reverse (robot onto a box) also begins training, for convenience.
+    expect(resolveDrop(w, r2, twoNumberBox(3, 4))).toBe('train');
+  });
+
+  it('a trained robot RUNS on a matching box and refuses (fussy) otherwise', () => {
+    const w = new World();
+    const adder = w.add(
+      new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] }),
+    );
+    expect(resolveDrop(w, twoNumberBox(20, 22), adder)).toBe('ran'); // box on robot → runs
+    const wrong = new Box({ holes: [new TextThing({ value: 'a' }), new TextThing({ value: 'b' })] });
+    expect(resolveDrop(w, wrong, adder)).toBe('none'); // shape mismatch → fussy refusal
+  });
+});
 
 describe('Robot.matches', () => {
   it('matches a box of the same shape', () => {

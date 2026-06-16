@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16q (box grab-vs-extract + robot train hint)';
+const BUILD = 'build 2026-06-16r (robot training matched to robot.htm)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -157,10 +157,13 @@ async function start(): Promise<void> {
       // gesture while it's in hand (matches interactions.ts: an untrained robot
       // dropped on a box starts a training session).
       if (thing instanceof Robot && thing.actions.length === 0 && thing.team.length === 0) {
+        // robot.htm: "To train a robot, just drop a box on him… he'll remember
+        // everything… press Esc when finished… use Dusty to suck things out of
+        // the box to generalise."
         setHud(
-          '🤖 Untrained robot. Drop it on a box (with things in its holes) to teach it:\n' +
-            'then DEMONSTRATE by dragging one hole onto another (numbers add, text joins…).\n' +
-            'Esc = done (the robot remembers it) · Backspace = cancel. Erase a hole first (Dusty) to generalise it.',
+          '🤖 Untrained robot. To TRAIN it, drop a box on it — it watches and remembers what you do.\n' +
+            'DEMONSTRATE: drag one hole onto another (numbers add, text joins…); it counts holes from the left.\n' +
+            'Esc = done (it learns it) · Backspace = cancel · erase a hole first with Dusty so it matches any value.',
         );
       }
     } else {
@@ -658,9 +661,9 @@ async function start(): Promise<void> {
   function updateHud(lastResult?: string): void {
     if (trainer.active) {
       setHud(
-        `TRAINING (${trainer.stepCount} step${trainer.stepCount === 1 ? '' : 's'})\n` +
-          `Demonstrate: drag from one box hole onto another to combine them.\n` +
-          `Esc = done (the robot learns it) · Backspace = cancel`,
+        `TRAINING (${trainer.stepCount} step${trainer.stepCount === 1 ? '' : 's'}) — the robot is watching and will remember everything.\n` +
+          `Demonstrate: drag one hole onto another (numbers add, text joins, …) — it counts holes from the left.\n` +
+          `Esc = done (the robot learns it) · Backspace = cancel · erase a hole (Dusty) to generalise it.`,
       );
       return;
     }

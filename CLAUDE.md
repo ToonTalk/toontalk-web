@@ -71,7 +71,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Text | ✅ | concat · number→blank pad ✅ · number→non-blank pad shifts edge char (next_in_alphabet) ✅ · edit ✅ · blank-pad wildcard ✅ |
 | Boxes | ✅ | join (faithful `closest_hole` geometry) ✅ · blank box sizes from number/text/robot/notebook ✅ · (no split exists in C++) |
 | Birds & nests | ✅ | FIFO (audited faithful), multi-nest, combine, hatch · accepts only pads/pics/boxes ✅ · flight anim/t-shirt/network ▢ · egg-on-reload ▢ |
-| Robots | ✅ | train/match/teams/copy/module-recursion ✅ (audited) · non-recursive matching ⚠ · wait-on-nest/negation/wand-S self-copy ▢ |
+| Robots | ✅ | train (drop a box on it)/match/teams/copy/module-recursion ✅ (manual-audited) · by-example records hole→hole only, no take-out/tool-use/"enter thoughts" ▢ · non-recursive matching ⚠ · wait-on-nest/negation/wand-S self-copy ▢ |
 | Scale | ✅ | `<` `>` `=` guards work |
 | Dusty | ✅ | S/R/E modes; defaults to **suck** (faithful, audited) |
 | Wand | ✅ | C/O/S modes |
