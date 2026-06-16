@@ -132,6 +132,32 @@ export class BoxView extends ThingView {
     this.container.alpha = blank ? 0.6 : 1; // a blank box reads as "not sized yet"
   }
 
+  /**
+   * Index of the hole whose **contents** the point actually lands on (the
+   * rendered item's bounds, padded a little), or null. Used to decide grab-vs-
+   * extract: clicking on an item pulls *it* out; clicking the box frame/walls/gaps
+   * (or an empty hole) grabs the whole box — the original's topmost-sprite rule,
+   * so a full box is still pick-up-able by its structure.
+   */
+  contentIndexAt(worldX: number, worldY: number): number | null {
+    const localX = worldX - this.container.position.x;
+    const localY = worldY - this.container.position.y;
+    const pad = 5;
+    for (let i = 0; i < this.holeNodes.length; i++) {
+      const hn = this.holeNodes[i];
+      if (!hn) continue;
+      const lb = hn.node.getLocalBounds();
+      const sx = Math.abs(hn.node.scale.x) || 1;
+      const sy = Math.abs(hn.node.scale.y) || 1;
+      const minX = hn.x + lb.x * sx - pad;
+      const maxX = hn.x + (lb.x + lb.width) * sx + pad;
+      const minY = hn.y + lb.y * sy - pad;
+      const maxY = hn.y + (lb.y + lb.height) * sy + pad;
+      if (localX >= minX && localX <= maxX && localY >= minY && localY <= maxY) return i;
+    }
+    return null;
+  }
+
   /** Index of the hole nearest a world-space point (within the box), or null. */
   holeIndexAt(worldX: number, worldY: number): number | null {
     const localX = worldX - this.container.position.x;

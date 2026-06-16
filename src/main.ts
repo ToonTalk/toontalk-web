@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16p (fully-lego toolbox tbmrph16 + fit + lego robot)';
+const BUILD = 'build 2026-06-16q (box grab-vs-extract + robot train hint)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -153,6 +153,16 @@ async function start(): Promise<void> {
       if (carriedWand) carriedWand.container.alpha = 0;
     } else if (thing) {
       room.setPose('grab');
+      // Discoverability: a fresh robot gives no clue how to teach it. Prompt the
+      // gesture while it's in hand (matches interactions.ts: an untrained robot
+      // dropped on a box starts a training session).
+      if (thing instanceof Robot && thing.actions.length === 0 && thing.team.length === 0) {
+        setHud(
+          '🤖 Untrained robot. Drop it on a box (with things in its holes) to teach it:\n' +
+            'then DEMONSTRATE by dragging one hole onto another (numbers add, text joins…).\n' +
+            'Esc = done (the robot remembers it) · Backspace = cancel. Erase a hole first (Dusty) to generalise it.',
+        );
+      }
     } else {
       room.setPose('open');
     }

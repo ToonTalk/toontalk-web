@@ -80,6 +80,12 @@ per page**. A non-blank box just fills the targeted hole.
 No box **split** exists in `cubby.cpp` — boxes only concatenate; the inverse is
 destruction (bomb/Dusty), not a box operation, so there is no gap here. Robots
 ignore hole labels — only hole count + contents matter (we have no labels, fine).
+✅ **grab vs. extract** (topmost-sprite rule): pressing **directly on a hole's
+item** pulls *that item* out (`BoxView.contentIndexAt` tests the item's rendered
+bounds); pressing the **box frame/walls/gaps or an empty hole** grabs the *whole
+box*. Earlier we extracted on the *nearest* hole, so a full box could never be
+picked up — fixed. The hover wiggle matches (item wiggles when you'd pull it, the
+box when you'd grab it).
 
 ## Birds & nests (`bird.cpp`)
 
@@ -124,8 +130,12 @@ fill a nest).
 Audited against `robot.htm` + `robot.cpp` (2026-06-15): the core is faithful at
 the modelled (flat-box) level; the gaps below are real, large simplifications,
 not quick fixes.
-✅ **train by example** — drop a box on a fresh robot (interactions `train`);
-condition = box shape; **counting holes from the left** (actions index holes).
+✅ **train by example** — drop a fresh (untrained) robot on a box, or a box on
+it (interactions `train`); condition = box shape; **counting holes from the
+left** (actions index holes). Discoverability: grabbing an untrained robot now
+HUD-prompts the gesture (drop on a box → demonstrate hole→hole → Esc); the
+deeper, visual "robot watches in a thought bubble" UX of the original is still ▢
+(a reference video of the original's training flow would pin the exact gestures).
 ✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
 right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
 Dusty** — erasing a hole clears its value guard (the manual's "suck things out of

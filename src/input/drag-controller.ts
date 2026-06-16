@@ -152,11 +152,12 @@ export class DragController {
     const view = this.views.get(hit.id);
     if (!view) return null;
     if (hit instanceof Box && view instanceof BoxView) {
-      const i = view.holeIndexAt(this.pointer.x, this.pointer.y);
+      const i = view.contentIndexAt(this.pointer.x, this.pointer.y);
       if (i != null && !hit.isHoleEmpty(i)) {
         const hn = view.holeNode(i);
-        if (hn) return { node: hn.node, bx: hn.x, by: hn.y };
+        if (hn) return { node: hn.node, bx: hn.x, by: hn.y }; // over the item → it wiggles (pull it out)
       }
+      // else: over the box frame/gaps → the whole box wiggles (pick it up)
     } else if (hit instanceof Nest && view instanceof NestView) {
       if (view.pressedOnItem(this.pointer.x, this.pointer.y) && view.item) {
         return { node: view.item, bx: 0, by: 0 };
@@ -477,7 +478,7 @@ export class DragController {
     if (hit instanceof Box) {
       const bv = this.views.get(hit.id);
       if (bv instanceof BoxView) {
-        const i = bv.holeIndexAt(x, y);
+        const i = bv.contentIndexAt(x, y); // only pull out if the press is ON the item
         if (i != null && !hit.isHoleEmpty(i)) {
           const occ = hit.take(i);
           if (occ) {
