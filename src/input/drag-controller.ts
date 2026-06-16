@@ -397,7 +397,8 @@ export class DragController {
    * mode keys (S/R/E for Dusty, C/O/S wand, Pumpy keys) retune it.
    */
   holdTool(thing: Thing): void {
-    if (!this.isTool(thing)) return;
+    // Anything pulled from Tooly is carried in the hand (a tool stays for repeat
+    // use; an element is dropped/placed on the next click — see applyHeldTool).
     const view = this.views.get(thing.id);
     if (!view) return;
     this.heldTool = view;
@@ -447,6 +448,9 @@ export class DragController {
       return;
     }
     this.resolve(tool.thing, target, this.contextFor(target, x, y, tool.thing));
+    // A held ELEMENT is placed/applied once, then leaves the hand; a TOOL
+    // (wand/Dusty/Pumpy) stays in hand for repeated use.
+    if (!this.isTool(tool.thing)) this.putDownTool();
   }
 
   /** Which box hole / which side a reference point (px,py) lands on, for a drop. */

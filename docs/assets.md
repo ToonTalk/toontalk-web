@@ -65,7 +65,13 @@
   (number/text/box/nest/scale/robot/truck/bomb) into the tray over the art with a
   hit area on each; the whole box is draggable; falls back to the drawn grey-lego
   `makeToolboxDrawn` if the png is missing. (M25/M22 have no open-toolbox bitmap —
-  `TOOLBOXA.TTS` is Tooly's *walking* frames.)
+  `TOOLBOXA.TTS` is Tooly's *walking* frames.) The box is drawn ~500px wide and
+  each icon is `cell = 0.13·W`, **sized to sit inside its compartment** (the 2×4
+  grid centres ≈ cols 0.18/0.42 × rows 0.28/0.42/0.56/0.69) — no overflow/overlap.
+  **Clicking any icon** pulls a fresh element that **expands and lands in the
+  hand** (`onPick` → `tweenScale` + `dragController.holdTool`): a tool stays in
+  hand for repeat use, an element is dropped/applied on the next click
+  (`applyHeldTool` releases non-tools).
 
 ## Render modes
 

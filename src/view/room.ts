@@ -221,7 +221,7 @@ export class Room {
     }
 
     const toolbox = this.makeToolbox();
-    toolbox.position.set(W - 235, 245);
+    toolbox.position.set(W - 270, 255); // bigger Tooly — keep it clear of the screen edge
     this.chrome.addChild(toolbox);
 
     // Opening Tooly SPILLS the hand tools out onto the floor below it (the wand,
@@ -358,7 +358,7 @@ export class Room {
     this.tbBox = box;
     const sprite = new PIXI.Sprite(tex);
     sprite.anchor.set(0.5);
-    sprite.scale.set(440 / Math.max(sprite.width, 1)); // ~440px wide (bigger Tooly)
+    sprite.scale.set(500 / Math.max(sprite.width, 1)); // ~500px wide (bigger Tooly so items fit)
     box.addChild(sprite);
     const W = sprite.width;
     const H = sprite.height;
@@ -387,12 +387,12 @@ export class Room {
     // The tray sits on the LEFT of the open box; lay the eight elements into it
     // in two columns (constant.h order). Fractions measured on the trimmed art.
     const slots: Array<[string, number, number]> = [
-      ['number', 0.15, 0.30], ['text', 0.39, 0.30],
-      ['box', 0.15, 0.44], ['nest', 0.39, 0.44],
-      ['scale', 0.15, 0.58], ['robot', 0.39, 0.58],
-      ['truck', 0.15, 0.71], ['bomb', 0.39, 0.71],
+      ['number', 0.18, 0.28], ['text', 0.42, 0.28],
+      ['box', 0.18, 0.42], ['nest', 0.42, 0.42],
+      ['scale', 0.18, 0.56], ['robot', 0.42, 0.56],
+      ['truck', 0.18, 0.69], ['bomb', 0.42, 0.69],
     ];
-    const cell = W * 0.19; // fill each compartment (like the original)
+    const cell = W * 0.13; // sized to sit INSIDE a compartment, no overflow/overlap
     for (const [pick, fx, fy] of slots) {
       const cx = (fx - 0.5) * W;
       const cy = (fy - 0.5) * H;
@@ -405,7 +405,7 @@ export class Room {
       }
       const hit = new PIXI.Container();
       hit.position.set(cx, cy);
-      hit.hitArea = new PIXI.Rectangle(-W * 0.11, -H * 0.08, W * 0.22, H * 0.15);
+      hit.hitArea = new PIXI.Rectangle(-W * 0.11, -H * 0.065, W * 0.22, H * 0.13);
       hit.eventMode = 'static';
       hit.cursor = 'grab';
       // Handle here and don't bubble, so the pick "births" the element rather

@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16n (notebook cards + name)';
+const BUILD = 'build 2026-06-16o (toolbox fit + pick-to-hand)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -82,15 +82,11 @@ async function start(): Promise<void> {
     const made = spawnTool(key, x, y);
     if (!made) return;
     const v = views.get(made.id);
-    if (made instanceof Wand || made instanceof Dusty || made instanceof Pumpy) {
-      // A hand tool comes to life and goes straight into the hand.
-      if (v) tweenScale(v.container, 0.2, 1, 260);
-      dragController.holdTool(made);
-    } else if (v) {
-      // Taking an element from Tooly: it just comes to life with a quick grow —
-      // no mouse (the bam-mouse is only for *combining* things).
-      tweenScale(v.container, 0.4, 1, 200);
-    }
+    // Clicking ANYTHING in Tooly: it expands (grows from small) and ends up in
+    // the hand — held — like the original. You then move and drop it where you
+    // want. (No bam-mouse here; that's only for *combining* things.)
+    if (v) tweenScale(v.container, 0.2, 1, 280);
+    dragController.holdTool(made);
   });
   (window as unknown as { __ttRoom?: unknown }).__ttRoom = room;
   window.addEventListener('resize', () => room.resize());
