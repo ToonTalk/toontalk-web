@@ -6,7 +6,7 @@ visual programming environment for children created by Ken Kahn (1992–2007).
 This is a clean rewrite (TypeScript + PixiJS), not a port of the original
 DirectX C++ — see `../TOONTALK_WEB_PLAN.md` for the rationale and roadmap.
 
-## Status: Lively animations — the bam-mouse & flying birds ✅
+## Status: Lively animations — the bam-mouse, flying birds & hatching eggs ✅
 
 - **The hammer comes down.** Combining two number/text pads (or joining boxes)
   now plays the **full 22-frame bam-mouse**: it runs in, plants itself, *slams*
@@ -16,8 +16,11 @@ DirectX C++ — see `../TOONTALK_WEB_PLAN.md` for the rationale and roadmap.
 - **Birds fly where they're going.** A delivering bird now **faces its flight
   direction** (all 8 directional `BIRD.TTS` cycles) — out to the nest, then
   turned around for the trip home — instead of one fixed side-on flap.
-- Both use the original art, baked by `tools/bake-mouse.py` / `bake-bird.py`.
-  175 unit tests still green.
+- **Eggs hatch.** A fresh nest is an egg: it now **cracks open** and the newborn
+  bird **flies up out of the nest**, growing to full size, before settling in to
+  feed it.
+- All use the original art, baked by `tools/bake-mouse.py` / `bake-bird.py` /
+  `bake-nest.py`. 175 unit tests still green.
 
 ## Status: The bomb 💣 ✅
 

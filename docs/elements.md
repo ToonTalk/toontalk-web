@@ -103,7 +103,11 @@ nest on a nest: deliveries merge into the target and any feeding bird is
 re-pointed to it (one channel; the original's `merge`/`forwarding_to`, 3341,
 simplified). ✅ **hatch** — `hatchFromNest`: pressing an empty nest with no bird
 gives a fresh bird that feeds it (an egg hatching, `hatch_bird`:3831), wired into
-the drag controller's `tryExtract`.
+the drag controller's `tryExtract`. ✅ **hatch animation** — a fresh nest from
+the toolbox is an egg that hatches: `hatchNest` (animation.ts, NEST.TTS cycle 2
+= HATCH02–14 via `tools/bake-nest.py`) plays the egg cracking open and the bird
+**flying up out of the nest**, growing to size (bird.cpp `Nest::hatch_bird` →
+`bird_has_hatched`). The press-to-grab hatch stays immediate (no fly-up).
 ✅ bird **flight animation** + return-to-origin: `flyBird` (animation.ts) flies
 the bird to the nest and back on a delivery, **facing its flight direction** (8
 directional BIRD.TTS cycles, `tools/bake-bird.py`; bird.cpp `fly_to` →

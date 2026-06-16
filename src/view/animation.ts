@@ -34,6 +34,10 @@ const ANIMATIONS: AnimSpec[] = [
   // BIRD.TTS flight cycles 0-7 (E,SE,S,SW,W,NW,N,NE) — the bird faces the way
   // it flies (bird.cpp fly_to sets the cycle to direction(dx,dy)).
   { name: 'bird-fly', frames: 6, frameMs: 90, anchor: [0.495, 0.446], dirs: 8 },
+  // NEST.TTS cycle 2 (HATCH02-14): the egg cracks open and the bird emerges
+  // (bird.cpp Nest::hatch_bird). Anchored on the egg (nestAnchor from
+  // tools/bake-nest.py) so it overlays the static nest exactly.
+  { name: 'nest-hatch', frames: 13, frameMs: 70, anchor: [0.442, 0.649] },
   // MOUSEHAM: the mouse with the big red hammer that "bams" a lego brick into
   // its clay form (call_in_a_mouse). All 22 frames baked to one canvas
   // (tools/bake-mouse.py) in playback order — run-in [0..3], smash [4..17]
@@ -140,6 +144,103 @@ export function flyBird(
     }
   };
   PIXI.Ticker.shared.add(step);
+}
+
+/**
+ * A freshly hatched bird flies one-way up out of the nest to (toX,toY), growing
+ * from tiny to full size as it goes (bird.cpp `bird_has_hatched`:
+ * `animate_to_size_percents` + `fly_to`), facing its flight direction. Reveals
+ * `reveal` (the real bird) when it lands, then removes itself.
+ */
+function flyUpBird(
+  parent: PIXI.Container,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  reveal?: PIXI.Container,
+): void {
+  const spec = specs.get('bird-fly');
+  const texs = spec && loaded.get(`bird-fly:${flightDir(toX - fromX, toY - fromY)}`);
+  if (!spec || !texs || texs.length === 0) {
+    if (reveal && !reveal.destroyed) reveal.visible = true;
+    return;
+  }
+  const sprite = new PIXI.AnimatedSprite(texs);
+  sprite.anchor.set(spec.anchor[0], spec.anchor[1]);
+  sprite.animationSpeed = 1000 / spec.frameMs / 60;
+  sprite.loop = true;
+  sprite.zIndex = 9998;
+  sprite.position.set(fromX, fromY);
+  sprite.scale.set(0.3);
+  parent.addChild(sprite);
+  sprite.play();
+  const durationMs = 750;
+  const start = performance.now();
+  const step = (): void => {
+    if (sprite.destroyed) {
+      PIXI.Ticker.shared.remove(step);
+      return;
+    }
+    const t = Math.min(1, (performance.now() - start) / durationMs);
+    const e = 1 - (1 - t) * (1 - t); // ease-out
+    sprite.position.set(fromX + (toX - fromX) * e, fromY + (toY - fromY) * e);
+    sprite.scale.set(0.3 + 0.5 * e); // grow to full size on the way up
+    if (t >= 1) {
+      PIXI.Ticker.shared.remove(step);
+      sprite.destroy();
+      if (reveal && !reveal.destroyed) reveal.visible = true;
+    }
+  };
+  PIXI.Ticker.shared.add(step);
+}
+
+/**
+ * The egg in a nest cracks open and a bird hatches out, then flies up to its
+ * resting spot (toX,toY) — a port of bird.cpp `Nest::hatch_bird` →
+ * `bird_has_hatched`. The static nest (`hideNest`) and the real bird
+ * (`hideBird`) are hidden for the sequence; the egg-crack overlay plays once at
+ * the nest, the bird emerges near the end and flies up, and the (now empty)
+ * nest reappears. Falls back to just revealing both if the art is missing.
+ */
+export function hatchNest(
+  parent: PIXI.Container,
+  nestX: number,
+  nestY: number,
+  toX: number,
+  toY: number,
+  hideNest?: PIXI.Container,
+  hideBird?: PIXI.Container,
+): void {
+  const spec = specs.get('nest-hatch');
+  const texs = loaded.get('nest-hatch');
+  if (!spec || !texs || texs.length === 0) {
+    flyUpBird(parent, nestX, nestY, toX, toY, hideBird);
+    return;
+  }
+  if (hideNest) hideNest.visible = false;
+  if (hideBird) hideBird.visible = false;
+  const egg = new PIXI.AnimatedSprite(texs);
+  egg.anchor.set(spec.anchor[0], spec.anchor[1]); // egg centred on the nest
+  egg.position.set(nestX, nestY);
+  egg.zIndex = 9996;
+  egg.loop = false;
+  egg.animationSpeed = 1000 / spec.frameMs / 60;
+  parent.addChild(egg);
+  egg.play();
+  let launched = false;
+  const launchAt = texs.length - 2; // the bird leaves the nest near the last frame
+  egg.onFrameChange = (frame): void => {
+    if (!launched && frame >= launchAt) {
+      launched = true;
+      flyUpBird(parent, nestX, nestY - 20, toX, toY, hideBird);
+    }
+  };
+  egg.onComplete = (): void => {
+    if (!launched) flyUpBird(parent, nestX, nestY - 20, toX, toY, hideBird);
+    egg.destroy();
+    if (hideNest && !hideNest.destroyed) hideNest.visible = true; // empty nest returns
+  };
 }
 
 /** Ease a node's scale from `from`× to `to`× over `ms` (used for cubby fit/restore). */

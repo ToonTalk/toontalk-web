@@ -110,4 +110,14 @@ explosion** (`explode`, EXPLODE.TTS) on a detonation, and **Dusty suck**
   `flyBird` ports bird.cpp `fly_to`, which sets the cycle to `direction(dx,dy)`:
   the bird **faces the way it flies** out to the target, then flips to the
   opposite octant for the return leg. Wired in main's resolver on `'delivered'`.
-▢ Remaining: nest hatch (HATCH/LAY frames exist in EXT, unmodeled).
+- **Nest hatch** (`nest-hatch`, NEST.TTS cycle 2 = HATCH02–14, baked by
+  `tools/bake-nest.py`; static nest = HATCH01 = `nest.png`): `hatchNest`
+  (animation.ts) ports bird.cpp `Nest::hatch_bird` → `bird_has_hatched` — the
+  egg cracks open on the nest (the 13-frame overlay, anchored on the egg via the
+  bake's `nestAnchor` so it sits exactly on the static nest), the bird emerges
+  near the last frame and **flies up out of the nest** one-way to its resting
+  spot, growing from tiny to full size and facing its flight direction, then the
+  emptied nest reappears. Wired in main's toolbox auto-hatch (a fresh nest is an
+  egg that hatches a bird to feed it). The drag-controller hatch (pressing an
+  empty nest) stays immediate — the user grabs the new bird, so no fly-up there.
+▢ Remaining: bird t-shirt / nest label media; network birds.

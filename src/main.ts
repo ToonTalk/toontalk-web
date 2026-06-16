@@ -35,7 +35,7 @@ import { floorCamera, FLOOR_W, FLOOR_H, clampFloorCamera } from './view/floor-ca
 import { BoxView } from './view/box-view';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
-import { loadAnimations, playOnce, flyBird, tweenScale, runMouse } from './view/animation';
+import { loadAnimations, playOnce, flyBird, hatchNest, tweenScale, runMouse } from './view/animation';
 import { DragController } from './input/drag-controller';
 import { InputTracker } from './input/input-state';
 import { updateSensors } from './model/sensor-runtime';
@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16e (directional bird flight)';
+const BUILD = 'build 2026-06-16f (nest hatch)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -424,7 +424,19 @@ async function start(): Promise<void> {
           const bx = x + 120;
           const by = y - 80;
           const bird = hatchFromNest(world, nest, bx, by);
-          if (bird) flyBird(renderer.thingLayer, x, y, bx, by, views.get(bird.id)?.container);
+          // The egg cracks open and the bird flies up out of the nest (bird.cpp
+          // Nest::hatch_bird → bird_has_hatched).
+          if (bird) {
+            hatchNest(
+              renderer.thingLayer,
+              x,
+              y,
+              bx,
+              by,
+              views.get(nest.id)?.container,
+              views.get(bird.id)?.container,
+            );
+          }
         }, 650);
         break;
       }

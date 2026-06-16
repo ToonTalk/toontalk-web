@@ -82,7 +82,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Sensors | ✅ | media sensors ▢ · joystick ▢ |
 | City (fly/land/walk) | ✅ | **faithful port**: camera/coords (screen.cpp), flying, landing, takeoff, walking (walls+door), perspective room shows floor in miniature, **large scrollable floor — sit re-centres it, toolbox follows** (set_sit_corner) ✅ · per-house contents ▢ · audio ▢ |
 | Room shell | ✅ | toolbox (3-D lego) + spiral notebook ✅ · holdwand anchors ⚠ |
-| Animations | ⚠ | explode ✅ · dusty-suck ✅ · bam-mouse 22-frame swing ✅ · directional bird flight ✅ · nest-hatch anim ▢ |
+| Animations | ✅ | explode ✅ · dusty-suck ✅ · bam-mouse 22-frame swing ✅ · directional bird flight ✅ · nest hatch (egg cracks → bird flies up) ✅ |
 
 ## Verification
 
