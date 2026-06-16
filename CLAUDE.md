@@ -76,7 +76,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Dusty | ✅ | S/R/E modes; defaults to **suck** (faithful, audited) |
 | Wand | ✅ | C/O/S modes |
 | Pumpy | ✅ | in-hole sizing ▢ |
-| Bomb | ⚠ | terminates a house ✅ · loose-object case simplified |
+| Bomb | ✅ | only works on a house (recycles the process), consumed · refused on loose objects (faithful, bomb.cpp) · picture-back ▢ |
 | Truck / House | ✅ | module ✅ · extras (picture, address) ▢ |
 | Notebook | ✅ | main = real save model ✅ · modules + `fromModule` recursion ✅ · sub-notebooks ▢ |
 | Sensors | ✅ | media sensors ▢ · joystick ▢ |

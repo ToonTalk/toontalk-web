@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16j (real button plates)';
+const BUILD = 'build 2026-06-16k (faithful bomb)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -210,6 +210,11 @@ async function start(): Promise<void> {
         world.moveThing(robot.id, { x: box.x, y: box.y - 96 });
       }
       updateHud(result);
+      // Faithful abort hint: a bomb does nothing unless used on a house
+      // ("bombs only work inside houses", bomb.cpp:105).
+      if (dragged instanceof Bomb && result === 'none' && target) {
+        setHud('💣 Bombs only work on a house — they recycle a finished one (terminate the process). Use Dusty to remove a loose thing.');
+      }
     },
     trainer,
     (from, to) => {
@@ -656,7 +661,7 @@ async function start(): Promise<void> {
         `render mode: ${mode}\n` +
         `things: ${world.size}\n` +
         `trained robot + 2-number box → it adds · UNtrained robot + filled box → train it\n` +
-        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty sucks/erases · bomb destroys · robot on robot → team\n` +
+        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty sucks/erases · bomb recycles a house · robot on robot → team\n` +
         `hold a number, press + − ×(x) ÷(/) % ^ = to set its op · − negates · number on a text pad → digits (blank) or next letter (non-blank)\n` +
         `a scale between two holes tips toward the bigger (robots can match the tilt) · drop a box on another box's edge to join` +
         (lastResult && lastResult !== 'none' && lastResult !== 'train'

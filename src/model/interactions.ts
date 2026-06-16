@@ -153,19 +153,19 @@ export function resolveDrop(
     return 'resized';
   }
 
-  // The bomb: detonate on the target, destroying it. If it lands on a filled
-  // box hole, just that hole's contents are blown up and the box survives;
-  // otherwise the whole target thing is destroyed. The bomb is consumed.
+  // The bomb: ToonTalk's recycler. It terminates the running process — the
+  // HOUSE it's used on — then is consumed (bomb.cpp `Bomb::used` →
+  // `house_will_explode`/`destroy_house`). A bomb **only works on a house**:
+  // dropped on a loose thing or a box it is refused ("bombs only work inside
+  // houses", bomb.cpp:105) and stays put. (The original also blows up the
+  // picture you're on the back of — we have no pictures yet.)
   if (dragged instanceof Bomb) {
-    if (target instanceof Box && ctx.holeIndex != null && !target.isHoleEmpty(ctx.holeIndex)) {
-      target.take(ctx.holeIndex);
-      recomputeScales(target);
-      world.notifyChanged(target);
-    } else {
-      world.remove(target.id);
+    if (target instanceof House) {
+      world.remove(target.id); // terminate the process
+      world.remove(dragged.id); // the bomb is consumed when it detonates
+      return 'exploded';
     }
-    world.remove(dragged.id);
-    return 'exploded';
+    return 'none'; // refused — bombs only work on houses
   }
 
   // Load a truck: drop a robot (team) or a box into it. With both aboard, its

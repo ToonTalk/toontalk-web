@@ -22,15 +22,16 @@ DirectX C++ — see `../TOONTALK_WEB_PLAN.md` for the rationale and roadmap.
 - All use the original art, baked by `tools/bake-mouse.py` / `bake-bird.py` /
   `bake-nest.py`. 175 unit tests still green.
 
-## Status: The bomb 💣 ✅
+## Status: The bomb 💣 ✅ (faithful — recycles a house)
 
-- **Blow things up.** Drop the bomb on any thing and it's destroyed. Drop it on
-  a *filled* box hole and only that hole's contents are blown up — the box
-  itself survives. Drop it on a box (or an empty hole) and the whole box goes.
-- Unlike the wand and Dusty, the **bomb is consumed** when it detonates (a miss
-  with no target leaves it intact). Authentic art from `BOMB04`.
-- First step toward terminating *running processes* once trucks land. 60 unit
-  tests.
+- **Recycle a running process.** A bomb blows up a **house** — the running
+  process a robot team works in — and is then consumed. That's its real job in
+  ToonTalk: deallocating finished houses.
+- **Bombs only work on a house.** Dropped on a loose thing or a box, the bomb is
+  *refused* and stays put (the original aborts with "bombs only work inside
+  houses"); to delete a loose object you use **Dusty**. (Earlier our bomb
+  destroyed any target — that was a divergence, now matched to `bomb.cpp`.)
+- Authentic art from `BOMB04`.
 
 ## Status: Dusty + erasing + thought bubbles ✅
 

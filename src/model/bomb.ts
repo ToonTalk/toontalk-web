@@ -1,12 +1,9 @@
 /**
- * The bomb: ToonTalk's terminating tool. Drop the bomb on a thing and it blows
- * that thing up — a loose object vanishes, or the contents of a box hole are
- * destroyed (the box itself survives). Unlike the wand and Dusty, the bomb is
- * *consumed* when it detonates.
- *
- * In full ToonTalk a bomb also terminates a running process (a robot team on a
- * truck); that meaning arrives with trucks. For now it simply destroys its
- * target, which is the same primitive.
+ * The bomb: ToonTalk's recycler. It terminates a running process — the **house**
+ * it's used on (a robot team working in a built house) — and is *consumed* when
+ * it detonates. A bomb "only works inside a house" (bomb.cpp `Bomb::used`:105):
+ * dropped on a loose object or a box it is refused and stays put. Deleting a
+ * loose thing is Dusty's job, not the bomb's.
  */
 import { Thing, type ThingKind } from './thing';
 

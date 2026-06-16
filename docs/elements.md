@@ -244,15 +244,19 @@ recursion + result-return via birds/nests; per-user named notebooks; the
 picture/sound/options sub-notebooks (media deferred); dropping a notebook on
 an erased box → a box with one hole per page; page-turn animation.
 
-## Bomb
+## Bomb ✅
 
-In real ToonTalk a bomb blows up the **house/room you're in** — it terminates
-a whole running process (a robot team working in a house); its stated purpose
-is *recycling* (deallocating finished houses). It is consumed. Our current
-impl simplifies this to "destroy the target thing/box" because we started
-with no houses. ✅ a bomb now **terminates a house** (the running process):
-`world.remove(target)` already covers it. ▢ still simplified for loose
-objects.
+A bomb blows up the **house/room you're in** — it terminates a whole running
+process (a robot team working in a house); its stated purpose is *recycling*
+(deallocating finished houses), and it is consumed when it detonates
+(`bomb.cpp Bomb::used`). ✅ **only works on a house**: dropped on a `House` it
+removes that running process and the bomb is consumed (`'exploded'` → the
+explosion plays); dropped on a loose thing or a box it is **refused** and stays
+put — `Bomb::used` aborts with *"bombs only work inside houses"* (bomb.cpp:105),
+and main shows that hint. Deleting a loose object is **Dusty's** job, not the
+bomb's. (Verified against `bomb.cpp` 2026-06-16; the earlier "destroy any
+target" was a divergence, now removed.) ▢ the original also blows up the
+**picture** you're on the back of — deferred with media.
 
 ## Truck / House ✅
 
