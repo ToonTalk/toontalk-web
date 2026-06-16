@@ -72,8 +72,8 @@ textures, clean sans. Driven by theme fields (`cornerRadius`, `borderWidth`,
   blank, for erased boxes — not yet used.)
 - ✅ **Scale** uses distinct tilt bitmaps (scale-view.ts), **centred, never
   rotated**: `scale-level` (SCALE01), `scale-left` (SCALE04, left pan down =
-  left heavier), `scale-right` (SCALE02, right pan down). tottering → level,
-  faded.
+  left heavier), `scale-right` (SCALE02, right pan down). tottering → level
+  beam (fully opaque — a fresh scale is not faded).
 
 ## Frame-based sprite animation
 

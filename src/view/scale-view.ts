@@ -2,7 +2,7 @@
  * Draws the balance using the original's distinct tilt bitmaps (SCALE01 level,
  * SCALE02 left-heavier, SCALE04 right-heavier) — the beam art itself shows which
  * side is heavier, so the sprite is centred and never rotated. A tottering scale
- * (a missing neighbour, matches nothing) shows the level beam, faded.
+ * (a missing neighbour, matches nothing) shows the level beam (fully opaque).
  */
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
@@ -32,7 +32,6 @@ export class ScaleView extends ThingView {
     const sprite = new PIXI.Sprite(tex);
     // Anchor near the base (the pivot) so different tilt frames sit on the floor.
     sprite.anchor.set(0.5, 0.85);
-    if (scale.tilt === 'tottering') sprite.alpha = 0.5;
     this.container.addChild(sprite);
   }
 }
