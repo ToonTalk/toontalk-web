@@ -36,7 +36,11 @@
   **robot** (`RB00`), number/text plates, box (`CUBBY*`) and truck (`TRKSIDE`)
   were already Lego. The **scale** (`SCALE01/02/04` balance) and **bomb**
   (`BOMB04` round) have **no Lego form in the original art** — they are clay
-  sculptures even in the original's toolbox — so they stay clay.
+  sculptures even in the original's toolbox — so they stay clay. A tool's mode
+  shows as a **1×1 Lego plate** (`view/lego-button.ts`, a yellow studded tile +
+  letter) placed ON the tool per `MODE_BUTTON_FRAC` — Dusty's nose, the wand's
+  tip, a little below centre on Pumpy. In Tooly the **robot is rendered static**
+  (`renderThingDisplay({static:true})` freezes its idle cycle) until taken out.
 - City art: `tools/bake-city.py` bakes `HELIOFLY`/`HELIOLND`/`MANWALK8` .TTS
   into `public/assets/city/{heli-fly,heli-land,person}/<dir>/NN.png` +
   `house-*/tree`, black-keyed and aligned via each frame's (ox,oy); M22
@@ -124,8 +128,11 @@ explosion** (`explode`, EXPLODE.TTS) on a detonation, and **Dusty suck**
   egg cracks open on the nest (the 13-frame overlay, anchored on the egg via the
   bake's `nestAnchor` so it sits exactly on the static nest), the bird emerges
   near the last frame and **flies up out of the nest** one-way to its resting
-  spot, growing from tiny to full size and facing its flight direction, then the
-  emptied nest reappears. Wired in main's toolbox auto-hatch (a fresh nest is an
-  egg that hatches a bird to feed it). The drag-controller hatch (pressing an
-  empty nest) stays immediate — the user grabs the new bird, so no fly-up there.
+  spot, growing from tiny to full size and facing its flight direction. Once
+  hatched, `Nest.hatched` is set and the nest renders the **empty nest**
+  (`nest-empty.png` = `MKNEST25`, the woven bowl) instead of the egg
+  (`nest.png` = HATCH01). The resting bird (`bird.png`) is scaled to about the
+  nest's size. Wired in main's toolbox auto-hatch (a fresh nest is an egg that
+  hatches a bird to feed it). The drag-controller hatch (pressing an empty nest)
+  stays immediate — the user grabs the new bird, so no fly-up there.
 ▢ Remaining: bird t-shirt / nest label media; network birds.

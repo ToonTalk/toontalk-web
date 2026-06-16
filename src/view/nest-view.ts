@@ -32,7 +32,11 @@ export class NestView extends ThingView {
   protected build(): void {
     this.itemNode = null;
     const nest = this.thing as Nest;
-    const tex = this.textures.get('nest') ?? PIXI.Texture.WHITE;
+    // A hatched nest (its bird has flown off) shows an empty nest, not an egg.
+    const tex =
+      (nest.hatched ? this.textures.get('nest-empty') : undefined) ??
+      this.textures.get('nest') ??
+      PIXI.Texture.WHITE;
 
     if (this.theme.dropShadow) {
       const shadow = new PIXI.Sprite(tex);

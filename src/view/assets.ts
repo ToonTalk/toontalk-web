@@ -7,7 +7,7 @@ import * as PIXI from 'pixi.js';
 import type { RenderTheme } from '../config/render-mode';
 
 const SPRITE_KEYS = [
-  'number', 'text', 'box', 'bird', 'nest', 'robot', 'scale', 'wand', 'pumpy',
+  'number', 'text', 'box', 'bird', 'nest', 'nest-empty', 'robot', 'scale', 'wand', 'pumpy',
   'dusty', 'bubble', 'bomb', 'truck', 'notebook',
   // Authentic lego plates / cubby pieces:
   'numplat', 'textplat', 'cubby', 'cubby1', 'cubbyr', 'cubbyb',

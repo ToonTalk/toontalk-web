@@ -57,5 +57,7 @@ export function hatchFromNest(world: World, nest: Nest, x: number, y: number): B
   if (hasBird) return null;
   const bird = new Bird({ nests: [nest], x, y });
   world.add(bird);
+  nest.hatched = true; // the egg is gone — show an empty nest now
+  world.notifyChanged(nest);
   return bird;
 }

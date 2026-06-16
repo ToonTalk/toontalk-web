@@ -6,7 +6,7 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Dusty, type VacuumMode } from '../model/dusty';
-import { legoButton } from './lego-button';
+import { addModeButton } from './lego-button';
 
 const MODE_LABEL: Record<VacuumMode, string> = { erase: 'E', suck: 'S', reverse: 'R' };
 
@@ -27,8 +27,8 @@ export class DustyView extends ThingView {
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
-    // Mode shown as a tiny Lego button sitting ON Dusty.
-    this.container.addChild(legoButton(MODE_LABEL[dusty.mode], this.theme));
+    // Mode shown as a 1×1 Lego plate on Dusty's nose.
+    addModeButton(this.container, MODE_LABEL[dusty.mode], this.theme, 'dusty', sprite.width, sprite.height);
 
     if (dusty.stomach.length > 0) {
       const count = new PIXI.Text(`×${dusty.stomach.length}`, {

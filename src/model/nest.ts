@@ -13,10 +13,14 @@ export interface NestSnapshot extends ThingSnapshot {
 export class Nest extends Thing {
   readonly kind = 'nest' as const;
   readonly contents: Thing[];
+  /** True once the egg has hatched its bird — the nest then shows an empty nest
+   * (the bird has flown off) rather than an egg. Presentation/transient. */
+  hatched: boolean;
 
-  constructor(opts: { id?: string; x?: number; y?: number; contents?: Thing[] } = {}) {
+  constructor(opts: { id?: string; x?: number; y?: number; contents?: Thing[]; hatched?: boolean } = {}) {
     super(opts);
     this.contents = opts.contents ?? [];
+    this.hatched = opts.hatched ?? false;
   }
 
   protected override kindForId(): ThingKind {

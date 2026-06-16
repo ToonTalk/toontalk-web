@@ -5,7 +5,7 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Wand } from '../model/wand';
-import { legoButton } from './lego-button';
+import { addModeButton } from './lego-button';
 
 export class WandView extends ThingView {
   protected build(): void {
@@ -24,7 +24,7 @@ export class WandView extends ThingView {
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
-    // Mode shown as a tiny Lego button sitting ON the wand.
-    this.container.addChild(legoButton(wand.mode, this.theme));
+    // Mode shown as a 1×1 Lego plate at the wand's tip.
+    addModeButton(this.container, wand.mode, this.theme, 'wand', sprite.width, sprite.height);
   }
 }

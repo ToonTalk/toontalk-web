@@ -22,7 +22,7 @@ import { Robot } from '../model/robot';
 import { Truck } from '../model/truck';
 import { Bomb } from '../model/bomb';
 import { renderThingDisplay } from './display';
-import { legoButton } from './lego-button';
+import { addModeButton } from './lego-button';
 
 const ROOM_KEYS = ['floor', 'toolbox', 'toolbox-open', 'notebook', 'hand', 'hand-point', 'hand-grab', 'hand-wand', 'truck'] as const;
 
@@ -297,8 +297,8 @@ export class Room {
       w = s.width;
       h = s.height;
     }
-    // Mode shown as a tiny Lego button sitting ON the tool.
-    c.addChild(legoButton(badge, this.theme));
+    // Mode shown as a 1×1 Lego plate on the tool (per-tool spot).
+    addModeButton(c, badge, this.theme, pick, w, h);
     c.rotation = tilt;
     c.hitArea = new PIXI.Rectangle(-w / 2, -h / 2, w, h);
     c.eventMode = 'static';
@@ -398,7 +398,8 @@ export class Room {
       const cy = (fy - 0.5) * H;
       const sample = this.sampleThing(pick);
       if (sample) {
-        const icon = renderThingDisplay(sample, this.tools, this.theme, cell);
+        // static: the robot stays a still Lego figure in Tooly until taken out.
+        const icon = renderThingDisplay(sample, this.tools, this.theme, cell, { static: true });
         icon.position.set(cx, cy);
         box.addChild(icon);
       }
@@ -511,7 +512,7 @@ export class Room {
 
       const sample = this.sampleThing(pick);
       const iconNode = sample
-        ? renderThingDisplay(sample, this.tools, this.theme, cell - 14)
+        ? renderThingDisplay(sample, this.tools, this.theme, cell - 14, { static: true })
         : this.makeIcon(pick, cell - 12);
       iconNode.position.set(cx, cy);
       box.addChild(iconNode);

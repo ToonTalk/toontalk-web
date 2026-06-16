@@ -7,7 +7,7 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Pumpy, type PumpyMode } from '../model/pumpy';
-import { legoButton } from './lego-button';
+import { addModeButton } from './lego-button';
 
 const MODE_LABEL: Record<PumpyMode, string> = {
   bigger: '+',
@@ -38,7 +38,7 @@ export class PumpyView extends ThingView {
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
-    // Mode shown as a tiny Lego button sitting ON Pumpy.
-    this.container.addChild(legoButton(MODE_LABEL[pumpy.mode], this.theme));
+    // Mode shown as a 1×1 Lego plate a little below centre on Pumpy.
+    addModeButton(this.container, MODE_LABEL[pumpy.mode], this.theme, 'pumpy', sprite.width, sprite.height);
   }
 }
