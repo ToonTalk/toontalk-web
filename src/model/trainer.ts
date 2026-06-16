@@ -40,6 +40,11 @@ export class Trainer {
     return this.session?.box ?? null;
   }
 
+  /** The robot being trained (so the UI can exclude it as an insert source). */
+  get robot(): Robot | null {
+    return this.session?.robot ?? null;
+  }
+
   get stepCount(): number {
     return this.session?.actions.length ?? 0;
   }
@@ -75,6 +80,35 @@ export class Trainer {
     if (!applyAction(box, action)) return false;
     this.session.actions.push(action);
     this.world.notifyChanged(box);
+    return true;
+  }
+
+  /**
+   * Demonstrate **taking a thing out of** the box (robot.htm): empties hole
+   * `hole`. The robot remembers the hole by position; on a run it empties that
+   * hole. Returns success (false if the hole was already empty).
+   */
+  recordRemove(hole: number): boolean {
+    if (!this.session) return false;
+    const action: RobotAction = { type: 'remove', hole };
+    if (!applyAction(this.session.box, action)) return false;
+    this.session.actions.push(action);
+    this.world.notifyChanged(this.session.box);
+    return true;
+  }
+
+  /**
+   * Demonstrate **putting a thing into** the box (robot.htm): the robot carries
+   * a copy of `source` and drops it into hole `to` — filling an empty hole or
+   * combining into a filled one. On every run it puts a *fresh copy* in, so one
+   * demo (e.g. "put a 0 in hole 2") generalises. Returns success.
+   */
+  recordInsert(to: number, source: Thing): boolean {
+    if (!this.session) return false;
+    const action: RobotAction = { type: 'insert', to, thing: source.copy() };
+    if (!applyAction(this.session.box, action)) return false;
+    this.session.actions.push(action);
+    this.world.notifyChanged(this.session.box);
     return true;
   }
 

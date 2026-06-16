@@ -158,6 +158,20 @@ export class BoxView extends ThingView {
     return null;
   }
 
+  /** True if a world-space point is within the box's bounding rectangle (used by
+   * training to tell a take-out — released outside the box — from a hole→hole
+   * drag, and a put-in — a floor thing dropped onto a hole). */
+  withinBox(worldX: number, worldY: number): boolean {
+    const localX = worldX - this.container.position.x;
+    const localY = worldY - this.container.position.y;
+    return (
+      localX >= this.spanLeft &&
+      localX <= this.spanLeft + this.spanW &&
+      localY >= -H / 2 &&
+      localY <= H / 2
+    );
+  }
+
   /** Index of the hole nearest a world-space point (within the box), or null. */
   holeIndexAt(worldX: number, worldY: number): number | null {
     const localX = worldX - this.container.position.x;

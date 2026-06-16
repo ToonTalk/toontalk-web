@@ -139,15 +139,21 @@ for a box meeting an *untrained* robot (locked by a test). Condition = the box's
 shape, **counting holes from the left** (actions index holes). Grabbing an
 untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
 / generalise (Dusty) / Esc.
-  - ⚠ **what's demonstrable**: the trainer records **hole→hole** drags only —
-    `combine` (onto a filled hole) and `move` (onto an empty one) — which covers
-    the canonical "add/▢join the two numbers" robot. The manual also lets you
-    *put external things into* a hole and *take things out of* a box, and use
-    tools mid-demo (wand copy, Dusty erase); those map to the existing `remove`/
-    `swap` actions + tool actions but **aren't capturable by example yet** (▢).
-  - ▢ **"enter his thoughts"**: the original opens the robot's thought bubble as
-    the editing context; we train on the floor box (the robot sits above it) and
-    only show the learned condition in the bubble *after* `finish()`, not live.
+  - ✅ **what's demonstrable** (robot.htm "take things out of, or put things into,
+    a box"): the trainer records **hole→hole** (`combine` onto a filled hole,
+    `move` onto an empty one), **take-out** (drag a hole's thing *out of the box*
+    → `remove`), and **put-in** (drag a floor thing *into a hole* → `insert`, the
+    robot carrying a copy it drops in each run; fills an empty hole or combines
+    into a filled one). The gesture is read by `BoxView.withinBox` +
+    `holeIndexAt`; the `insert` template is serialised in the snapshot and rebuilt
+    on load (round-trip tested). ⚠ still ▢: using **tools mid-demo** (wand copy,
+    Dusty erase as a *recorded step*) — Dusty before training still generalises,
+    but a tool action isn't captured into the action list.
+  - ✅ **"enter his thoughts"**: while a session is active a **thought-bubble
+    cloud** is drawn around the demo box with puffs trailing to the trainee robot
+    (`view/training-bubble.ts`), so the box reads as "in his thoughts"; removed on
+    finish/cancel. (It frames the floor box rather than opening a separate
+    in-bubble editing surface — the box is edited in place.)
 ✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
 right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
 Dusty** — erasing a hole clears its value guard (the manual's "suck things out of

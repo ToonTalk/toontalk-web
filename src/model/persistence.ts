@@ -120,7 +120,10 @@ function buildByKind(s: ThingSnapshot): Thing {
         x: s.x,
         y: s.y,
         condition: r.condition,
-        actions: r.actions,
+        // `insert` carries a thing snapshot → rebuild it into a live Thing.
+        actions: (r.actions ?? []).map((a) =>
+          a.type === 'insert' ? { type: 'insert' as const, to: a.to, thing: buildThing(a.thing) } : { ...a },
+        ),
         exactValues: (r.exactValues ?? []).map((v) => (v ? buildThing(v) : null)),
         team: (r.team ?? []).map((ts) => buildThing(ts) as Robot),
       });

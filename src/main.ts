@@ -33,6 +33,7 @@ import { createThingView } from './view/view-factory';
 import { renderThingDisplay } from './view/display';
 import { floorCamera, FLOOR_W, FLOOR_H, clampFloorCamera } from './view/floor-camera';
 import { BoxView } from './view/box-view';
+import { makeTrainingBubble } from './view/training-bubble';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
 import { loadAnimations, playOnce, flyBird, hatchNest, tweenScale, runMouse } from './view/animation';
@@ -50,7 +51,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16r (robot training matched to robot.htm)';
+const BUILD = 'build 2026-06-16s (train take-out/put-in + live thought bubble)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -162,7 +163,7 @@ async function start(): Promise<void> {
         // the box to generalise."
         setHud(
           '🤖 Untrained robot. To TRAIN it, drop a box on it — it watches and remembers what you do.\n' +
-            'DEMONSTRATE: drag one hole onto another (numbers add, text joins…); it counts holes from the left.\n' +
+            'DEMONSTRATE (it counts holes from the left): combine holes, drag a thing OUT of the box, or a floor thing INTO a hole.\n' +
             'Esc = done (it learns it) · Backspace = cancel · erase a hole first with Dusty so it matches any value.',
         );
       }
@@ -217,6 +218,7 @@ async function start(): Promise<void> {
         trainer.start(robot, box);
         // Sit the robot just above the box it's learning from.
         world.moveThing(robot.id, { x: box.x, y: box.y - 96 });
+        showTrainingBubble(robot, box); // the box is now "in his thoughts"
       }
       updateHud(result);
       // Faithful abort hint: a bomb does nothing unless used on a house
@@ -228,8 +230,15 @@ async function start(): Promise<void> {
       }
     },
     trainer,
-    (from, to) => {
-      trainer.recordCombine(from, to);
+    (gesture) => {
+      if (gesture.kind === 'combine') {
+        trainer.recordCombine(gesture.from, gesture.to);
+      } else if (gesture.kind === 'remove') {
+        trainer.recordRemove(gesture.from);
+      } else if (gesture.kind === 'insert') {
+        // The floor thing goes INTO the box: record it, then remove the original.
+        if (trainer.recordInsert(gesture.to, gesture.source)) world.remove(gesture.source.id);
+      }
       updateHud('train');
     },
     textures,
@@ -406,6 +415,22 @@ async function start(): Promise<void> {
     }
   });
 
+  // The training thought bubble (the box "in his thoughts"): shown while a
+  // session is active, removed when it ends.
+  let trainingBubble: ReturnType<typeof makeTrainingBubble> | null = null;
+  function showTrainingBubble(robot: Robot, box: Box): void {
+    clearTrainingBubble();
+    const b = views.get(box.id)?.container.getLocalBounds();
+    const bubble = makeTrainingBubble(b?.width ?? 220, b?.height ?? 84, robot.x - box.x, robot.y - box.y);
+    bubble.position.set(box.x, box.y);
+    renderer.thingLayer.addChildAt(bubble, 0); // behind the box and its contents
+    trainingBubble = bubble;
+  }
+  function clearTrainingBubble(): void {
+    if (trainingBubble && !trainingBubble.destroyed) trainingBubble.destroy({ children: true });
+    trainingBubble = null;
+  }
+
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
   // — there's no "cancel training" in the manual, so this is a web-only helper.
   window.addEventListener('keydown', (ev) => {
@@ -413,11 +438,13 @@ async function start(): Promise<void> {
     if (ev.key === 'Escape') {
       const box = trainer.box;
       const robot = trainer.finish();
+      clearTrainingBubble();
       if (robot && box) world.moveThing(robot.id, { x: box.x + 170, y: box.y - 96 });
       updateHud('none');
     } else if (ev.key === 'Backspace') {
       ev.preventDefault();
       trainer.cancel();
+      clearTrainingBubble();
       updateHud('none');
     }
   });
@@ -662,7 +689,8 @@ async function start(): Promise<void> {
     if (trainer.active) {
       setHud(
         `TRAINING (${trainer.stepCount} step${trainer.stepCount === 1 ? '' : 's'}) — the robot is watching and will remember everything.\n` +
-          `Demonstrate: drag one hole onto another (numbers add, text joins, …) — it counts holes from the left.\n` +
+          `Demonstrate (it counts holes from the left): drag a hole ONTO another (combine/move), ` +
+          `OUT of the box (take it out), or a floor thing INTO a hole (put it in).\n` +
           `Esc = done (the robot learns it) · Backspace = cancel · erase a hole (Dusty) to generalise it.`,
       );
       return;

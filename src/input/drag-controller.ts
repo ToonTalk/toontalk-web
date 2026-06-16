@@ -39,7 +39,18 @@ import { tweenScale } from '../view/animation';
 import { floorCamera } from '../view/floor-camera';
 
 export type DropResolver = (dragged: Thing, target: Thing | undefined, ctx: DropContext) => void;
-export type TrainStep = (from: number, to: number) => void;
+
+/**
+ * A demonstrated training gesture (robot.htm). Dispatched to the Trainer by main:
+ *  - `combine` — a hole dragged onto another hole (trainer decides move vs combine);
+ *  - `remove`  — a hole's thing dragged *out of* the box ("take things out");
+ *  - `insert`  — a floor thing dropped *into* a hole ("put things into a box").
+ */
+export type TrainGesture =
+  | { kind: 'combine'; from: number; to: number }
+  | { kind: 'remove'; from: number }
+  | { kind: 'insert'; to: number; source: Thing };
+export type TrainStep = (gesture: TrainGesture) => void;
 
 /** A node that's wiggling for selection feedback, plus its resting position. */
 interface WiggleTarget {
@@ -57,6 +68,8 @@ export class DragController {
   private dragging: ThingView | null = null;
   private grabOffset = { x: 0, y: 0 };
   private trainFrom: number | null = null;
+  /** A floor thing grabbed (outside the box) to be put INTO a hole, or null. */
+  private trainInsertThing: Thing | null = null;
   /** Floating copy of a hole's contents, shown while demonstrating a combine. */
   private trainGhost: PIXI.Container | null = null;
   /** Last known pointer position, for hover-selection feedback. */
@@ -331,16 +344,36 @@ export class DragController {
     if (!this.enabled) return;
     const { x, y } = this.worldPt(e.global);
 
-    // Training: begin a hole-to-hole demonstration, lifting a visible copy of
-    // the grabbed hole's contents so the gesture is legible.
+    // Training: begin a demonstration, lifting a visible ghost of what's grabbed.
+    // Inside the box → grab a hole's thing (→ combine/move, or take-out if
+    // released off the box). Outside the box → grab a floor thing to put IN.
     if (this.trainer.active) {
-      const bv = this.trainingBoxView();
-      this.trainFrom = bv ? bv.holeIndexAt(x, y) : null;
       this.clearTrainGhost();
+      this.trainFrom = null;
+      this.trainInsertThing = null;
+      const bv = this.trainingBoxView();
       const box = this.trainer.box;
-      const occupant = this.trainFrom != null ? box?.contentsAt(this.trainFrom) : null;
-      if (occupant) {
-        const ghost = renderThingDisplay(occupant, this.textures, this.theme, 56);
+      let lift: Thing | null = null;
+      if (bv && box && bv.withinBox(x, y)) {
+        this.trainFrom = bv.holeIndexAt(x, y);
+        lift = this.trainFrom != null ? box.contentsAt(this.trainFrom) : null;
+      } else {
+        // A floor thing (not the box or the trainee robot, not a tool) to put in.
+        const robotId = this.trainer.robot?.id;
+        const hit = this.world.topAt({ x, y }, (thing, p) => {
+          if (box && thing.id === box.id) return false;
+          if (robotId && thing.id === robotId) return false;
+          if (this.isTool(thing)) return false;
+          const v = this.views.get(thing.id);
+          return v ? v.containsPoint(p.x, p.y) : false;
+        });
+        if (hit) {
+          this.trainInsertThing = hit;
+          lift = hit;
+        }
+      }
+      if (lift) {
+        const ghost = renderThingDisplay(lift, this.textures, this.theme, 56);
         ghost.position.set(x, y);
         ghost.alpha = 0.85;
         ghost.zIndex = 5000;
@@ -561,16 +594,24 @@ export class DragController {
     if (!this.enabled) return;
     this.justGrabbedTool = false; // the pickup gesture is over; future clicks apply/drop
     this.numEdit = null; // a drop may change a pad's value — end any number edit
-    // Training: complete a hole-to-hole demonstration.
+    // Training: complete a demonstration — hole→hole combine, take-out, or put-in.
     if (this.trainer.active) {
       this.clearTrainGhost();
+      const bv = this.trainingBoxView();
+      const wp = this.worldPt(e.global);
+      const insideBox = bv ? bv.withinBox(wp.x, wp.y) : false;
+      const overHole = insideBox && bv ? bv.holeIndexAt(wp.x, wp.y) : null;
       if (this.trainFrom != null) {
-        const bv = this.trainingBoxView();
-        const wp = this.worldPt(e.global);
-        const to = bv ? bv.holeIndexAt(wp.x, wp.y) : null;
-        if (to != null && to !== this.trainFrom) this.onTrainStep(this.trainFrom, to);
-        this.trainFrom = null;
+        if (overHole != null && overHole !== this.trainFrom) {
+          this.onTrainStep({ kind: 'combine', from: this.trainFrom, to: overHole });
+        } else if (!insideBox) {
+          this.onTrainStep({ kind: 'remove', from: this.trainFrom }); // dragged out → take-out
+        }
+      } else if (this.trainInsertThing != null && overHole != null) {
+        this.onTrainStep({ kind: 'insert', to: overHole, source: this.trainInsertThing });
       }
+      this.trainFrom = null;
+      this.trainInsertThing = null;
       return;
     }
 

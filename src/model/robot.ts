@@ -60,14 +60,29 @@ export type RobotAction =
       page: number;
       /** …into this (empty) hole. The module-use / recursion primitive. */
       to: number;
+    }
+  | {
+      type: 'insert';
+      /** Hole that receives a fresh copy of the carried thing each run. */
+      to: number;
+      /** The thing the robot carries and drops in — demonstrated by putting an
+       * external thing into the box (robot.htm "put things into a box"). Copied
+       * on every run so the box owns its own instance. */
+      thing: Thing;
     };
 
 /** A condition hole: null = must be empty; a kind = must hold a thing of that kind. */
 export type ConditionHole = ThingKind | null;
 
+/** Serializable form of an action: `insert` carries a thing *snapshot*, not a
+ * live Thing. All other actions are already plain data. */
+export type RobotActionSnapshot =
+  | Exclude<RobotAction, { type: 'insert' }>
+  | { type: 'insert'; to: number; thing: ThingSnapshot };
+
 export interface RobotSnapshot extends ThingSnapshot {
   condition: ConditionHole[];
-  actions: RobotAction[];
+  actions: RobotActionSnapshot[];
   exactValues?: (ThingSnapshot | null)[];
   team?: RobotSnapshot[];
 }
@@ -132,7 +147,7 @@ export class Robot extends Thing {
       x: this.x,
       y: this.y,
       condition: [...this.condition],
-      actions: this.actions.map((a) => ({ ...a })),
+      actions: this.actions.map((a) => (a.type === 'insert' ? { ...a, thing: a.thing.copy() } : { ...a })),
       exactValues: this.exactValues.map((v) => (v ? v.copy() : null)),
       team: this.team.map((r) => r.copy()),
     });
@@ -150,7 +165,9 @@ export class Robot extends Thing {
     return {
       ...super.snapshot(),
       condition: [...this.condition],
-      actions: this.actions.map((a) => ({ ...a })),
+      actions: this.actions.map((a): RobotActionSnapshot =>
+        a.type === 'insert' ? { type: 'insert', to: a.to, thing: a.thing.snapshot() } : { ...a },
+      ),
       exactValues: this.exactValues.map((v) => (v ? v.snapshot() : null)),
       team: this.team.map((r) => r.snapshot()),
     };
@@ -172,6 +189,25 @@ export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext):
     if (box.isHoleEmpty(action.hole)) return false;
     box.take(action.hole);
     return true;
+  }
+
+  if (action.type === 'insert') {
+    // Put-in: the robot carries a copy of the demonstrated thing and drops it in.
+    const existing = box.contentsAt(action.to);
+    if (!existing) {
+      box.put(action.to, action.thing.copy()); // empty hole → fill with a fresh copy
+      return true;
+    }
+    // Filled hole → combine the carried thing into it (numbers add, text joins).
+    if (existing instanceof NumberThing && action.thing instanceof NumberThing) {
+      existing.value = NumberThing.combine(existing.value, action.thing.value, action.thing.operation);
+      return true;
+    }
+    if (existing instanceof TextThing && action.thing instanceof TextThing) {
+      existing.concat(action.thing, 'right');
+      return true;
+    }
+    return false;
   }
 
   if (action.type === 'fromModule') {
