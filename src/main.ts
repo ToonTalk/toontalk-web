@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16m (notebook two-page spread)';
+const BUILD = 'build 2026-06-16n (notebook cards + name)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -586,7 +586,7 @@ async function start(): Promise<void> {
   // notebook (the one in your toolbox) keeps whatever you file onto it. A fresh
   // main notebook starts with a single welcome page.
   function seedMainNotebook(): Notebook {
-    const nb = new Notebook({ x: 500, y: 600, isMain: true });
+    const nb = new Notebook({ x: 500, y: 600, isMain: true, name: 'claude 1' }); // the original's notebook name
     nb.store(new TextThing({ value: 'Pictures' })); // the original opens to its "Pictures" page
     return nb;
   }

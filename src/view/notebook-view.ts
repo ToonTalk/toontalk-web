@@ -45,18 +45,32 @@ export class NotebookView extends ThingView {
     const h = sprite.height;
     // The notebook is an OPEN two-page spread (spiral down the middle): the
     // current page sits on the LEFT leaf, the next page previews on the RIGHT,
-    // as in the original. Contents avoid the central binding.
+    // as in the original. Each page is a pink-bordered CARD (the original's look),
+    // its contents sitting inside, clear of the central binding.
+    const cy = -h * 0.04;
+    const cardW = w * 0.33;
+    const cardH = h * 0.58;
+    const drawCard = (cx: number): void => {
+      const card = new PIXI.Graphics();
+      card.beginFill(0xfdeef6, 1); // near-white pink card
+      card.lineStyle(3, 0xe23a93, 1); // hot-pink border, like the original
+      card.drawRoundedRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, 6);
+      card.endFill();
+      this.container.addChild(card);
+    };
     const page = nb.current();
     if (page) {
+      drawCard(-w * 0.24);
       const node = renderThingDisplay(page, this.textures, this.theme, h * 0.46);
-      node.position.set(-w * 0.24, -h * 0.04);
+      node.position.set(-w * 0.24, cy);
       this.container.addChild(node);
       this.pageNode = node;
     }
     const next = nb.pages[nb.index + 1] ?? null;
     if (next) {
+      drawCard(w * 0.24);
       const rnode = renderThingDisplay(next, this.textures, this.theme, h * 0.46);
-      rnode.position.set(w * 0.24, -h * 0.04);
+      rnode.position.set(w * 0.24, cy);
       this.container.addChild(rnode);
     }
 
@@ -75,6 +89,25 @@ export class NotebookView extends ThingView {
     };
     if (nb.count > 0) pageNum(nb.index + 1, -w * 0.3);
     if (next) pageNum(nb.index + 2, w * 0.3);
+
+    // The notebook's name along the bottom centre (the original's "claude 1"),
+    // on a small pill so it reads over the spiral binding.
+    if (nb.name) {
+      const nameT = new PIXI.Text(nb.name, {
+        fontFamily: this.theme.fontFamily,
+        fontSize: 13,
+        fill: 0x333333,
+        fontWeight: 'bold',
+      });
+      nameT.anchor.set(0.5);
+      nameT.position.set(0, h / 2 - 11);
+      const pill = new PIXI.Graphics();
+      pill.beginFill(0xfdeef6, 0.92);
+      pill.lineStyle(1.5, 0xe23a93, 1);
+      pill.drawRoundedRect(-nameT.width / 2 - 6, h / 2 - 11 - nameT.height / 2 - 1, nameT.width + 12, nameT.height + 2, 4);
+      pill.endFill();
+      this.container.addChild(pill, nameT);
+    }
 
     // Page-turn cues (← / →); turn pages with the arrow keys while pointing at
     // the notebook (drop a number/text to jump). Dim at the ends.

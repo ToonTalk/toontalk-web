@@ -101,6 +101,7 @@ function buildByKind(s: ThingSnapshot): Thing {
         pages: nb.pages.map(buildThing),
         index: nb.index,
         isMain: nb.isMain,
+        name: nb.name,
       });
     }
     case 'house': {

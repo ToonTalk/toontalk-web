@@ -78,7 +78,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Pumpy | ✅ | in-hole sizing ▢ |
 | Bomb | ✅ | only works on a house (recycles the process), consumed · refused on loose objects (faithful, bomb.cpp) · picture-back ▢ |
 | Truck / House | ✅ | module ✅ · extras (picture, address) ▢ |
-| Notebook | ✅ | main = real save model ✅ · modules + `fromModule` recursion ✅ · sub-notebooks ▢ |
+| Notebook | ✅ | main = real save model ✅ · open two-page **cards + name** (matches original) ✅ · modules + `fromModule` ✅ · sub-notebooks ▢ · page-as-snapshot ▢ |
 | Sensors | ✅ | media sensors ▢ · joystick ▢ |
 | City (fly/land/walk) | ✅ | **faithful port**: camera/coords (screen.cpp), flying, landing, takeoff, walking (walls+door), perspective room shows floor in miniature, **large scrollable floor — sit re-centres it, toolbox follows** (set_sit_corner) ✅ · per-house contents ▢ · audio ▢ |
 | Room shell | ✅ | toolbox (3-D lego) + spiral notebook ✅ · holdwand anchors ⚠ |

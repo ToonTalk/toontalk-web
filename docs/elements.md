@@ -225,6 +225,14 @@ first page whose text *starts with* it ("ma"→"mat"), else file; **drag a page
 off → a copy**; **only Dusty removes** the current page. Page-turn arrow cues;
 ←/→ (and Backspace→last) turn pages while pointing at it.
 
+**Look (matched to the original, `notebook-view.ts`):** an OPEN two-page spread
+(spiral down the middle) — the current page on the LEFT leaf, the next page
+previewing on the RIGHT, each in a **pink-bordered card** (the original's page
+cards), with a page number per leaf and the notebook's **name** on a pill along
+the bottom centre (`Notebook.name`; the main notebook is seeded "claude 1",
+matching the reference). ▢ pages are still single *things*, not thumbnails of a
+saved scene (page-as-snapshot is a larger model change).
+
 **Main notebook = persistence (strictly faithful):** `Notebook.isMain` marks
 the one toolbox notebook that survives between sessions (`notebook-store.ts` ↔
 `localStorage`, via `thingToJson`/`thingFromJson`); the **floor is

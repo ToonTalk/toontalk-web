@@ -15,6 +15,7 @@ export interface NotebookSnapshot extends ThingSnapshot {
   pages: ThingSnapshot[];
   index: number;
   isMain?: boolean;
+  name?: string;
 }
 
 export class Notebook extends Thing {
@@ -28,14 +29,26 @@ export class Notebook extends Thing {
    * transient unless filed onto a main-notebook page.
    */
   isMain: boolean;
+  /** The notebook's name, shown along the bottom of the open book (the
+   * original's "claude 1"). Optional — undefined shows no name. */
+  name?: string;
 
   constructor(
-    opts: { id?: string; x?: number; y?: number; pages?: Thing[]; index?: number; isMain?: boolean } = {},
+    opts: {
+      id?: string;
+      x?: number;
+      y?: number;
+      pages?: Thing[];
+      index?: number;
+      isMain?: boolean;
+      name?: string;
+    } = {},
   ) {
     super(opts);
     this.pages = opts.pages ?? [];
     this.index = opts.index ?? 0;
     this.isMain = opts.isMain ?? false;
+    this.name = opts.name;
   }
 
   protected override kindForId(): ThingKind {
@@ -112,6 +125,7 @@ export class Notebook extends Thing {
       pages: this.pages.map((p) => p.snapshot()),
       index: this.index,
       ...(this.isMain ? { isMain: true } : {}),
+      ...(this.name ? { name: this.name } : {}),
     };
   }
 }
