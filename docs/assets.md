@@ -91,10 +91,15 @@ y)` plays a cycle once and self-removes — used for one-shot effects: **bomb
 explosion** (`explode`, EXPLODE.TTS) on a detonation, and **Dusty suck**
 (`dusty-suck`, SUCK0–7) on an erase, both fired from main's drop resolver by
 `DropResult`.
-- **Lego→clay morph** (`mouse`, MOUSEHAM cycle = MOUSE01–04, the mouse with the
-  big red hammer; MOUSE01 from M22 upscaled): `morphFromToolbox` is a port of
-  mouse.cpp `call_in_a_mouse` — pulling an element from Tooly drops a flat lego
-  brick (CUBBYB) at the spot, the bam-mouse runs in from off-screen, "bams" it,
-  and the clay element pops in as the mouse runs out. A `setTimeout` safety
-  always reveals the element even if the ticker stalls.
+- **Lego→clay morph** (`mouse`, the mouse with the big red hammer): the **full
+  22-frame MOUSEHAM** is baked by `tools/bake-mouse.py` into one uniform
+  273×299 canvas (all four .TTS cycles aligned by each frame's (ox,oy) origin so
+  the body stays put while the hammer swings), in playback order: run-in
+  `[0..3]` (MOUSE_RUNNING_NORTHEAST), smash `[4..17]` (USING_HAMMER_TO_SMASH +
+  AFTER_SMASH — windup→slam→lift), run-out `[18..21]` (RUNNING_SOUTHEAST);
+  MOUSE01 comes from M22 upscaled 2×. `runMouse` (animation.ts) ports mouse.cpp
+  `call_in_a_mouse`: the bam-mouse runs in, **plants at the item and slams the
+  hammer DOWN** (the smash cycle plays once; `onBam` fires at frame 9, the moment
+  of impact, popping in the clay element), then runs out and removes itself. Used
+  by main's drop resolver on a combine/join of pads/boxes.
 ▢ Remaining: bird flight on delivery, nest hatch.

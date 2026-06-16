@@ -27,8 +27,10 @@ const ANIMATIONS: AnimSpec[] = [
   { name: 'dusty-suck', frames: 7, frameMs: 70, anchor: [0.5, 0.5] }, // SUCK0–7
   { name: 'bird-fly', frames: 6, frameMs: 90, anchor: [0.5, 0.5] }, // BIRD.TTS flight
   // MOUSEHAM: the mouse with the big red hammer that "bams" a lego brick into
-  // its clay form (call_in_a_mouse). Anchor on the mouse body (bottom-centre).
-  { name: 'mouse', frames: 4, frameMs: 100, anchor: [0.5, 0.6] },
+  // its clay form (call_in_a_mouse). All 22 frames baked to one canvas
+  // (tools/bake-mouse.py) in playback order — run-in [0..3], smash [4..17]
+  // (windup→slam→lift), run-out [18..21]; runMouse drives the sub-ranges.
+  { name: 'mouse', frames: 22, frameMs: 100, anchor: [0.403, 0.709] },
 ];
 
 const specs = new Map<string, AnimSpec>(ANIMATIONS.map((a) => [a.name, a]));
@@ -116,10 +118,19 @@ export function tweenScale(node: PIXI.Container, from: number, to: number, ms = 
   PIXI.Ticker.shared.add(step);
 }
 
+// MOUSEHAM playback sub-ranges baked by tools/bake-mouse.py (frame indices).
+const MOUSE_RUN_IN: [number, number] = [0, 4]; // running toward the item
+const MOUSE_SMASH: [number, number] = [4, 18]; // windup → slam → lift
+const MOUSE_RUN_OUT: [number, number] = [18, 22]; // running back out
+const MOUSE_STRIKE = 9; // frame where the hammer connects (the "bam")
+
 /**
- * The "bam" mouse runs in from `from`, reaches `bam` (where it swings its
- * hammer — `onBam` fires), then runs out to `out` and removes itself
- * (mouse.cpp `call_in_a_mouse`). All points are in `parent`'s coordinate space.
+ * The "bam" mouse runs in from `from`, reaches `bam` and swings its big red
+ * hammer DOWN to smash the item into its clay form (`onBam` fires at the moment
+ * of impact), then runs out to `out` and removes itself (mouse.cpp
+ * `call_in_a_mouse`). Drives the three MOUSEHAM cycles by frame: a looping run
+ * while travelling, the one-shot smash while paused at the item. All points are
+ * in `parent`'s coordinate space.
  */
 export function runMouse(
   parent: PIXI.Container,
@@ -130,23 +141,24 @@ export function runMouse(
 ): void {
   const texs = loaded.get('mouse');
   const spec = specs.get('mouse');
-  if (!texs || texs.length === 0 || !spec) {
+  if (!texs || texs.length < MOUSE_SMASH[1] || !spec) {
     onBam(); // no art — just morph, no mouse
     return;
   }
   const sprite = new PIXI.AnimatedSprite(texs);
   sprite.anchor.set(spec.anchor[0], spec.anchor[1]);
-  sprite.scale.set(0.55);
-  sprite.animationSpeed = 1000 / spec.frameMs / 60;
-  sprite.loop = true;
+  sprite.scale.set(0.5);
+  sprite.loop = false; // we drive frames manually per phase
   sprite.zIndex = 9997;
   sprite.position.set(from.x, from.y);
   parent.addChild(sprite);
-  sprite.play();
 
   const inMs = 850; // run in
-  const holdMs = 600; // pause at the item, swinging the hammer down to hit
+  const smashMs = 950; // pause at the item: wind up, slam, lift (the hammer comes down)
   const outMs = 600; // run back out
+  const runFps = 12; // run-cycle playback speed
+  const loopFrame = (range: [number, number], ms: number): number =>
+    range[0] + (Math.floor((ms / 1000) * runFps) % (range[1] - range[0]));
   const start = performance.now();
   let bammed = false;
   const step = (): void => {
@@ -159,21 +171,27 @@ export function runMouse(
       const t = now / inMs;
       const e = 1 - (1 - t) * (1 - t); // ease-out as it runs in
       sprite.position.set(from.x + (bam.x - from.x) * e, from.y + (bam.y - from.y) * e);
-    } else if (now <= inMs + holdMs) {
-      // Pause at the item and let the cycle play — the hammer comes down here.
+      sprite.gotoAndStop(loopFrame(MOUSE_RUN_IN, now));
+    } else if (now <= inMs + smashMs) {
+      // Planted at the item: play the smash cycle once, hammer slamming down.
       sprite.position.set(bam.x, bam.y);
-      if (!bammed && now >= inMs + holdMs * 0.5) {
+      const span = MOUSE_SMASH[1] - MOUSE_SMASH[0];
+      const f = MOUSE_SMASH[0] + Math.min(span - 1, Math.floor(((now - inMs) / smashMs) * span));
+      sprite.gotoAndStop(f);
+      if (!bammed && f >= MOUSE_STRIKE) {
         bammed = true;
-        onBam(); // the hammer connects mid-swing
+        onBam(); // the hammer connects
       }
     } else {
       if (!bammed) {
         bammed = true;
         onBam();
       }
-      const t = Math.min(1, (now - inMs - holdMs) / outMs);
+      const since = now - inMs - smashMs;
+      const t = Math.min(1, since / outMs);
       const e = t * t; // ease-in as it runs back out
       sprite.position.set(bam.x + (out.x - bam.x) * e, bam.y + (out.y - bam.y) * e);
+      sprite.gotoAndStop(loopFrame(MOUSE_RUN_OUT, since));
       if (t >= 1) {
         PIXI.Ticker.shared.remove(step);
         sprite.destroy();

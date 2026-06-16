@@ -3,3 +3,5 @@ dist/
 *.local
 .DS_Store
 tools/verify/shots/
+tools/verify/devserver.log
+__pycache__/
