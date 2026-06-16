@@ -41,25 +41,40 @@ export class NotebookView extends ThingView {
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
+    const w = sprite.width;
+    const h = sprite.height;
+    // The notebook is an OPEN two-page spread (spiral down the middle): the
+    // current page sits on the LEFT leaf, the next page previews on the RIGHT,
+    // as in the original. Contents avoid the central binding.
     const page = nb.current();
     if (page) {
-      // Sit the current page's contents ON the left leaf (not over the central
-      // spiral binding), as in the original open notebook.
-      const node = renderThingDisplay(page, this.textures, this.theme, sprite.height * 0.46);
-      node.position.set(-sprite.width * 0.24, -sprite.height * 0.04);
+      const node = renderThingDisplay(page, this.textures, this.theme, h * 0.46);
+      node.position.set(-w * 0.24, -h * 0.04);
       this.container.addChild(node);
       this.pageNode = node;
     }
+    const next = nb.pages[nb.index + 1] ?? null;
+    if (next) {
+      const rnode = renderThingDisplay(next, this.textures, this.theme, h * 0.46);
+      rnode.position.set(w * 0.24, -h * 0.04);
+      this.container.addChild(rnode);
+    }
 
-    const label = new PIXI.Text(nb.count > 0 ? `page ${nb.index + 1} / ${nb.count}` : 'empty', {
-      fontFamily: this.theme.fontFamily,
-      fontSize: 12,
-      fill: 0x333333,
-      fontWeight: 'bold',
-    });
-    label.anchor.set(0.5);
-    label.position.set(0, sprite.height / 2 - 12);
-    this.container.addChild(label);
+    // A page number on each leaf (left = current, right = next), like the
+    // original's "1 … 2" along the bottom.
+    const pageNum = (n: number, x: number): void => {
+      const t = new PIXI.Text(String(n), {
+        fontFamily: this.theme.fontFamily,
+        fontSize: 12,
+        fill: 0x555555,
+        fontWeight: 'bold',
+      });
+      t.anchor.set(0.5);
+      t.position.set(x, h / 2 - 12);
+      this.container.addChild(t);
+    };
+    if (nb.count > 0) pageNum(nb.index + 1, -w * 0.3);
+    if (next) pageNum(nb.index + 2, w * 0.3);
 
     // Page-turn cues (← / →); turn pages with the arrow keys while pointing at
     // the notebook (drop a number/text to jump). Dim at the ends.
