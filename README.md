@@ -6,6 +6,19 @@ visual programming environment for children created by Ken Kahn (1992–2007).
 This is a clean rewrite (TypeScript + PixiJS), not a port of the original
 DirectX C++ — see `../TOONTALK_WEB_PLAN.md` for the rationale and roadmap.
 
+## Status: Lively animations — the bam-mouse & flying birds ✅
+
+- **The hammer comes down.** Combining two number/text pads (or joining boxes)
+  now plays the **full 22-frame bam-mouse**: it runs in, plants itself, *slams*
+  its big red hammer down to smash the lego brick into clay — and the result
+  pops in at the exact moment of impact — then runs back out. (Before, it only
+  had the 4-frame run cycle, so the hammer never actually struck.)
+- **Birds fly where they're going.** A delivering bird now **faces its flight
+  direction** (all 8 directional `BIRD.TTS` cycles) — out to the nest, then
+  turned around for the trip home — instead of one fixed side-on flap.
+- Both use the original art, baked by `tools/bake-mouse.py` / `bake-bird.py`.
+  175 unit tests still green.
+
 ## Status: The bomb 💣 ✅
 
 - **Blow things up.** Drop the bomb on any thing and it's destroyed. Drop it on
