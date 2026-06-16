@@ -26,9 +26,17 @@
 - Converted PNGs live in `public/assets/sprites/`. Black is the transparency
   key (see `ASSET_GUIDE.md` for the `.TTS` format, offsets, and per-asset
   exceptions like the green/magenta-keyed number/text plates).
-- Known M25 gaps already substituted: wand (`USEWAND1`), dusty (`SUCK0`),
-  thought bubble (`BUBBL10`). Tooling: `tools/parse-tts.py` →
-  `tools/tts-manifest.json`.
+- Known M25 gaps already substituted: thought bubble (`BUBBL10`). Tooling:
+  `tools/parse-tts.py` → `tools/tts-manifest.json`.
+- **Lego vs clay** — ToonTalk's data (numbers/text/boxes) and *resting* tools
+  are studded **Lego**; **clay** is for the active/alive characters. Tools at
+  rest now use their Lego forms, baked from EXT.ZIP via `convert-npics.py`:
+  **wand** ← `LEGOWAND` (studded beam + star), **dusty** ← `DMRPH01` (the
+  morph's frame 1 = the flat Lego brick), **pumpy** ← `PMRPH01` (Lego pump). The
+  **robot** (`RB00`), number/text plates, box (`CUBBY*`) and truck (`TRKSIDE`)
+  were already Lego. The **scale** (`SCALE01/02/04` balance) and **bomb**
+  (`BOMB04` round) have **no Lego form in the original art** — they are clay
+  sculptures even in the original's toolbox — so they stay clay.
 - City art: `tools/bake-city.py` bakes `HELIOFLY`/`HELIOLND`/`MANWALK8` .TTS
   into `public/assets/city/{heli-fly,heli-land,person}/<dir>/NN.png` +
   `house-*/tree`, black-keyed and aligned via each frame's (ox,oy); M22

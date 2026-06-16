@@ -17,16 +17,20 @@ from PIL import Image, ImageDraw
 # added when we build the scale/bomb/box-art elements.
 ASSETS = {
     # In use now (black-keyed character sprites):
-    "robot": "RB00.BMP",
+    "robot": "RB00.BMP",        # the Lego robot (RB* = blocky, already Lego)
     "nest": "HATCH01.BMP",
     "bird": "FLY37.BMP",
-    "wand": "USEWAND1.BMP",     # hand holding wand (real legowand.bmp is missing)
-    "pumpy": "PUMP00.BMP",      # Pumpy the bicycle pump, resting (PUMP* = pump cycle)
-    # Staged for upcoming features (erasing / tools / scale / bomb):
-    "dusty": "SUCK0.BMP",       # Dusty the vacuum, resting (SUCK* = suck animation)
+    # Tools at REST are Lego (clay only while actively used). The Lego forms are
+    # baked from EXT.ZIP via tools/convert-npics.py and are NOT managed here, so
+    # this dict does NOT clobber them: wand <- LEGOWAND.EXT, dusty <- DMRPH01.EXT
+    # (morph frame 1 = the Lego brick), pumpy <- PMRPH01.EXT. (The clay sources
+    # were USEWAND1 / SUCK0 / PUMP00.)
     "bubble": "BUBBL10.BMP",    # thought bubble cloud (BIGBUBBL.BMP keys poorly)
-    "scale": "SCALE01.BMP",     # balance scale
-    "bomb": "BOMB04.BMP",       # bomb with fuse
+    # No Lego form exists in the original art — both are clay sculptures even in
+    # the original toolbox (the floor "S"/"C" bricks are a sensor and the Lego
+    # wand, not the scale/bomb):
+    "scale": "SCALE01.BMP",     # balance scale (SCALE01/02/04 = the tilts)
+    "bomb": "BOMB04.BMP",       # round bomb with fuse
     # Plates carry M25's lego-stud background; need chroma keys + 9-slice:
     "numplat": "NUMBPLAT.BMP",  # green chroma key
     "textplat": "TEXTPLT1.BMP", # magenta chroma key
