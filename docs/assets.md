@@ -37,14 +37,21 @@
 - Room art is in `public/assets/room/`
   (`floor/toolbox/notebook/hand/wandbar/truck.png`), converted from M25
   (toolbox+wand came from **M22** — missing from M25).
-- `room/toolbox-open.png` is the **open Tooly**, cropped from the reference
-  capture (`ToonTalk … claude 1 ….mp4`, frame ~4s) with the tan-lego
-  background flood-filled to transparent (PIL). There is **no** open-toolbox
-  bitmap in M25/M22 — `TOOLBOXA.TTS` is Tooly's 8-direction *walking* frames —
-  so the open box (drawn at runtime by the original) is reproduced from the
-  photo. `room.ts` `makeToolboxImage` overlays invisible per-compartment hit
-  areas (number/text/box/nest/scale/robot/truck/bomb) for picking; falls back
-  to the drawn grey-lego `makeToolboxDrawn` if the png is missing.
+- **`NPICS/` (sibling of M25, not in the repo)** — a higher-quality original-art
+  set: sprites as Apple **QuickDraw PICT** colour (`.PIC`, v2 DirectBits/PackBits)
+  **plus a separate BMP/MIC mask** (a white silhouette → a *real* alpha channel,
+  far cleaner than colour-keying). Covers the **toolbox** (`TBMORPH/TBMRPH09`),
+  trucks, the side helicopter (`COPTER/FROMSIDE`), the flower, and room/title
+  backgrounds (640×480). It does **not** include the hand, tools, or the data
+  elements. Convert with `tools/convert-npics.py` (ImageMagick `PICT:` decoder +
+  PIL to copy the mask into alpha and trim). Needs ImageMagick installed.
+- `room/toolbox-open.png` is now the **open Tooly** from `NPICS TBMRPH09`
+  (clean PICT colour + its BMP mask → crisp, fully transparent), replacing the
+  earlier video crop. `room.ts` `makeToolboxImage` renders the real element icons
+  (number/text/box/nest/scale/robot/truck/bomb) into the tray over the art with a
+  hit area on each; the whole box is draggable; falls back to the drawn grey-lego
+  `makeToolboxDrawn` if the png is missing. (M25/M22 have no open-toolbox bitmap —
+  `TOOLBOXA.TTS` is Tooly's *walking* frames.)
 
 ## Render modes
 

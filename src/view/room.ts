@@ -370,14 +370,15 @@ export class Room {
     return this.makeToolboxDrawn();
   }
 
-  /** The open toolbox as the original artwork (cropped from the reference) with
-   * invisible hit areas over each compartment that pick that element. */
+  /** The open toolbox as the original high-res artwork (NPICS TBMRPH09 PICT +
+   * mask → clean alpha) with the real element icons rendered into the tray and a
+   * hit area over each that picks that element. */
   private makeToolboxImage(tex: PIXI.Texture): PIXI.Container {
     const box = new PIXI.Container();
     this.tbBox = box;
     const sprite = new PIXI.Sprite(tex);
     sprite.anchor.set(0.5);
-    sprite.scale.set(420 / Math.max(sprite.width, 1)); // ~420px wide (matches the original's footprint)
+    sprite.scale.set(360 / Math.max(sprite.width, 1)); // ~360px wide
     box.addChild(sprite);
     const W = sprite.width;
     const H = sprite.height;
@@ -403,22 +404,31 @@ export class Room {
       stage.on('pointerup', stop);
       stage.on('pointerupoutside', stop);
     }
-    // Compartment centres as fractions of the image (measured from the crop):
-    // number, text / box, nest / scale, robot / truck, bomb.
+    // The tray sits on the LEFT of the open box; lay the eight elements into it
+    // in two columns (constant.h order). Fractions measured on the trimmed art.
     const slots: Array<[string, number, number]> = [
-      ['number', 0.26, 0.27], ['text', 0.49, 0.27],
-      ['box', 0.27, 0.45], ['nest', 0.49, 0.45],
-      ['scale', 0.27, 0.59], ['robot', 0.48, 0.60],
-      ['truck', 0.27, 0.74], ['bomb', 0.49, 0.74],
+      ['number', 0.15, 0.31], ['text', 0.40, 0.31],
+      ['box', 0.15, 0.46], ['nest', 0.40, 0.46],
+      ['scale', 0.15, 0.60], ['robot', 0.40, 0.60],
+      ['truck', 0.15, 0.74], ['bomb', 0.40, 0.74],
     ];
+    const cell = W * 0.15;
     for (const [pick, fx, fy] of slots) {
+      const cx = (fx - 0.5) * W;
+      const cy = (fy - 0.5) * H;
+      const sample = this.sampleThing(pick);
+      if (sample) {
+        const icon = renderThingDisplay(sample, this.tools, this.theme, cell);
+        icon.position.set(cx, cy);
+        box.addChild(icon);
+      }
       const hit = new PIXI.Container();
-      hit.position.set((fx - 0.5) * W, (fy - 0.5) * H);
-      hit.hitArea = new PIXI.Rectangle(-W * 0.1, -H * 0.075, W * 0.2, H * 0.15);
+      hit.position.set(cx, cy);
+      hit.hitArea = new PIXI.Rectangle(-W * 0.11, -H * 0.08, W * 0.22, H * 0.15);
       hit.eventMode = 'static';
       hit.cursor = 'grab';
-      // Handle here and don't bubble: the pick "births" the element in place
-      // (lego brick + bam-mouse morph), rather than the stage dragging it away.
+      // Handle here and don't bubble, so the pick "births" the element rather
+      // than the stage dragging the toolbox.
       hit.on('pointerdown', (e) => {
         e.stopPropagation();
         this.onPick(pick, e.global.x, e.global.y);
