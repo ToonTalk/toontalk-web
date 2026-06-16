@@ -81,7 +81,7 @@ const HAND_POSES: Record<HandPose, PoseSpec> = {
   // Empty: the POINTING hand (HAND04) — index extended, others curled, like the
   // original's idle cursor. Hotspot at the fingertip (top); red wrist stub at the
   // bottom-centre.
-  open: { key: 'hand-point', anchor: [0.5, 0.08], scale: 1.05, cx: 0.24, w: 0.26, top: 0.8 },
+  open: { key: 'hand-point', anchor: [0.54, 0.02], scale: 0.47, cx: 0.17, w: 0.2, top: 0.86 },
   grab: { key: 'hand-grab', anchor: [0.5, 0.2], scale: 1.2, cx: 0.24, w: 0.41, top: 0.62 },
   // Holding the wand: the hand grips it on the right, tip points left (hotspot);
   // wrist is far right (~0.83w). Wide sprite, so scaled down. (May need tuning.)
