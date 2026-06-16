@@ -1,51 +1,71 @@
 /**
- * The tool mode shown as a tiny 1×1 Lego plate (a single studded tile) carrying
- * the one-character mode label — a real Lego piece look, not a flat circle. It
- * sits ON the tool at a per-tool spot (Dusty's nose, the wand's tip, a little
- * below centre on Pumpy) via `addModeButton`.
+ * The tool mode shown as the real 1×1 Lego plate button from the original art —
+ * VACBTN (Dusty), PUMPBTN (Pumpy), WANDBTN (wand) — with the mode letter on top.
+ * Placed ON the tool at a per-tool spot (`MODE_BUTTON_FRAC`): Dusty's nose, the
+ * wand's handle end, a little below centre on Pumpy. A drawn plate is the
+ * fallback if the button bitmap is missing.
  */
 import * as PIXI from 'pixi.js';
 import type { RenderTheme } from '../config/render-mode';
+
+/** Tool kind → its button-plate texture key. */
+const BUTTON_TEX: Record<string, string> = {
+  dusty: 'vacbtn',
+  pumpy: 'pumpbtn',
+  wand: 'wandbtn',
+};
 
 /** Where the mode plate sits on each tool, as a fraction of the sprite (the
  * sprite is anchored at its centre, so 0.5,0.5 is dead centre). */
 export const MODE_BUTTON_FRAC: Record<string, [number, number]> = {
   dusty: [0.53, 0.16], // on Dusty's nose (the red 1×1 plate)
-  wand: [0.78, 0.35], // at the wand's tip (the white knob/star)
+  wand: [0.06, 0.4], // at the wand's handle end (the original shows it there)
   pumpy: [0.5, 0.62], // a little below centre, on the barrel
 };
 
-/** A 1×1 Lego plate (square tile + one stud) with the mode letter. */
+const BUTTON_PX = 30; // on-screen size of the mode plate
+
+/** The mode letter, drawn to read on any plate colour (white + dark outline). */
+function modeLabel(label: string, theme: RenderTheme): PIXI.Text {
+  const t = new PIXI.Text(label, {
+    fontFamily: theme.fontFamily,
+    fontSize: 15,
+    fill: 0xffffff,
+    fontWeight: 'bold',
+    stroke: 0x1a1a1a,
+    strokeThickness: 3,
+  });
+  t.anchor.set(0.5);
+  return t;
+}
+
+/** A drawn fallback 1×1 plate (yellow studded tile) when the bitmap is missing. */
 export function legoButton(label: string, theme: RenderTheme, size = 24): PIXI.Container {
   const c = new PIXI.Container();
   const g = new PIXI.Graphics();
   const r = size / 2;
-  g.beginFill(0xc99a06, 1); // darker edge
+  g.beginFill(0xc99a06, 1);
   g.drawRoundedRect(-r, -r, size, size, 3);
   g.endFill();
-  g.beginFill(0xf4c20a, 1); // yellow plate top
+  g.beginFill(0xf4c20a, 1);
   g.drawRoundedRect(-r, -r, size, size - 2, 3);
   g.endFill();
-  g.beginFill(0xd9aa08, 1); // stud base
+  g.beginFill(0xd9aa08, 1);
   g.drawCircle(0, -1, r * 0.66);
   g.endFill();
-  g.beginFill(0xffe25a, 1); // stud top + highlight
+  g.beginFill(0xffe25a, 1);
   g.drawCircle(-r * 0.12, -r * 0.14 - 1, r * 0.5);
   g.endFill();
   c.addChild(g);
-  const t = new PIXI.Text(label, {
-    fontFamily: theme.fontFamily,
-    fontSize: Math.round(size * 0.56),
-    fill: 0x3a2a00,
-    fontWeight: 'bold',
-  });
-  t.anchor.set(0.5);
-  t.position.set(0, -1);
+  const t = modeLabel(label, theme);
+  t.style.fill = 0x3a2a00;
+  t.style.stroke = 0xffe25a;
   c.addChild(t);
   return c;
 }
 
-/** Add the mode plate to `parent`, placed on the tool `kind`'s sprite (w×h). */
+/** Add the mode plate (the real tool button + letter) to `parent`, placed on the
+ * tool `kind`'s sprite (w×h). Falls back to a drawn plate if the bitmap is missing. */
 export function addModeButton(
   parent: PIXI.Container,
   label: string,
@@ -53,9 +73,20 @@ export function addModeButton(
   kind: string,
   w: number,
   h: number,
+  textures: Map<string, PIXI.Texture>,
 ): void {
-  const b = legoButton(label, theme);
+  const tex = textures.get(BUTTON_TEX[kind] ?? '');
+  let node: PIXI.Container;
+  if (tex && tex !== PIXI.Texture.WHITE) {
+    node = new PIXI.Container();
+    const plate = new PIXI.Sprite(tex);
+    plate.anchor.set(0.5);
+    plate.scale.set(BUTTON_PX / Math.max(plate.width, plate.height, 1));
+    node.addChild(plate, modeLabel(label, theme));
+  } else {
+    node = legoButton(label, theme); // drawn fallback
+  }
   const [fx, fy] = MODE_BUTTON_FRAC[kind] ?? [0.5, 0.5];
-  b.position.set((fx - 0.5) * w, (fy - 0.5) * h);
-  parent.addChild(b);
+  node.position.set((fx - 0.5) * w, (fy - 0.5) * h);
+  parent.addChild(node);
 }

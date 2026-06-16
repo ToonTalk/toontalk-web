@@ -298,7 +298,7 @@ export class Room {
       h = s.height;
     }
     // Mode shown as a 1×1 Lego plate on the tool (per-tool spot).
-    addModeButton(c, badge, this.theme, pick, w, h);
+    addModeButton(c, badge, this.theme, pick, w, h, this.tools);
     c.rotation = tilt;
     c.hitArea = new PIXI.Rectangle(-w / 2, -h / 2, w, h);
     c.eventMode = 'static';

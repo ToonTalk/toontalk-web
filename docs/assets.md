@@ -37,9 +37,11 @@
   were already Lego. The **scale** (`SCALE01/02/04` balance) and **bomb**
   (`BOMB04` round) have **no Lego form in the original art** — they are clay
   sculptures even in the original's toolbox — so they stay clay. A tool's mode
-  shows as a **1×1 Lego plate** (`view/lego-button.ts`, a yellow studded tile +
-  letter) placed ON the tool per `MODE_BUTTON_FRAC` — Dusty's nose, the wand's
-  tip, a little below centre on Pumpy. In Tooly the **robot is rendered static**
+  shows on its **real 1×1 Lego button plate** from the art (`VACBTN` Dusty /
+  `PUMPBTN` Pumpy / `WANDBTN` wand, baked from EXT) with the mode letter on top
+  (`view/lego-button.ts` `addModeButton`), placed per `MODE_BUTTON_FRAC` —
+  Dusty's nose, the wand's **handle end** (as in the reference video), a little
+  below centre on Pumpy. In Tooly the **robot is rendered static**
   (`renderThingDisplay({static:true})` freezes its idle cycle) until taken out.
 - City art: `tools/bake-city.py` bakes `HELIOFLY`/`HELIOLND`/`MANWALK8` .TTS
   into `public/assets/city/{heli-fly,heli-land,person}/<dir>/NN.png` +

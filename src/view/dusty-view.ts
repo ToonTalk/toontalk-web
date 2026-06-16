@@ -28,7 +28,7 @@ export class DustyView extends ThingView {
     this.container.addChild(sprite);
 
     // Mode shown as a 1×1 Lego plate on Dusty's nose.
-    addModeButton(this.container, MODE_LABEL[dusty.mode], this.theme, 'dusty', sprite.width, sprite.height);
+    addModeButton(this.container, MODE_LABEL[dusty.mode], this.theme, 'dusty', sprite.width, sprite.height, this.textures);
 
     if (dusty.stomach.length > 0) {
       const count = new PIXI.Text(`×${dusty.stomach.length}`, {

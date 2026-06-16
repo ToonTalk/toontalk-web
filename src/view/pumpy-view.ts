@@ -39,6 +39,6 @@ export class PumpyView extends ThingView {
     this.container.addChild(sprite);
 
     // Mode shown as a 1×1 Lego plate a little below centre on Pumpy.
-    addModeButton(this.container, MODE_LABEL[pumpy.mode], this.theme, 'pumpy', sprite.width, sprite.height);
+    addModeButton(this.container, MODE_LABEL[pumpy.mode], this.theme, 'pumpy', sprite.width, sprite.height, this.textures);
   }
 }

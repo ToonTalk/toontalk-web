@@ -25,6 +25,6 @@ export class WandView extends ThingView {
     this.container.addChild(sprite);
 
     // Mode shown as a 1×1 Lego plate at the wand's tip.
-    addModeButton(this.container, wand.mode, this.theme, 'wand', sprite.width, sprite.height);
+    addModeButton(this.container, wand.mode, this.theme, 'wand', sprite.width, sprite.height, this.textures);
   }
 }

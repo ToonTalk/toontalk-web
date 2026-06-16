@@ -11,6 +11,8 @@ const SPRITE_KEYS = [
   'dusty', 'bubble', 'bomb', 'truck', 'notebook',
   // Authentic lego plates / cubby pieces:
   'numplat', 'textplat', 'cubby', 'cubby1', 'cubbyr', 'cubbyb',
+  // Tool mode-button plates (VACBTN / PUMPBTN / WANDBTN):
+  'vacbtn', 'pumpbtn', 'wandbtn',
   // Scale tilt images (level / left-heavier / right-heavier):
   'scale-level', 'scale-left', 'scale-right',
 ] as const;
