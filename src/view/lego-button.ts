@@ -18,7 +18,7 @@ const BUTTON_TEX: Record<string, string> = {
 /** Where the mode plate sits on each tool, as a fraction of the sprite (the
  * sprite is anchored at its centre, so 0.5,0.5 is dead centre). */
 export const MODE_BUTTON_FRAC: Record<string, [number, number]> = {
-  dusty: [0.53, 0.16], // on Dusty's nose (the red 1×1 plate)
+  dusty: [0.531, 0.18], // on Dusty's nose (the red blob — measured centroid)
   wand: [0.06, 0.4], // at the wand's handle end (the original shows it there)
   pumpy: [0.5, 0.62], // a little below centre, on the barrel
 };

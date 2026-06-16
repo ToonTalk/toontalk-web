@@ -358,7 +358,7 @@ export class Room {
     this.tbBox = box;
     const sprite = new PIXI.Sprite(tex);
     sprite.anchor.set(0.5);
-    sprite.scale.set(360 / Math.max(sprite.width, 1)); // ~360px wide
+    sprite.scale.set(440 / Math.max(sprite.width, 1)); // ~440px wide (bigger Tooly)
     box.addChild(sprite);
     const W = sprite.width;
     const H = sprite.height;
@@ -387,12 +387,12 @@ export class Room {
     // The tray sits on the LEFT of the open box; lay the eight elements into it
     // in two columns (constant.h order). Fractions measured on the trimmed art.
     const slots: Array<[string, number, number]> = [
-      ['number', 0.15, 0.31], ['text', 0.40, 0.31],
-      ['box', 0.15, 0.46], ['nest', 0.40, 0.46],
-      ['scale', 0.15, 0.60], ['robot', 0.40, 0.60],
-      ['truck', 0.15, 0.74], ['bomb', 0.40, 0.74],
+      ['number', 0.15, 0.30], ['text', 0.39, 0.30],
+      ['box', 0.15, 0.44], ['nest', 0.39, 0.44],
+      ['scale', 0.15, 0.58], ['robot', 0.39, 0.58],
+      ['truck', 0.15, 0.71], ['bomb', 0.39, 0.71],
     ];
-    const cell = W * 0.15;
+    const cell = W * 0.19; // fill each compartment (like the original)
     for (const [pick, fx, fy] of slots) {
       const cx = (fx - 0.5) * W;
       const cy = (fy - 0.5) * H;
