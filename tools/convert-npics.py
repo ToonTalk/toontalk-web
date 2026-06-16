@@ -21,9 +21,15 @@ from PIL import Image
 MAGICK = os.environ.get("MAGICK") or r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
 
 
-def _greenish(c) -> bool:
-    r, g, b = c[:3]
-    return g > 80 and g > r + 30 and g > b + 30
+def _chroma_key(corners):
+    """If the four corners agree on a *saturated* colour (a green/blue screen),
+    return it as the chroma key; else None (use a mask or black key instead)."""
+    c0 = corners[0][:3]
+    if any(abs(c[i] - c0[i]) > 30 for c in corners for i in range(3)):
+        return None  # corners disagree → not a flat chroma background
+    if max(c0) - min(c0) < 60:
+        return None  # greyish/tan, not a chroma colour
+    return c0
 
 
 def convert(pic: str, out: str, mask: str | None = None, trim: bool = True) -> None:
@@ -32,6 +38,7 @@ def convert(pic: str, out: str, mask: str | None = None, trim: bool = True) -> N
     color = Image.open(tmp).convert("RGB")
     w, h = color.size
     corners = [color.getpixel(p) for p in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2))]
+    key = _chroma_key(corners)
 
     if mask and os.path.exists(mask):
         m = Image.open(mask).convert("L")
@@ -39,9 +46,9 @@ def convert(pic: str, out: str, mask: str | None = None, trim: bool = True) -> N
             m = m.resize(color.size, Image.NEAREST)
         rgba = color.copy()
         rgba.putalpha(m)  # white → opaque
-    elif sum(_greenish(c) for c in corners) >= 3:
-        key = "rgb(%d,%d,%d)" % corners[0][:3]
-        subprocess.run([MAGICK, "PICT:" + pic, "-fuzz", "22%", "-transparent", key, tmp], check=True)
+    elif key is not None:
+        krgb = "rgb(%d,%d,%d)" % key
+        subprocess.run([MAGICK, "PICT:" + pic, "-fuzz", "22%", "-transparent", krgb, tmp], check=True)
         rgba = Image.open(tmp).convert("RGBA")
     else:
         rgba = color.convert("RGBA")  # black key
