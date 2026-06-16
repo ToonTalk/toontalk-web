@@ -17,6 +17,12 @@ interface AnimSpec {
   frameMs: number;
   /** Centre/registration anchor (frames are baked pre-aligned to this). */
   anchor: [number, number];
+  /**
+   * If set, the cycle is directional: frames live in `anim/<name>/<d>/NN.png`
+   * for d in 0..dirs-1 (Direction enum E,SE,S,SW,W,NW,N,NE) and load into
+   * `loaded` under the key `<name>:<d>`. All directions share one canvas/anchor.
+   */
+  dirs?: number;
 }
 
 const ANIMATIONS: AnimSpec[] = [
@@ -25,7 +31,9 @@ const ANIMATIONS: AnimSpec[] = [
   // One-shot effects (centered):
   { name: 'explode', frames: 5, frameMs: 80, anchor: [0.5, 0.5] }, // EXPLODE.TTS
   { name: 'dusty-suck', frames: 7, frameMs: 70, anchor: [0.5, 0.5] }, // SUCK0–7
-  { name: 'bird-fly', frames: 6, frameMs: 90, anchor: [0.5, 0.5] }, // BIRD.TTS flight
+  // BIRD.TTS flight cycles 0-7 (E,SE,S,SW,W,NW,N,NE) — the bird faces the way
+  // it flies (bird.cpp fly_to sets the cycle to direction(dx,dy)).
+  { name: 'bird-fly', frames: 6, frameMs: 90, anchor: [0.495, 0.446], dirs: 8 },
   // MOUSEHAM: the mouse with the big red hammer that "bams" a lego brick into
   // its clay form (call_in_a_mouse). All 22 frames baked to one canvas
   // (tools/bake-mouse.py) in playback order — run-in [0..3], smash [4..17]
@@ -39,20 +47,25 @@ const loaded = new Map<string, PIXI.Texture[]>();
 export async function loadAnimations(theme: RenderTheme): Promise<void> {
   const scaleMode =
     theme.scaleMode === 'nearest' ? PIXI.SCALE_MODES.NEAREST : PIXI.SCALE_MODES.LINEAR;
-  await Promise.all(
-    ANIMATIONS.map(async (a) => {
-      const texs: PIXI.Texture[] = [];
-      for (let i = 0; i < a.frames; i++) {
-        try {
-          const t = await PIXI.Assets.load(`/assets/anim/${a.name}/${String(i).padStart(2, '0')}.png`);
-          t.baseTexture.scaleMode = scaleMode;
-          texs.push(t);
-        } catch {
-          // Skip a missing frame; the animation still plays the rest.
-        }
+  const loadFrames = async (dir: string, key: string, count: number): Promise<void> => {
+    const texs: PIXI.Texture[] = [];
+    for (let i = 0; i < count; i++) {
+      try {
+        const t = await PIXI.Assets.load(`/assets/anim/${dir}/${String(i).padStart(2, '0')}.png`);
+        t.baseTexture.scaleMode = scaleMode;
+        texs.push(t);
+      } catch {
+        // Skip a missing frame; the animation still plays the rest.
       }
-      if (texs.length) loaded.set(a.name, texs);
-    }),
+    }
+    if (texs.length) loaded.set(key, texs);
+  };
+  await Promise.all(
+    ANIMATIONS.flatMap((a) =>
+      a.dirs
+        ? Array.from({ length: a.dirs }, (_, d) => loadFrames(`${a.name}/${d}`, `${a.name}:${d}`, a.frames))
+        : [loadFrames(a.name, a.name, a.frames)],
+    ),
   );
 }
 
@@ -61,8 +74,19 @@ export function hasAnimation(name: string): boolean {
 }
 
 /**
- * A bird flaps from (fromX,fromY) to (toX,toY) and back (a delivery run), then
- * removes itself. The resting bird sprite is hidden for the trip.
+ * Flight-direction cycle index from a screen-space delta — the Direction enum
+ * E,SE,S,SW,W,NW,N,NE (0..7), matching bird.cpp `direction(dx,dy)`. Screen +y is
+ * down (south), so atan2(dy,dx)=0→E, +π/2→S, ±π→W, -π/2→N.
+ */
+function flightDir(dx: number, dy: number): number {
+  return ((Math.round((Math.atan2(dy, dx) * 4) / Math.PI) % 8) + 8) % 8;
+}
+
+/**
+ * A bird flaps from (fromX,fromY) to (toX,toY) and back (a delivery run), facing
+ * the way it flies — out in one direction, then the opposite on the return leg
+ * (bird.cpp sets the cycle to `direction(dx,dy)`) — then removes itself. The
+ * resting bird sprite is hidden for the trip.
  */
 export function flyBird(
   parent: PIXI.Container,
@@ -72,11 +96,15 @@ export function flyBird(
   toY: number,
   hide?: PIXI.Container,
 ): void {
-  const texs = loaded.get('bird-fly');
   const spec = specs.get('bird-fly');
-  if (!texs || texs.length === 0 || !spec) return;
-  const sprite = new PIXI.AnimatedSprite(texs);
-  sprite.anchor.set(0.5);
+  if (!spec) return;
+  const outDir = flightDir(toX - fromX, toY - fromY);
+  const backDir = (outDir + 4) % 8; // opposite octant for the return
+  const texOut = loaded.get(`bird-fly:${outDir}`);
+  const texBack = loaded.get(`bird-fly:${backDir}`);
+  if (!texOut || texOut.length === 0 || !texBack) return;
+  const sprite = new PIXI.AnimatedSprite(texOut);
+  sprite.anchor.set(spec.anchor[0], spec.anchor[1]);
   sprite.scale.set(0.8);
   sprite.animationSpeed = 1000 / spec.frameMs / 60;
   sprite.loop = true;
@@ -88,9 +116,22 @@ export function flyBird(
 
   const durationMs = 950;
   const start = performance.now();
+  let flipped = false;
   const step = (): void => {
+    if (sprite.destroyed) {
+      PIXI.Ticker.shared.remove(step);
+      return;
+    }
     const t = Math.min(1, (performance.now() - start) / durationMs);
     const p = t < 0.5 ? t * 2 : (1 - t) * 2; // out (0→1) then back (1→0)
+    // Turn around for the return leg — seamless: all directions share one canvas.
+    if (t >= 0.5 && !flipped && texBack.length) {
+      flipped = true;
+      sprite.textures = texBack;
+      sprite.animationSpeed = 1000 / spec.frameMs / 60;
+      sprite.loop = true;
+      sprite.play();
+    }
     sprite.position.set(fromX + (toX - fromX) * p, fromY + (toY - fromY) * p);
     if (t >= 1) {
       PIXI.Ticker.shared.remove(step);

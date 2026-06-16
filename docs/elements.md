@@ -104,7 +104,10 @@ re-pointed to it (one channel; the original's `merge`/`forwarding_to`, 3341,
 simplified). ✅ **hatch** — `hatchFromNest`: pressing an empty nest with no bird
 gives a fresh bird that feeds it (an egg hatching, `hatch_bird`:3831), wired into
 the drag controller's `tryExtract`.
-▢ bird **flight animation** + return-to-origin (cosmetic). ▢ **t-shirt** (drop a
+✅ bird **flight animation** + return-to-origin: `flyBird` (animation.ts) flies
+the bird to the nest and back on a delivery, **facing its flight direction** (8
+directional BIRD.TTS cycles, `tools/bake-bird.py`; bird.cpp `fly_to` →
+`direction(dx,dy)`), wired in main's `'delivered'` resolver. ▢ **t-shirt** (drop a
 picture / type text while holding) and **nest label** (type while holding) — both
 need media/labels we don't have. ▢ **network** birds (DirectPlay). ▢ recursion
 guard (`IDS_BIRD_RECUR_ABORT`:5716 — giving a bird a box containing its own

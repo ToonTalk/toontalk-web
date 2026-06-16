@@ -102,4 +102,12 @@ explosion** (`explode`, EXPLODE.TTS) on a detonation, and **Dusty suck**
   hammer DOWN** (the smash cycle plays once; `onBam` fires at frame 9, the moment
   of impact, popping in the clay element), then runs out and removes itself. Used
   by main's drop resolver on a combine/join of pads/boxes.
-▢ Remaining: bird flight on delivery, nest hatch.
+- **Bird flight** (`bird-fly`, BIRD.TTS cycles 0–7 = the Direction enum
+  E,SE,S,SW,W,NW,N,NE, 6 frames each, flight bitmaps `FLY*.BMP`): a **directional**
+  cycle baked by `tools/bake-bird.py` into `anim/bird-fly/<d>/NN.png` (all eight
+  directions centroid-aligned to ONE shared canvas/anchor, so swapping mid-flight
+  doesn't jump). Specs with a `dirs` count load into `loaded` under `<name>:<d>`.
+  `flyBird` ports bird.cpp `fly_to`, which sets the cycle to `direction(dx,dy)`:
+  the bird **faces the way it flies** out to the target, then flips to the
+  opposite octant for the return leg. Wired in main's resolver on `'delivered'`.
+▢ Remaining: nest hatch (HATCH/LAY frames exist in EXT, unmodeled).
