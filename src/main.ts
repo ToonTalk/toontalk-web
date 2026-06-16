@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16o (toolbox fit + pick-to-hand)';
+const BUILD = 'build 2026-06-16p (fully-lego toolbox tbmrph16 + fit + lego robot)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -207,9 +207,11 @@ async function start(): Promise<void> {
       }
       updateHud(result);
       // Faithful abort hint: a bomb does nothing unless used on a house
-      // ("bombs only work inside houses", bomb.cpp:105).
-      if (dragged instanceof Bomb && result === 'none' && target) {
-        setHud('💣 Bombs only work on a house — they recycle a finished one (terminate the process). Use Dusty to remove a loose thing.');
+      // ("bombs only work inside houses", bomb.cpp:104). Fire on any non-explode
+      // outcome — a loose thing OR the bare floor — so the user learns why it did
+      // nothing (the main floor has no houses to recycle).
+      if (dragged instanceof Bomb && result === 'none') {
+        setHud('💣 Bombs only work on a house — they recycle a finished one (terminate the process). The bare floor has no house to blow up; use Dusty to remove a loose thing.');
       }
     },
     trainer,

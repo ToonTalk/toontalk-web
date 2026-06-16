@@ -23,6 +23,7 @@ export function createThingView(
   thing: Thing,
   textures: Map<string, PIXI.Texture>,
   theme: RenderTheme,
+  opts: { static?: boolean } = {},
 ): ThingView {
   switch (thing.kind) {
     case 'number':
@@ -34,7 +35,7 @@ export function createThingView(
     case 'nest':
       return new NestView(thing, textures, theme);
     case 'robot':
-      return new RobotView(thing, textures, theme);
+      return new RobotView(thing, textures, theme, opts);
     case 'scale':
       return new ScaleView(thing, textures, theme);
     case 'truck':

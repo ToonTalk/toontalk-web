@@ -384,28 +384,44 @@ export class Room {
       stage.on('pointerup', stop);
       stage.on('pointerupoutside', stop);
     }
-    // The tray sits on the LEFT of the open box; lay the eight elements into it
-    // in two columns (constant.h order). Fractions measured on the trimmed art.
-    const slots: Array<[string, number, number]> = [
-      ['number', 0.18, 0.28], ['text', 0.42, 0.28],
-      ['box', 0.18, 0.42], ['nest', 0.42, 0.42],
-      ['scale', 0.18, 0.56], ['robot', 0.42, 0.56],
-      ['truck', 0.18, 0.69], ['bomb', 0.42, 0.69],
+    // The open tray (tbmrph16) holds eight compartments in a 2×4 grid on the
+    // LEFT (the lid is folded back on the right). Per tools.cpp
+    // compartment_contents, the contents run row-major (index = row*2 + col):
+    // number,text / box,nest / scale,robot / truck,bomb. Compartment centres are
+    // measured on the trimmed art; the grid tilts slightly (right column higher),
+    // so each column gets its own row baselines.
+    const colX = [0.205, 0.408];
+    const rowY = [
+      [0.345, 0.487, 0.628, 0.765], // left column (col 0)
+      [0.315, 0.457, 0.598, 0.735], // right column (col 1), tilted up a touch
     ];
-    const cell = W * 0.13; // sized to sit INSIDE a compartment, no overflow/overlap
-    for (const [pick, fx, fy] of slots) {
-      const cx = (fx - 0.5) * W;
-      const cy = (fy - 0.5) * H;
+    const slots: Array<[string, number, number]> = [ // [pick, col, row]
+      ['number', 0, 0], ['text', 1, 0],
+      ['box', 0, 1], ['nest', 1, 1],
+      ['scale', 0, 2], ['robot', 1, 2],
+      ['truck', 0, 3], ['bomb', 1, 3],
+    ];
+    // Each item is fit INSIDE its compartment box (wider than tall), so a tall
+    // plate and a wide truck both sit cleanly without overflow (cf. the original's
+    // TO_FIT_INSIDE cw×ch, cw=W/8, ch=H/10).
+    const cellW = W * 0.195;
+    const cellH = H * 0.138;
+    for (const [pick, col, row] of slots) {
+      const cx = (colX[col] - 0.5) * W;
+      const cy = (rowY[col][row] - 0.5) * H;
       const sample = this.sampleThing(pick);
       if (sample) {
         // static: the robot stays a still Lego figure in Tooly until taken out.
-        const icon = renderThingDisplay(sample, this.tools, this.theme, cell, { static: true });
+        const icon = renderThingDisplay(sample, this.tools, this.theme, cellW, {
+          static: true,
+          maxHeight: cellH,
+        });
         icon.position.set(cx, cy);
         box.addChild(icon);
       }
       const hit = new PIXI.Container();
       hit.position.set(cx, cy);
-      hit.hitArea = new PIXI.Rectangle(-W * 0.11, -H * 0.065, W * 0.22, H * 0.13);
+      hit.hitArea = new PIXI.Rectangle(-cellW / 2, -cellH / 2, cellW, cellH);
       hit.eventMode = 'static';
       hit.cursor = 'grab';
       // Handle here and don't bubble, so the pick "births" the element rather

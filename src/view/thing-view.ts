@@ -17,12 +17,21 @@ export abstract class ThingView {
   readonly container: PIXI.Container;
   protected readonly theme: RenderTheme;
   protected readonly textures: Map<string, PIXI.Texture>;
+  /** True when rendered as an inert display icon (e.g. resting in Tooly): the
+   * robot shows its still Lego form (RB00) rather than its clay "alive" fidget. */
+  protected readonly staticDisplay: boolean;
   private glow: PIXI.Graphics | null = null;
 
-  constructor(thing: Thing, textures: Map<string, PIXI.Texture>, theme: RenderTheme) {
+  constructor(
+    thing: Thing,
+    textures: Map<string, PIXI.Texture>,
+    theme: RenderTheme,
+    opts: { static?: boolean } = {},
+  ) {
     this.thing = thing;
     this.textures = textures;
     this.theme = theme;
+    this.staticDisplay = opts.static ?? false;
     this.container = new PIXI.Container();
     this.container.eventMode = 'static';
     this.container.cursor = 'grab';

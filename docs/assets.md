@@ -41,8 +41,10 @@
   `PUMPBTN` Pumpy / `WANDBTN` wand, baked from EXT) with the mode letter on top
   (`view/lego-button.ts` `addModeButton`), placed per `MODE_BUTTON_FRAC` —
   Dusty's nose, the wand's **handle end** (as in the reference video), a little
-  below centre on Pumpy. In Tooly the **robot is rendered static**
-  (`renderThingDisplay({static:true})` freezes its idle cycle) until taken out.
+  below centre on Pumpy. In Tooly the **robot shows its still Lego form `RB00`**
+  (not the clay `robot-wait` fidget): `renderThingDisplay({static:true})` threads
+  `static` through `createThingView` → `RobotView`, which picks the `robot` (RB00)
+  texture when inert. Out on the floor the robot is the clay character again.
 - City art: `tools/bake-city.py` bakes `HELIOFLY`/`HELIOLND`/`MANWALK8` .TTS
   into `public/assets/city/{heli-fly,heli-land,person}/<dir>/NN.png` +
   `house-*/tree`, black-keyed and aligned via each frame's (ox,oy); M22
@@ -59,19 +61,34 @@
   backgrounds (640×480). It does **not** include the hand, tools, or the data
   elements. Convert with `tools/convert-npics.py` (ImageMagick `PICT:` decoder +
   PIL to copy the mask into alpha and trim). Needs ImageMagick installed.
-- `room/toolbox-open.png` is now the **open Tooly** from `NPICS TBMRPH09`
-  (clean PICT colour + its BMP mask → crisp, fully transparent), replacing the
-  earlier video crop. `room.ts` `makeToolboxImage` renders the real element icons
-  (number/text/box/nest/scale/robot/truck/bomb) into the tray over the art with a
-  hit area on each; the whole box is draggable; falls back to the drawn grey-lego
-  `makeToolboxDrawn` if the png is missing. (M25/M22 have no open-toolbox bitmap —
-  `TOOLBOXA.TTS` is Tooly's *walking* frames.) The box is drawn ~500px wide and
-  each icon is `cell = 0.13·W`, **sized to sit inside its compartment** (the 2×4
-  grid centres ≈ cols 0.18/0.42 × rows 0.28/0.42/0.56/0.69) — no overflow/overlap.
-  **Clicking any icon** pulls a fresh element that **expands and lands in the
-  hand** (`onPick` → `tweenScale` + `dragController.holdTool`): a tool stays in
-  hand for repeat use, an element is dropped/applied on the next click
-  (`applyHeldTool` releases non-tools).
+- `room/toolbox-open.png` is the **resting open Tooly = `tbmrph16`** (M25 BMP,
+  436×402, black-keyed). This is authoritative: `TOOLBOXA.TTS` cycle 11 (the
+  `TOOLBOX_INERT_OPEN` state, `tools.cpp` `ToolboxStates`) is a single frame of
+  `tbmrph16` — the toolbox morphs (cycle 12: `tbopen1‑5` clay opening, then
+  `tbmrph01‑16` clay→Lego) and **rests on frame 16, fully Lego**. (We previously
+  used the mid-morph `tbmrph09` PICT, which still read as clay — fixed.) The grey
+  crisp-Lego box has a 2×4 compartment grid on the LEFT (the lid is folded back on
+  the right). `room.ts` `makeToolboxImage` lays the eight real element icons into
+  it; falls back to the drawn `makeToolboxDrawn` if the png is missing.
+  - **Compartment geometry** ports `tools.cpp` `compartment_size_and_location` /
+    `compartment_contents`: `number_of_rows=4`, `number_of_columns=2`, contents
+    run row-major (`index = row*2 + col`) = number,text / box,nest / scale,robot /
+    truck,bomb. The columns land at the source's `0.1875/0.375·W`; rows are tuned
+    to the art (`colX=[0.205,0.408]`, per-column `rowY` with a slight tilt since
+    the right column sits a touch higher). Each icon is **fit INSIDE its cell**
+    (`renderThingDisplay(size=0.195·W, maxHeight=0.138·H)` — the original's
+    `TO_FIT_INSIDE cw×ch`), so a tall plate and a wide truck both fill their
+    compartment without overflow.
+  - The **robot** icon is the **still Lego RB00**, not the clay `robot-wait`
+    fidget: `renderThingDisplay(..., {static:true})` threads `static` →
+    `createThingView` → `ThingView.staticDisplay` → `RobotView` picks the `robot`
+    texture (RB00) instead of the animated cycle. On the floor a robot still uses
+    the clay fidget (it's "alive" only when out of Tooly).
+  - **Clicking any icon** pulls a fresh element that **expands and lands in the
+    hand** (`onPick` → `tweenScale` + `dragController.holdTool`): a tool stays in
+    hand for repeat use, an element is dropped/applied on the next click
+    (`applyHeldTool` releases non-tools; a no-target click lets the resolver speak
+    first — e.g. a bomb explains it needs a house — before setting the thing down).
 
 ## Render modes
 

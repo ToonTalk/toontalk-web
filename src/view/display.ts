@@ -13,18 +13,23 @@ export function renderThingDisplay(
   textures: Map<string, PIXI.Texture>,
   theme: RenderTheme,
   size: number,
-  opts: { scaleUp?: boolean; static?: boolean } = {},
+  opts: { scaleUp?: boolean; static?: boolean; maxHeight?: number } = {},
 ): PIXI.Container {
-  const view = createThingView(thing, textures, theme);
+  const view = createThingView(thing, textures, theme, { static: opts.static });
   const node = view.container;
   node.eventMode = 'none';
   node.position.set(0, 0); // createThingView places it at the thing's world coords; centre it
   if (opts.static) freezeAnimations(node); // e.g. the robot stays still in Tooly until taken out
   const bounds = node.getLocalBounds();
-  const largest = Math.max(bounds.width, bounds.height, 1);
+  // Fit INSIDE a `size` × `maxHeight` box (the original's TO_FIT_INSIDE). When
+  // maxHeight is omitted this is a `size`×`size` square = fit-largest-dim-to-size
+  // (back-compatible). Toolbox compartments are wider than tall, so passing both
+  // lets a tall plate and a wide truck each fill their cell without overflowing.
+  const maxH = opts.maxHeight ?? size;
+  const fit = Math.min(size / Math.max(bounds.width, 1), maxH / Math.max(bounds.height, 1));
   // Shrink to fit by default; with scaleUp, also enlarge small things to fill
-  // `size` (used so a delivered thing fully covers its nest).
-  if (largest > size || opts.scaleUp) node.scale.set(size / largest);
+  // the cell (used so a delivered thing fully covers its nest).
+  if (fit < 1 || opts.scaleUp) node.scale.set(fit);
   return node;
 }
 

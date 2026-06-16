@@ -32,8 +32,11 @@ export class RobotView extends ThingView {
       this.container.addChild(shadow);
     }
 
-    // Prefer the animated "wait" fidget; fall back to a static frame.
-    const sprite = makeIdleSprite('robot-wait') ?? new PIXI.Sprite(tex);
+    // Resting in Tooly (static): the still Lego robot (RB00). On the floor it's
+    // the clay "alive" fidget (robot-wait), morphing to Lego only at rest.
+    const sprite = this.staticDisplay
+      ? new PIXI.Sprite(tex)
+      : (makeIdleSprite('robot-wait') ?? new PIXI.Sprite(tex));
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 

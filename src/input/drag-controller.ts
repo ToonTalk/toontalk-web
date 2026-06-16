@@ -444,6 +444,9 @@ export class DragController {
         this.world.add(spat);
         return;
       }
+      // Let the resolver speak for a no-target click (e.g. a bomb explains it
+      // needs a house) before the held thing is set down on the bare floor.
+      this.resolve(t, undefined, {});
       this.putDownTool();
       return;
     }
