@@ -5,6 +5,7 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Wand } from '../model/wand';
+import { legoButton } from './lego-button';
 
 export class WandView extends ThingView {
   protected build(): void {
@@ -23,18 +24,7 @@ export class WandView extends ThingView {
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
-    const badge = new PIXI.Graphics();
-    badge.beginFill(0x223040, 0.92);
-    badge.drawRoundedRect(-12, sprite.height / 2 - 4, 24, 22, 5);
-    badge.endFill();
-    const label = new PIXI.Text(wand.mode, {
-      fontFamily: this.theme.fontFamily,
-      fontSize: 14,
-      fill: 0xffffff,
-      fontWeight: 'bold',
-    });
-    label.anchor.set(0.5);
-    label.position.set(0, sprite.height / 2 + 7);
-    this.container.addChild(badge, label);
+    // Mode shown as a tiny Lego button sitting ON the wand.
+    this.container.addChild(legoButton(wand.mode, this.theme));
   }
 }

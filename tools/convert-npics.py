@@ -71,6 +71,27 @@ def _sat_alpha(rgb):
     return a.filter(ImageFilter.MedianFilter(5))  # despeckle the keyed edges
 
 
+def _matte_exact_alpha(rgb, matte, tol=6):
+    """Key a flat matte of (near-)exact colour `matte` everywhere — edge AND
+    enclosed — by a TIGHT match (manhattan distance ≤ `tol`). The EXT mattes are
+    a perfectly flat grey (128,128,128), and the engine keyed it exactly, so a
+    tight match lifts the whole background (including pockets the edge flood can't
+    reach, e.g. inside Pumpy's frame) while keeping sprite pixels that merely look
+    grey-ish — e.g. Dusty's neutral lower face at (127,120,127), manhattan 10 from
+    the matte, which a looser neutral/brightness heuristic wrongly erased."""
+    px = rgb.load()
+    w, h = rgb.size
+    alpha = Image.new("L", (w, h), 255)
+    ap = alpha.load()
+    mr, mg, mb = matte[:3]
+    for y in range(h):
+        for x in range(w):
+            r, g, b = px[x, y][:3]
+            if abs(r - mr) + abs(g - mg) + abs(b - mb) <= tol:
+                ap[x, y] = 0
+    return alpha.filter(ImageFilter.MedianFilter(3))  # knock off 1px speckle
+
+
 def _flood_alpha(rgb, key, tol=26):
     """Flood-fill the background colour from the edges → transparent; keeps
     interior pixels of that colour (for achromatic sprites on a grey matte)."""
@@ -99,11 +120,14 @@ def _flood_alpha(rgb, key, tol=26):
     return alpha
 
 
-def convert(inp: str, out: str, mask=None, trim=True, flood=False) -> None:
+def convert(inp: str, out: str, mask=None, trim=True, flood=False, matte=False) -> None:
     color = load_color(inp)
     corners = _corners(color)
     chroma = _chroma_key(corners)
-    if mask and os.path.exists(mask):
+    if matte:  # key the flat matte colour everywhere (edge + enclosed)
+        rgba = color.convert("RGBA")
+        rgba.putalpha(_matte_exact_alpha(color, corners[0]))
+    elif mask and os.path.exists(mask):
         m = Image.open(mask).convert("L")
         if m.size != color.size:
             m = m.resize(color.size, Image.NEAREST)
@@ -138,4 +162,5 @@ def convert(inp: str, out: str, mask=None, trim=True, flood=False) -> None:
 if __name__ == "__main__":
     a = [x for x in sys.argv[1:] if not x.startswith("--")]
     convert(a[0], a[1], a[2] if len(a) > 2 else None,
-            trim="--no-trim" not in sys.argv, flood="--flood" in sys.argv)
+            trim="--no-trim" not in sys.argv, flood="--flood" in sys.argv,
+            matte="--matte" in sys.argv)

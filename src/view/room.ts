@@ -22,6 +22,7 @@ import { Robot } from '../model/robot';
 import { Truck } from '../model/truck';
 import { Bomb } from '../model/bomb';
 import { renderThingDisplay } from './display';
+import { legoButton } from './lego-button';
 
 const ROOM_KEYS = ['floor', 'toolbox', 'toolbox-open', 'notebook', 'hand', 'hand-point', 'hand-grab', 'hand-wand', 'truck'] as const;
 
@@ -206,6 +207,7 @@ export class Room {
 
   private layoutChrome(): void {
     const W = this.renderer.width;
+    const H = this.renderer.height;
 
     // Tooly the toolbox lives at hand (top-right, screen-fixed so it "follows"
     // you). Closed it's the green box-creature; click it to OPEN the tray with
@@ -225,10 +227,12 @@ export class Room {
     // Opening Tooly SPILLS the hand tools out onto the floor below it (the wand,
     // Dusty the vacuum, Pumpy the pump), as in the original — each is its own
     // sprite at a tilt; picking one pulls a fresh copy out at the cursor.
+    // Full-size, so spread them across the open floor (Tooly is top-right, the
+    // notebook bottom-centre) rather than the old tight miniature cluster.
     const spill: Array<[string, string, number, number, number]> = [
-      ['wand', 'C', W - 330, 505, -0.25],
-      ['dusty', 'S', W - 235, 520, 0.1],
-      ['pumpy', '+', W - 150, 505, 0.2],
+      ['dusty', 'S', W * 0.2, H * 0.44, 0.08],
+      ['pumpy', '+', W * 0.43, H * 0.56, 0.15],
+      ['wand', 'C', W * 0.24, H * 0.72, -0.15],
     ];
     for (const [pick, badge, x, y, tilt] of spill) {
       const chip = this.makeToolChip(pick, badge, tilt);
@@ -281,24 +285,22 @@ export class Room {
    * pulls a fresh copy into the hand. */
   private makeToolChip(pick: string, badge: string, tilt = 0): PIXI.Container {
     const c = new PIXI.Container();
-    const icon = pick === 'pumpy' ? this.pumpGlyph() : this.makeIcon(pick, 92);
-    if (pick === 'pumpy') icon.scale.set(2.4); // the vector glyph is small at native size
-    c.addChild(icon);
-    const b = new PIXI.Graphics();
-    b.beginFill(0x223040, 0.95);
-    b.drawCircle(32, 26, 12);
-    b.endFill();
-    const t = new PIXI.Text(badge, {
-      fontFamily: this.theme.fontFamily,
-      fontSize: 15,
-      fill: 0xffffff,
-      fontWeight: 'bold',
-    });
-    t.anchor.set(0.5);
-    t.position.set(32, 26);
-    c.addChild(b, t);
+    // The spilled tool is its FULL-SIZE Lego sprite (the same thing you get when
+    // you pull it out), not a miniature.
+    const tex = this.tools.get(pick);
+    let w = 96;
+    let h = 96;
+    if (tex && tex !== PIXI.Texture.WHITE) {
+      const s = new PIXI.Sprite(tex);
+      s.anchor.set(0.5);
+      c.addChild(s);
+      w = s.width;
+      h = s.height;
+    }
+    // Mode shown as a tiny Lego button sitting ON the tool.
+    c.addChild(legoButton(badge, this.theme));
     c.rotation = tilt;
-    c.hitArea = new PIXI.Rectangle(-48, -38, 96, 76);
+    c.hitArea = new PIXI.Rectangle(-w / 2, -h / 2, w, h);
     c.eventMode = 'static';
     c.cursor = 'grab';
     // Handle the pick here and stop it bubbling to the stage, so the tool is put
@@ -307,28 +309,6 @@ export class Room {
       e.stopPropagation();
       this.onPick(pick, e.global.x, e.global.y);
     });
-    return c;
-  }
-
-  /** A simple bicycle-pump glyph for the Pumpy toolbox chip — a crisp vector
-   * that stays legible at chip size, where the detailed pump sprite goes muddy. */
-  private pumpGlyph(): PIXI.Container {
-    const g = new PIXI.Graphics();
-    g.beginFill(0x3a6ea5, 1); // barrel
-    g.drawRoundedRect(-4, -12, 9, 22, 3);
-    g.endFill();
-    g.beginFill(0x1c1f24, 1); // T-handle
-    g.drawRoundedRect(-12, -17, 22, 5, 2);
-    g.drawRoundedRect(-2, -16, 4, 8, 2);
-    g.endFill();
-    g.beginFill(0x565e69, 1); // foot/base
-    g.drawRoundedRect(-9, 9, 18, 5, 2);
-    g.endFill();
-    g.lineStyle(3, 0x2c2f36, 1); // hose
-    g.moveTo(5, 4);
-    g.bezierCurveTo(16, 6, 15, 14, 11, 14);
-    const c = new PIXI.Container();
-    c.addChild(g);
     return c;
   }
 

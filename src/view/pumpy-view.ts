@@ -7,6 +7,7 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Pumpy, type PumpyMode } from '../model/pumpy';
+import { legoButton } from './lego-button';
 
 const MODE_LABEL: Record<PumpyMode, string> = {
   bigger: '+',
@@ -37,18 +38,7 @@ export class PumpyView extends ThingView {
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
-    const badge = new PIXI.Graphics();
-    badge.beginFill(0x223040, 0.92);
-    badge.drawRoundedRect(-15, sprite.height / 2 - 4, 30, 22, 5);
-    badge.endFill();
-    const label = new PIXI.Text(MODE_LABEL[pumpy.mode], {
-      fontFamily: this.theme.fontFamily,
-      fontSize: 14,
-      fill: 0xffffff,
-      fontWeight: 'bold',
-    });
-    label.anchor.set(0.5);
-    label.position.set(0, sprite.height / 2 + 7);
-    this.container.addChild(badge, label);
+    // Mode shown as a tiny Lego button sitting ON Pumpy.
+    this.container.addChild(legoButton(MODE_LABEL[pumpy.mode], this.theme));
   }
 }

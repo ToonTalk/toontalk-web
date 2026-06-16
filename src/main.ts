@@ -50,7 +50,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16g (lego tools)';
+const BUILD = 'build 2026-06-16h (lego tools v2)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -145,6 +145,12 @@ async function start(): Promise<void> {
   // thing → grab, nothing → point.
   let carriedWand: ThingView | undefined;
   const onGrab = (thing: Thing | null): void => {
+    // Stopped carrying the wand → un-hide its sprite (the holdwand pose drew it
+    // while carried). Without this the wand vanished when picked up and dropped.
+    if (carriedWand && !(thing instanceof Wand && views.get(thing.id) === carriedWand)) {
+      if (!carriedWand.container.destroyed) carriedWand.container.alpha = 1;
+      carriedWand = undefined;
+    }
     if (thing instanceof Wand) {
       room.setPose('holdwand');
       carriedWand = views.get(thing.id);
@@ -153,7 +159,6 @@ async function start(): Promise<void> {
       room.setPose('grab');
     } else {
       room.setPose('open');
-      carriedWand = undefined; // its alpha is restored by setDragging(false)
     }
   };
 
