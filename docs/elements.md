@@ -214,8 +214,15 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     `tools/verify/bubble-replay.mjs`. Houses still run instantly via `runRobot`.
 ✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
 right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
-Dusty** — erasing a hole clears its value guard (the manual's "suck things out of
-the thought bubble"). ✅ **finish key**: Escape finishes training (Backspace
+Dusty** — erasing a hole **inside the bubble, while training** clears that hole's
+value guard, so the trained robot then matches a box holding *any* number of that
+kind (the manual's "suck things out of the thought bubble"). This is a
+training-time edit to the robot's CONDITION; doing it on the floor afterward
+sucks/erases loose things but cannot change what an already-finished robot
+matches — the condition is fixed when you press Esc. Proven end-to-end by
+`tools/verify/robot-generalize.mjs` (erase the example 1 → the robot adds 1 to a
+box holding 5 → 6). NB re-opening a finished robot to edit it isn't supported
+yet (▢). ✅ **finish key**: Escape finishes training (Backspace
 cancels as a web-only helper). ✅ **teams**: drop robot on robot → the dragged
 robot (+ its team) lines up behind the target (`Robot.team`, front-to-back); a
 box is offered front-to-back via `runRobot`→`lineup()`, first trained matching
