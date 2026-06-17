@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17t (no-freeze + forgiving floor tool aim; Dusty-erase a ROBOT to generalize it)';
+const BUILD = 'build 2026-06-17u (running robot fetches a fresh element from Tooly to re-enact its training)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -536,6 +536,22 @@ async function start(): Promise<void> {
           recomputeScales(box);
           world.notifyChanged(box);
         };
+        // An INSERT re-enacts training: the robot fetches a FRESH copy from Tooly
+        // and drops it on the box (robot.htm — a "new" thing comes from the
+        // toolbox each run). Fly it in from Tooly, then drop it (combine → Bammer).
+        if (action.type === 'insert') {
+          const fresh = renderThingDisplay(action.thing, textures, theme, 46);
+          const src = toolboxSource();
+          fresh.position.set(src.x, src.y);
+          fresh.zIndex = 6000;
+          renderer.thingLayer.addChild(fresh);
+          flyThing(fresh, holeWorld(box, action.to), 520, () => {
+            if (merging) bamMouseAt(box, apply); // dropped onto a number → combine
+            else apply(); // dropped into an empty hole → just lands
+          });
+          setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 520 + (merging ? 1450 : 350));
+          return;
+        }
         // For a combine, Bammer runs IN and the numbers merge only when the hammer
         // strikes (~1.2 s) — so you watch the mouse arrive and slam *before* the
         // result appears, not after. Other actions apply at once. `apply` is
@@ -564,6 +580,37 @@ async function start(): Promise<void> {
         if (tv && !tv.container.destroyed) tweenScale(tv.container, 1.25, 1, 150);
       },
     );
+  }
+
+  /** Fly a display node from where it is to a world point, then run onDone and
+   * remove it — used to show the robot fetching a fresh element from Tooly. */
+  function flyThing(node: PIXI.Container, to: { x: number; y: number }, ms: number, onDone: () => void): void {
+    const from = { x: node.position.x, y: node.position.y };
+    const t0 = performance.now();
+    const tick = (): void => {
+      if (node.destroyed) { renderer.app.ticker.remove(tick); return; }
+      const t = Math.min(1, (performance.now() - t0) / ms);
+      const e = t * (2 - t); // ease-out
+      node.position.set(from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e);
+      if (t >= 1) {
+        renderer.app.ticker.remove(tick);
+        node.destroy({ children: true });
+        onDone();
+      }
+    };
+    renderer.app.ticker.add(tick);
+  }
+
+  /** World position of a box hole's content slot (for run animations). */
+  function holeWorld(box: Box, i: number): { x: number; y: number } {
+    const bv = views.get(box.id);
+    const hn = bv instanceof BoxView ? bv.holeNode(i) : null;
+    return { x: box.x + (hn?.x ?? 0), y: box.y + (hn?.y ?? 0) };
+  }
+
+  /** Where a fresh element flies FROM during a run — Tooly, top-right. */
+  function toolboxSource(): { x: number; y: number } {
+    return { x: renderer.width - 230 + floorCamera.x, y: 235 + floorCamera.y };
   }
 
   // Entering the robot's thoughts (robot.htm): training happens inside a
