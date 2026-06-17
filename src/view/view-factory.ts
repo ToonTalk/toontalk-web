@@ -25,6 +25,26 @@ export function createThingView(
   theme: RenderTheme,
   opts: { static?: boolean } = {},
 ): ThingView {
+  const view = instantiateView(thing, textures, theme, opts);
+  // ThingView's constructor calls build() — but with ES2022 class fields, a
+  // subclass's field initializers run *after* super() returns and overwrite
+  // anything build() stored in instance fields (e.g. BoxView's hole geometry:
+  // holeCenters/spanLeft/spanW), leaving it degenerate. The display children
+  // survive (so it renders), but hit-testing reads those fields. Re-running
+  // build() now, after the instance is fully constructed, makes them stick.
+  // (Floor things self-heal on their first 'changed' refresh; things created
+  // and immediately hit-tested without a refresh — e.g. a robot's imagined box
+  // in its thought bubble — did not, which broke put-in/combine training.)
+  view.refresh();
+  return view;
+}
+
+function instantiateView(
+  thing: Thing,
+  textures: Map<string, PIXI.Texture>,
+  theme: RenderTheme,
+  opts: { static?: boolean } = {},
+): ThingView {
   switch (thing.kind) {
     case 'number':
       return new NumberView(thing, textures, theme);

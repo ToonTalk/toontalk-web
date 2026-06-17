@@ -5,3 +5,6 @@ dist/
 tools/verify/shots/
 tools/verify/devserver.log
 __pycache__/
+
+# dev-server logs from verify scripts
+tools/verify/*.log

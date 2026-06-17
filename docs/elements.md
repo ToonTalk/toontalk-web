@@ -154,7 +154,14 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     on load (round-trip tested). Put-in inside the thought bubble pulls the thing
     from Tooly (held), then a click on/near a hole records the `insert`
     (`applyHeldTool` → `BoxView.dropHole` is forgiving by ~32px so a small miss
-    still lands; a clear miss is logged with its screen position). **Bammer the mouse** runs in
+    still lands; a clear miss is logged with its screen position). **The imagined
+    box is hit-testable from the moment it appears**: `createThingView` re-runs
+    `build()` after construction, because ES2022 class-field initializers run
+    *after* `super()` and otherwise clobber the geometry (`holeCenters`/`spanLeft`/
+    `spanW`) that `build()` — called from the base `ThingView` ctor — just stored.
+    Floor boxes hid this (they self-heal on their first `changed` refresh); the
+    bubble copy never gets one, so put-in/combine silently missed before the fix
+    (guard: `tools/verify/bubble-train.mjs`). **Bammer the mouse** runs in
     on every combine (`bamMouseAt`), in the bubble as on the floor. ✅ **wand-copy
     as a recorded step**: hold the wand and drag a hole onto another → a `copy`
     action duplicates that hole's current content into the target each run (fills
