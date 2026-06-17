@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17o (hint: robot + box into a truck → a house that loops/counts)';
+const BUILD = 'build 2026-06-17p (robots iterate while matching; stop on mismatch / scale / grab)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -147,10 +147,27 @@ async function start(): Promise<void> {
   // point reticle so it's clear where the tool's tip will act (it was invisible
   // on the floor, so tools kept missing).
   let holdingTool = false;
+  // A robot iterating on the floor: drop a box on a trained robot and it runs
+  // over and over, stopping when the box stops matching its thought bubble. We
+  // track it so grabbing the robot (or its box) mid-run stops it — the manual
+  // "pick it up to stop" escape hatch.
+  let runningLoop: { robotId: string; boxId: string; cancelled: boolean } | null = null;
+  function cancelRunningLoop(): void {
+    if (runningLoop) {
+      runningLoop.cancelled = true;
+      runningLoop = null;
+    }
+  }
   const onGrab = (thing: Thing | null): void => {
     tlog(thing ? `grab: ${desc(thing)}` : 'release (hand empty)');
     holdingTool = !!thing && (thing.kind === 'wand' || thing.kind === 'dusty' || thing.kind === 'pumpy');
     if (!holdingTool && !thoughtState) activePoint.visible = false; // dropped a tool on the floor
+    // Picking up a running robot (or the box it's working on) stops it.
+    if (thing && runningLoop && (thing.id === runningLoop.robotId || thing.id === runningLoop.boxId)) {
+      cancelRunningLoop();
+      tlog('run: stopped (picked up)');
+      setHud('✋ You picked it up — the robot stopped.');
+    }
     // Stopped carrying the wand → un-hide its sprite (the holdwand pose drew it
     // while carried). Without this the wand vanished when picked up and dropped.
     if (carriedWand && !(thing instanceof Wand && views.get(thing.id) === carriedWand)) {
@@ -193,8 +210,8 @@ async function start(): Promise<void> {
       if (rbt && bx) {
         const runner = matchingRunner(rbt, bx);
         if (runner) {
-          tlog(`run: robot replays ${runner.actions.length} action(s) on ${desc(bx)}`);
-          animateRun(runner, bx);
+          tlog(`run: robot starts on ${desc(bx)} (iterates while it matches)`);
+          animateRun(rbt, bx);
           return;
         }
       }
@@ -452,37 +469,59 @@ async function start(): Promise<void> {
   // A trained robot REPLAYS its actions step-by-step on a matching box (you
   // watch it work), rather than the box jumping to the final result. Bammer
   // shows up on each combine, like a live demonstration.
-  function animateRun(runner: Robot, box: Box): void {
-    const actions = runner.actions;
-    let i = 0;
-    const step = (): void => {
-      if (i >= actions.length) {
-        recomputeScales(box);
-        world.notifyChanged(box);
-        updateHud('ran');
+  function animateRun(robot: Robot, box: Box): void {
+    cancelRunningLoop(); // never two loops on one box
+    const loop = { robotId: robot.id, boxId: box.id, cancelled: false };
+    runningLoop = loop;
+    // One iteration: find the matching team member and replay its actions; when
+    // the pass finishes, loop again while the box still matches. A robot is a
+    // guarded rule that keeps firing until its condition no longer holds — so a
+    // generalised "add 1" robot counts forever, and a scale guard (tilts the
+    // other way past a limit) stops it. (Mismatch → stop; "wait on an incomplete
+    // box / empty nest" is a separate, not-yet-built state.)
+    const iterate = (): void => {
+      if (loop.cancelled) return;
+      if (!world.get(box.id) || !world.get(robot.id)) { if (runningLoop === loop) runningLoop = null; return; }
+      const runner = matchingRunner(robot, box);
+      if (!runner) {
+        if (runningLoop === loop) runningLoop = null;
+        tlog(`run: stopped — box no longer matches (${desc(box)})`);
+        setHud('✋ The robot stopped — the box no longer matches its rule (e.g. a scale tipped).');
         return;
       }
-      const action = actions[i++]!;
-      const merging =
-        action.type === 'combine' || (action.type === 'insert' && !box.isHoleEmpty(action.to));
-      let applied = false;
-      const apply = (): void => {
-        if (applied) return;
-        applied = true;
-        applyAction(box, action);
-        recomputeScales(box);
-        world.notifyChanged(box);
+      const actions = runner.actions;
+      let i = 0;
+      const step = (): void => {
+        if (loop.cancelled) return;
+        if (i >= actions.length) {
+          recomputeScales(box);
+          world.notifyChanged(box);
+          setTimeout(iterate, 450); // pass done → keep iterating while it matches
+          return;
+        }
+        const action = actions[i++]!;
+        const merging =
+          action.type === 'combine' || (action.type === 'insert' && !box.isHoleEmpty(action.to));
+        let applied = false;
+        const apply = (): void => {
+          if (applied || loop.cancelled) return; // a grab mid-swing freezes it exactly
+          applied = true;
+          applyAction(box, action);
+          recomputeScales(box);
+          world.notifyChanged(box);
+        };
+        // For a combine, Bammer runs IN and the numbers merge only when the hammer
+        // strikes (~1.2 s) — so you watch the mouse arrive and slam *before* the
+        // result appears, not after. Other actions apply at once. `apply` is
+        // guarded so it still happens exactly once even if the slam is skipped
+        // (e.g. art missing → runMouse fires its callback immediately).
+        if (merging) bamMouseAt(box, apply);
+        else apply();
+        setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, merging ? 1400 : 700);
       };
-      // For a combine, Bammer runs IN and the numbers merge only when the hammer
-      // strikes (~1.2 s) — so you watch the mouse arrive and slam *before* the
-      // result appears, not after. Other actions apply at once. `apply` is
-      // guarded so it still happens exactly once even if the slam is skipped
-      // (e.g. art missing → runMouse fires its callback immediately).
-      if (merging) bamMouseAt(box, apply);
-      else apply();
-      setTimeout(() => { apply(); step(); }, merging ? 1400 : 700);
+      step();
     };
-    step();
+    iterate();
   }
 
   // Bammer the mouse runs in and slams when two things are combined (arithmetic,
@@ -529,6 +568,7 @@ async function start(): Promise<void> {
    * hidden and untouched. */
   function enterThoughts(robot: Robot, realBox: Box): void {
     tlog(`thoughts: ENTER — training ${desc(robot)} on ${desc(realBox)}`);
+    cancelRunningLoop(); // don't keep a floor robot iterating while we train
     exitThoughts(); // safety: never stack
     room.enterThoughtBubble();
     room.setHandHidden(true); // you ARE the robot in here — no hand cursor

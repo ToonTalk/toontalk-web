@@ -222,14 +222,20 @@ sucks/erases loose things but cannot change what an already-finished robot
 matches — the condition is fixed when you press Esc. Proven end-to-end by
 `tools/verify/robot-generalize.mjs` (erase the example 1 → the robot adds 1 to a
 box holding 5 → 6). NB re-opening a finished robot to edit it isn't supported
-yet (▢). ✅ **iteration / "keep counting"** — a robot run on the floor fires
-**once** per box-drop (`runRobot`/`animateRun`); the *loop* is a **house**, a
-running process that re-runs the team on its box every tick (`runHouse`, the
-`setInterval` in main.ts). So a counter is: generalise an "add 1" robot, drop it
-**and** a box into a **truck** → it builds a house that keeps adding 1 (bomb the
-house to stop). This is the loop primitive, NOT extra erasing in the bubble.
-Proven end-to-end by `tools/verify/robot-counter.mjs` (truck+robot+box → house,
-box climbs 5→8→…). ✅ **finish key**: Escape finishes training (Backspace
+yet (▢). ✅ **iteration / "keep counting"** — a robot is a guarded rule that
+keeps firing while its condition holds. Drop a box on a trained robot and it
+**iterates** (`animateRun` loops, re-running the matching team member each pass,
+Bammer and all); a generalised "add 1" robot counts forever. It **stops on
+mismatch** — e.g. a **scale** guard that tips the other way past a limit
+(`robot-scale-stop.mjs`: [counter, scale, limit] climbs to the limit then
+halts). You can always **stop it by hand**: grabbing the robot (or its box) mid-
+run cancels the loop, freezing the box exactly (`runningLoop`/`cancelRunningLoop`
+in main.ts; guard `robot-iterate.mjs`). A **house** is the same loop as a
+persistent background process (`runHouse` + the 800 ms tick) — build one by
+dropping a robot + box into a **truck** (`robot-counter.mjs`); bomb it to stop.
+⚠ still ▢: **wait** — pausing (not stopping) when the box is *incomplete* (an
+empty hole, or an empty nest awaiting a bird) and resuming when it's filled;
+today an incomplete or mismatched box just stops the loop. ✅ **finish key**: Escape finishes training (Backspace
 cancels as a web-only helper). ✅ **teams**: drop robot on robot → the dragged
 robot (+ its team) lines up behind the target (`Robot.team`, front-to-back); a
 box is offered front-to-back via `runRobot`→`lineup()`, first trained matching
