@@ -51,7 +51,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17c (training: wand-copy as a recorded action)';
+const BUILD = 'build 2026-06-17d (thought bubble: you control the robot, no hand)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -476,6 +476,7 @@ async function start(): Promise<void> {
   function enterThoughts(robot: Robot, realBox: Box): void {
     exitThoughts(); // safety: never stack
     room.enterThoughtBubble();
+    room.setHandHidden(true); // you ARE the robot in here — no hand cursor
     // Hide every floor thing (incl. the real box) except the robot itself.
     const robotC = views.get(robot.id)?.container;
     const hidden: PIXI.DisplayObject[] = [];
@@ -500,6 +501,7 @@ async function start(): Promise<void> {
    * or back where it was on cancel. */
   function exitThoughts(placeBy?: 'finish' | 'cancel'): void {
     room.exitThoughtBubble();
+    room.setHandHidden(false); // the hand cursor returns on the floor
     if (!thoughtState) return;
     const ts = thoughtState;
     thoughtState = null;
@@ -511,6 +513,18 @@ async function start(): Promise<void> {
       else world.moveThing(ts.robotId, ts.robotOrig);
     }
   }
+
+  // In the thought bubble you ARE the robot: it follows the pointer (its arm is
+  // the cursor) and holds whatever tool you've picked up. No hand here.
+  renderer.app.stage.on('pointermove', (e) => {
+    if (!thoughtState || !world.get(thoughtState.robotId)) return;
+    // The robot sits just BELOW the pointer and reaches up — its hands meet the
+    // held tool (at pointer + HELD_OFFSET), the action point above stays visible.
+    world.moveThing(thoughtState.robotId, {
+      x: e.global.x + floorCamera.x - 18,
+      y: e.global.y + floorCamera.y + 60,
+    });
+  });
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
   // — there's no "cancel training" in the manual, so this is a web-only helper.

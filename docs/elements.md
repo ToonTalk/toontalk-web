@@ -160,15 +160,18 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
   - ✅ **imagination** (pad.cpp:5085 "just the robot's imagination so don't make
     these changes stick"): training works on a **copy** of the box inside the
     bubble — the real box is hidden and **untouched after you exit** (verified).
-    `Dusty` inside the bubble erases a hole's value → **generalises** it
-    (`Trainer.eraseHole` clears the guard); the wand/Dusty/Pumpy chips stay
-    available in the thoughts.
+    `Dusty` per mode: **erase (E)** wildcards a hole's value (`Trainer.eraseHole`,
+    generalise), **suck (S)** removes it (`Trainer.removeHole`, hole → empty); the
+    wand/Dusty/Pumpy chips stay available. A carried element/tool applies on the
+    **drop (release)**, so dragging straight out of Tooly onto a hole works (not
+    only a separate click).
   - ✅ **"enter his thoughts"** (robot.cpp/prgrmmr.cpp: dropping a box on the
     robot runs `Programmer …ABOUT_TO_ENTER_THOUGHT_BUBBLE → enter_thought_bubble`
-    with `screen->new_view(CAMERA_MOSTLY_ABOVE)`). Matched as a **full-screen
-    view**: `Room.enterThoughtBubble()` lays the real `BIGBUBBL` cloud over the
-    floor (between floor and chrome, so the tools stay usable), main hides the
-    other floor things and brings the (copied) box + robot into the bubble;
+    with `screen->new_view(CAMERA_MOSTLY_ABOVE)`; the programmer's appearance is
+    `ROBOT_IN_TRAINING`). Matched as a **full-screen view**: `BIGBUBBL` cloud over
+    the floor (tools stay usable), the (copied) box brought in, and — there is
+    **no hand cursor**: you control the **robot**, which follows the pointer (its
+    arm is the cursor) and holds the picked-up tool (`room.setHandHidden`).
     Esc/Backspace exits and restores the floor. Flat-box level (no nested sub-world).
   - ✅ **animated replay**: a trained robot meeting a matching box **replays its
     actions one step at a time** (`matchingRunner` + main `animateRun`, ~700 ms a

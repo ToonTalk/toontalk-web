@@ -186,6 +186,12 @@ export class Room {
     this.cursor.visible = v;
   }
 
+  /** Hide just the hand cursor — inside a robot's thoughts you control the robot
+   * (it's the cursor), so the hand should not appear. */
+  setHandHidden(hidden: boolean): void {
+    this.cursor.visible = !hidden;
+  }
+
   /**
    * Enter the robot's thoughts (robot.htm: "drop a box on him… you enter into
    * the robot's thoughts and control him"). Lays a full-screen misty cloud over

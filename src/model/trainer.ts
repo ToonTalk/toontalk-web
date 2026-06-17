@@ -142,6 +142,21 @@ export class Trainer {
     return true;
   }
 
+  /**
+   * Suck a thing OUT of the imagined box with Dusty (suck mode): the hole goes
+   * empty, and the robot's condition for it becomes "empty" — distinct from
+   * `eraseHole`, which keeps the thing but wildcards its value.
+   */
+  removeHole(i: number): boolean {
+    if (!this.session) return false;
+    if (this.session.box.isHoleEmpty(i)) return false;
+    this.session.box.take(i); // gone from the imagined box
+    this.session.condition[i] = null; // now matches an empty hole there
+    this.session.exactValues[i] = null;
+    this.world.notifyChanged(this.session.box);
+    return true;
+  }
+
   /** Finish: write the condition + actions onto the robot. Returns it. */
   finish(): Robot | null {
     if (!this.session) return null;

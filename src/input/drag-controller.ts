@@ -374,7 +374,8 @@ export class DragController {
           }
           return;
         }
-        this.applyHeldTool(x, y); // Dusty erases / an element is put IN
+        // Dusty / a carried element apply on RELEASE (so a drag straight from
+        // Tooly onto a hole works, not only a separate click) — see onPointerUp.
         return;
       }
       this.clearTrainGhost();
@@ -502,8 +503,13 @@ export class DragController {
         // value → generalises that hole; other tools apply their normal effect.
         const content = to != null ? this.trainer.box?.contentsAt(to) ?? null : null;
         if (content) {
-          if (held instanceof Dusty) this.trainer.eraseHole(to!);
-          else this.resolve(held, content, {});
+          if (held instanceof Dusty) {
+            // erase → wildcard the value (generalise); suck/reverse → remove it.
+            if (held.mode === 'erase') this.trainer.eraseHole(to!);
+            else this.trainer.removeHole(to!);
+          } else {
+            this.resolve(held, content, {});
+          }
         }
         return;
       }
@@ -655,6 +661,12 @@ export class DragController {
         if (overHole != null) this.onTrainStep({ kind: 'copy', from: this.trainFrom, to: overHole });
         this.trainWandCopy = false;
         this.trainFrom = null;
+        return;
+      }
+      // A carried element (put-in) or Dusty dropped on a hole applies here, so a
+      // drag straight out of Tooly works — not just a separate click.
+      if (this.heldTool) {
+        this.applyHeldTool(wp.x, wp.y);
         return;
       }
       if (this.trainFrom != null) {
