@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17r (bubble Dusty: forgiving aim + suck animation + see-through tool)';
+const BUILD = 'build 2026-06-17s (fix frozen tab: a waiting robot no longer re-subscribes mid-emit)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -507,7 +507,11 @@ async function start(): Promise<void> {
           if (e.type === 'moved') return; // a mere move doesn't change the contents
           loop.unsub?.();
           loop.unsub = undefined;
-          iterate(); // re-evaluate now that the world changed
+          // Re-evaluate on the NEXT tick, not synchronously: re-subscribing here
+          // (when still waiting) would add a listener mid-emit, which the same
+          // emit() would immediately visit → re-subscribe → infinite loop / frozen
+          // tab. Deferring lets this event finish dispatching first.
+          setTimeout(iterate, 0);
         });
         return;
       }
