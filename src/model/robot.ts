@@ -242,6 +242,19 @@ function placeOrCombine(box: Box, to: number, thing: Thing): boolean {
   return false;
 }
 
+/** A hole's effective content for an ACTION, seeing THROUGH a nest to its front
+ * delivery (robot.cpp: a robot acts on what's on TOP of a nest, "if leader is
+ * nest find topmost one" — like matching). `consume()` removes that thing (the
+ * nest's front, or the whole hole if it isn't a nest), leaving the nest in place
+ * so the next delivery can arrive. */
+function holeContent(box: Box, i: number): { thing: Thing | null; consume: () => void } {
+  const c = box.contentsAt(i);
+  if (c instanceof Nest) {
+    return { thing: c.front(), consume: () => void c.takeFront() };
+  }
+  return { thing: c, consume: () => void box.take(i) };
+}
+
 /**
  * Apply a single action to a box in place. Returns whether it did anything.
  * Shared by running and training.
@@ -259,8 +272,8 @@ export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext):
   }
 
   if (action.type === 'copy') {
-    // Wand-copy: duplicate the CURRENT content of `from` into `to`.
-    const src = box.contentsAt(action.from);
+    // Wand-copy: duplicate the CURRENT content of `from` (through a nest) into `to`.
+    const src = holeContent(box, action.from).thing;
     if (!src) return false;
     return placeOrCombine(box, action.to, src.copy());
   }
@@ -276,10 +289,10 @@ export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext):
   }
 
   if (action.type === 'move') {
-    const thing = box.contentsAt(action.from);
-    if (!thing || !box.isHoleEmpty(action.to)) return false;
-    box.take(action.from);
-    box.put(action.to, thing);
+    const f = holeContent(box, action.from); // through a nest → the delivery
+    if (!f.thing || !box.isHoleEmpty(action.to)) return false;
+    f.consume();
+    box.put(action.to, f.thing);
     return true;
   }
 
@@ -291,18 +304,20 @@ export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext):
     return thingA !== null || thingB !== null;
   }
 
-  const from = box.contentsAt(action.from);
-  const to = box.contentsAt(action.to);
-  if (!from || !to) return false;
+  // combine: read both holes through any nest (act on the delivery on top); the
+  // source delivery is consumed (the nest stays for the next bird).
+  const f = holeContent(box, action.from);
+  const t = holeContent(box, action.to);
+  if (!f.thing || !t.thing) return false;
 
-  if (to instanceof NumberThing && from instanceof NumberThing) {
-    to.value = NumberThing.combine(to.value, from.value, action.op ?? from.operation);
-    box.take(action.from);
+  if (t.thing instanceof NumberThing && f.thing instanceof NumberThing) {
+    t.thing.value = NumberThing.combine(t.thing.value, f.thing.value, action.op ?? f.thing.operation);
+    f.consume();
     return true;
   }
-  if (to instanceof TextThing && from instanceof TextThing) {
-    to.concat(from, 'right');
-    box.take(action.from);
+  if (t.thing instanceof TextThing && f.thing instanceof TextThing) {
+    t.thing.concat(f.thing, 'right');
+    f.consume();
     return true;
   }
   return false;

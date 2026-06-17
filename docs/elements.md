@@ -256,10 +256,13 @@ team-level `teamMatch`): an INCOMPLETE box (a hole the rule needs is empty, or
 holds an *empty nest*) makes the robot **wait, not stop** — the loop suspends
 and resumes the instant the missing thing is added (the loop subscribes for the
 next content change; a user fill *and* a bird delivery both `notifyChanged`).
-Matching is **transparent to a nest** — it tests what's on TOP (`Nest.front`),
-empty = wait. Guards: `robot-matchstate.test.ts` (unit), `robot-wait.mjs`
-(waits on [5,empty], resumes to 8 when filled). ⚠ ▢: a robot's *actions* aren't
-yet nest-transparent (it reads the nest, not its top). ✅ **finish key**: Escape finishes training (Backspace
+Both matching AND **actions are transparent to a nest** — they act on what's on
+TOP (`Nest.front`); an empty nest reads as "nothing yet" (wait). A robot's
+combine/move/copy reads a hole through its nest via `holeContent`, **consuming
+the delivery and leaving the nest** for the next bird (robot.cpp "if leader is
+nest find topmost one"). So a `[nest, accumulator]` robot adds each bird delivery
+to the accumulator and waits between them. Guards: `robot-matchstate.test.ts` +
+`robot-nest-actions.test.ts` (unit: 0 → +3 → +4 → 7, then waits), `robot-wait.mjs`. ✅ **finish key**: Escape finishes training (Backspace
 cancels as a web-only helper). ✅ **teams**: drop robot on robot → the dragged
 robot (+ its team) lines up behind the target (`Robot.team`, front-to-back); a
 box is offered front-to-back via `runRobot`→`lineup()`, first trained matching
