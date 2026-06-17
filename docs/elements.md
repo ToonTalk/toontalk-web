@@ -171,8 +171,12 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     `ROBOT_IN_TRAINING`). Matched as a **full-screen view**: `BIGBUBBL` cloud over
     the floor (tools stay usable), the (copied) box brought in, and — there is
     **no hand cursor**: you control the **robot**, which follows the pointer (its
-    arm is the cursor) and holds the picked-up tool (`room.setHandHidden`).
-    Esc/Backspace exits and restores the floor. Flat-box level (no nested sub-world).
+    arm is the cursor, scaled down so it doesn't hide the box) and holds the
+    picked-up tool (`room.setHandHidden`); a yellow **reticle marks the action
+    point** so it's clear where a click lands. Esc/Backspace exits and restores
+    the floor. Flat-box level (no nested sub-world). NB the toolbox is only
+    clickable in the room scene — in the boot city scene the room `chrome` is
+    `visible:false`, so harness real-click tests must switch scenes first.
   - ✅ **animated replay**: a trained robot meeting a matching box **replays its
     actions one step at a time** (`matchingRunner` + main `animateRun`, ~700 ms a
     step, Bammer on each combine), not the instant outcome. Houses still run

@@ -51,7 +51,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17e (thought bubble: fix picking up tools/elements)';
+const BUILD = 'build 2026-06-17f (thought bubble: active-point reticle, tidier robot)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -470,6 +470,21 @@ async function start(): Promise<void> {
     | { hidden: PIXI.DisplayObject[]; realBoxId: string; bubbleBoxId: string; robotId: string; robotOrig: { x: number; y: number } }
     | null = null;
 
+  // A clear reticle marking the ACTIVE POINT (where a click lands) while you
+  // control the robot in the thoughts — the robot's body is offset, so without
+  // this it's unclear where the action happens.
+  const activePoint = new PIXI.Graphics();
+  activePoint.eventMode = 'none';
+  activePoint.visible = false;
+  activePoint.lineStyle(3, 0x222222, 0.5);
+  activePoint.drawCircle(0, 0, 13);
+  activePoint.lineStyle(3, 0xffe24a, 1);
+  activePoint.drawCircle(0, 0, 11);
+  activePoint.beginFill(0xffe24a, 1);
+  activePoint.drawCircle(0, 0, 2.5);
+  activePoint.endFill();
+  renderer.app.stage.addChild(activePoint); // top layer (screen coords)
+
   /** Enter a robot's thoughts to train it. The robot only *imagines* doing
    * things, so we train on a COPY of the box inside the bubble — the real box is
    * hidden and untouched. */
@@ -477,6 +492,7 @@ async function start(): Promise<void> {
     exitThoughts(); // safety: never stack
     room.enterThoughtBubble();
     room.setHandHidden(true); // you ARE the robot in here — no hand cursor
+    activePoint.visible = true; // show where clicks land
     // Hide every floor thing (incl. the real box) except the robot itself.
     const robotC = views.get(robot.id)?.container;
     const hidden: PIXI.DisplayObject[] = [];
@@ -487,8 +503,12 @@ async function start(): Promise<void> {
       }
     }
     // The robot is the CURSOR now — make it pass clicks through (like the hand
-    // did), so it doesn't block picking tools/elements out of Tooly underneath.
-    if (robotC) robotC.eventMode = 'none';
+    // did), so it doesn't block picking tools/elements out of Tooly underneath,
+    // and shrink it a bit so it's a tidy pointer that doesn't hide the box.
+    if (robotC) {
+      robotC.eventMode = 'none';
+      robotC.scale.set(0.6);
+    }
     // The imagined box (a copy) sits prominent at left; the robot at bottom-centre.
     const bubbleBox = realBox.copy() as Box;
     world.add(bubbleBox);
@@ -505,13 +525,17 @@ async function start(): Promise<void> {
   function exitThoughts(placeBy?: 'finish' | 'cancel'): void {
     room.exitThoughtBubble();
     room.setHandHidden(false); // the hand cursor returns on the floor
+    activePoint.visible = false;
     if (!thoughtState) return;
     const ts = thoughtState;
     thoughtState = null;
     if (world.get(ts.bubbleBoxId)) world.remove(ts.bubbleBoxId); // the imagining is over
     for (const c of ts.hidden) if (!c.destroyed) c.visible = true; // floor returns, box unchanged
     const rv = views.get(ts.robotId);
-    if (rv) rv.container.eventMode = 'static'; // the robot is grabbable again on the floor
+    if (rv) {
+      rv.container.eventMode = 'static'; // the robot is grabbable again on the floor
+      rv.container.scale.set(rv.thing.scaleX, rv.thing.scaleY); // restore full size
+    }
     const realBox = world.get(ts.realBoxId);
     if (world.get(ts.robotId)) {
       if (placeBy === 'finish' && realBox) world.moveThing(ts.robotId, { x: realBox.x + 170, y: realBox.y - 96 });
@@ -523,11 +547,12 @@ async function start(): Promise<void> {
   // the cursor) and holds whatever tool you've picked up. No hand here.
   renderer.app.stage.on('pointermove', (e) => {
     if (!thoughtState || !world.get(thoughtState.robotId)) return;
-    // The robot sits just BELOW the pointer and reaches up — its hands meet the
-    // held tool (at pointer + HELD_OFFSET), the action point above stays visible.
+    activePoint.position.set(e.global.x, e.global.y); // reticle marks the action point
+    // The robot sits below the pointer and reaches up, so the action point (and
+    // the box hole you aim at) stays clear above the robot's head.
     world.moveThing(thoughtState.robotId, {
-      x: e.global.x + floorCamera.x - 18,
-      y: e.global.y + floorCamera.y + 60,
+      x: e.global.x + floorCamera.x - 14,
+      y: e.global.y + floorCamera.y + 58,
     });
   });
 
