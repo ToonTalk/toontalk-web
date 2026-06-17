@@ -51,7 +51,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17f (thought bubble: active-point reticle, tidier robot)';
+const BUILD = 'build 2026-06-17g (thought bubble: reticle at the robot hand)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -548,11 +548,12 @@ async function start(): Promise<void> {
   renderer.app.stage.on('pointermove', (e) => {
     if (!thoughtState || !world.get(thoughtState.robotId)) return;
     activePoint.position.set(e.global.x, e.global.y); // reticle marks the action point
-    // The robot sits below the pointer and reaches up, so the action point (and
-    // the box hole you aim at) stays clear above the robot's head.
+    // Offset the robot down-and-right of the pointer so its RAISED HAND (upper-
+    // left of the sprite) sits at the action point — the robot reaches in with its
+    // hand, not its eye.
     world.moveThing(thoughtState.robotId, {
-      x: e.global.x + floorCamera.x - 14,
-      y: e.global.y + floorCamera.y + 58,
+      x: e.global.x + floorCamera.x + 34,
+      y: e.global.y + floorCamera.y + 34,
     });
   });
 
