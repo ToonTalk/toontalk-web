@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17s (fix frozen tab: a waiting robot no longer re-subscribes mid-emit)';
+const BUILD = 'build 2026-06-17t (no-freeze + forgiving floor tool aim; Dusty-erase a ROBOT to generalize it)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

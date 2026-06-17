@@ -612,11 +612,15 @@ export class DragController {
       }
       return;
     }
-    const target = this.world.topAt({ x, y }, (thing, p) => {
-      if (thing.id === tool.thing.id) return false;
-      const view = this.views.get(thing.id);
-      return view ? view.containsPoint(p.x, p.y) : false;
-    });
+    const target =
+      this.world.topAt({ x, y }, (thing, p) => {
+        if (thing.id === tool.thing.id) return false;
+        const view = this.views.get(thing.id);
+        return view ? view.containsPoint(p.x, p.y) : false;
+      }) ??
+      // Forgiving: a near-miss snaps to the nearest thing (so Dusty/the wand act
+      // on what you were aiming at instead of dropping onto bare floor).
+      this.nearestThing(x, y, 48, tool.thing.id);
     if (!target) {
       // Dusty in REVERSE spits its last sucked thing onto the empty floor here
       // (it stays in hand); any other tool/mode treats an empty-floor click as
@@ -638,6 +642,30 @@ export class DragController {
     // A held ELEMENT is placed/applied once, then leaves the hand; a TOOL
     // (wand/Dusty/Pumpy) stays in hand for repeated use.
     if (!this.isTool(tool.thing)) this.putDownTool();
+  }
+
+  /** The nearest thing whose on-screen bounds are within `margin` px of the
+   * world point (x,y), or null — so a held tool applied just OFF a thing still
+   * lands on it (the box/robot is a small target on the floor). */
+  private nearestThing(x: number, y: number, margin: number, excludeId: string): Thing | null {
+    let best: Thing | null = null;
+    let bestD = Infinity;
+    for (const thing of this.world.all()) {
+      if (thing.id === excludeId) continue;
+      const view = this.views.get(thing.id);
+      if (!view) continue;
+      const b = view.container.getBounds(); // screen coords; world = +floorCamera
+      const minX = b.x + floorCamera.x;
+      const minY = b.y + floorCamera.y;
+      const dx = x < minX ? minX - x : x > minX + b.width ? x - (minX + b.width) : 0;
+      const dy = y < minY ? minY - y : y > minY + b.height ? y - (minY + b.height) : 0;
+      const d = Math.hypot(dx, dy);
+      if (d < bestD) {
+        bestD = d;
+        best = thing;
+      }
+    }
+    return bestD <= margin ? best : null;
   }
 
   /** Which box hole / which side a reference point (px,py) lands on, for a drop. */

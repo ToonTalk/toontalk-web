@@ -223,12 +223,17 @@ right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
 Dusty** — erasing a hole **inside the bubble, while training** clears that hole's
 value guard, so the trained robot then matches a box holding *any* number of that
 kind (the manual's "suck things out of the thought bubble"). This is a
-training-time edit to the robot's CONDITION; doing it on the floor afterward
-sucks/erases loose things but cannot change what an already-finished robot
-matches — the condition is fixed when you press Esc. Proven end-to-end by
-`tools/verify/robot-generalize.mjs` (erase the example 1 → the robot adds 1 to a
-box holding 5 → 6). NB re-opening a finished robot to edit it isn't supported
-yet (▢). ✅ **iteration / "keep counting"** — a robot is a guarded rule that
+training-time edit to the robot's CONDITION. **To generalise an already-finished
+robot, Dusty-erase the ROBOT itself** (on the floor) — `interactions.ts` clears
+its `exactValues` (value guards), so it then matches any value; this is the
+on-the-floor "remove the details" path (aim at the ROBOT, a big target — *not* at
+the number, which only erases that pad). Proven by `tools/verify/
+robot-generalize.mjs` (erase the example 1 in the bubble → adds 1 to a 5 → 6) and
+`robot-erase-generalize.mjs` (erase the finished robot → it then matches any
+number). Held tools on the floor also snap to the nearest thing within ~48px
+(`DragController.nearestThing`, guard `tool-floor-aim.mjs`) so a near-miss still
+lands. NB re-opening a finished robot's bubble to edit its *actions* isn't
+supported yet (▢). ✅ **iteration / "keep counting"** — a robot is a guarded rule that
 keeps firing while its condition holds. Drop a box on a trained robot and it
 **iterates** (`animateRun` loops, re-running the matching team member each pass,
 Bammer and all); a generalised "add 1" robot counts forever. It **stops on
