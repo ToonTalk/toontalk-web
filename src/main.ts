@@ -51,7 +51,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17d (thought bubble: you control the robot, no hand)';
+const BUILD = 'build 2026-06-17e (thought bubble: fix picking up tools/elements)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -486,6 +486,9 @@ async function start(): Promise<void> {
         hidden.push(child);
       }
     }
+    // The robot is the CURSOR now — make it pass clicks through (like the hand
+    // did), so it doesn't block picking tools/elements out of Tooly underneath.
+    if (robotC) robotC.eventMode = 'none';
     // The imagined box (a copy) sits prominent at left; the robot at bottom-centre.
     const bubbleBox = realBox.copy() as Box;
     world.add(bubbleBox);
@@ -507,6 +510,8 @@ async function start(): Promise<void> {
     thoughtState = null;
     if (world.get(ts.bubbleBoxId)) world.remove(ts.bubbleBoxId); // the imagining is over
     for (const c of ts.hidden) if (!c.destroyed) c.visible = true; // floor returns, box unchanged
+    const rv = views.get(ts.robotId);
+    if (rv) rv.container.eventMode = 'static'; // the robot is grabbable again on the floor
     const realBox = world.get(ts.realBoxId);
     if (world.get(ts.robotId)) {
       if (placeBy === 'finish' && realBox) world.moveThing(ts.robotId, { x: realBox.x + 170, y: realBox.y - 96 });

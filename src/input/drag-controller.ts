@@ -648,6 +648,7 @@ export class DragController {
 
   private onPointerUp = (e: PIXI.FederatedPointerEvent): void => {
     if (!this.enabled) return;
+    const justGrabbed = this.justGrabbedTool; // was this the click that picked a tool/element up?
     this.justGrabbedTool = false; // the pickup gesture is over; future clicks apply/drop
     this.numEdit = null; // a drop may change a pad's value — end any number edit
     // Training: complete a demonstration — hole→hole combine, take-out, or put-in.
@@ -663,10 +664,12 @@ export class DragController {
         this.trainFrom = null;
         return;
       }
-      // A carried element (put-in) or Dusty dropped on a hole applies here, so a
-      // drag straight out of Tooly works — not just a separate click.
+      // A carried element (put-in) or Dusty applies on the drop — on a hole, or
+      // on any later click. But the SAME click that just plucked it out of Tooly
+      // (justGrabbed, released off a hole) must NOT instantly drop it: keep it in
+      // hand so you can then carry it to a hole.
       if (this.heldTool) {
-        this.applyHeldTool(wp.x, wp.y);
+        if (overHole != null || !justGrabbed) this.applyHeldTool(wp.x, wp.y);
         return;
       }
       if (this.trainFrom != null) {
