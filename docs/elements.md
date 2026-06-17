@@ -244,12 +244,13 @@ run cancels the loop, freezing the box exactly (`runningLoop`/`cancelRunningLoop
 in main.ts; guard `robot-iterate.mjs`). A **house** is the same loop as a
 persistent background process (`runHouse` + the 800 ms tick) — build one by
 dropping a robot + box into a **truck** (`robot-counter.mjs`); bomb it to stop.
-A run **re-enacts the training**: an `insert` step flies a **fresh copy from
-Tooly** (top-right) onto the target hole before the combine lands (`flyThing` +
-`toolboxSource` in main.ts), so you watch the robot fetch a new `1` and drop it
-on the number — robot.htm's "new" element comes from the toolbox each run
-(guard: `robot-fetch.mjs`). ⚠ ▢: the robot's body doesn't yet walk to Tooly —
-only the fetched element travels.
+A run **re-enacts the training**: for an `insert` step the robot **walks to
+Tooly** (top-right), picks up a **fresh copy**, carries it to the target hole and
+drops it (combine → Bammer), then **walks home** (`walk` tween + `flyThing` +
+`toolboxSource` in main.ts) — robot.htm's "new" element comes from the toolbox
+each run. Guards: `robot-walk.mjs` (robot swings right to Tooly, left to the box,
+back home; combines 5→6) and `robot-fetch.mjs` (the fresh element is in flight).
+The walk is the "watch it work" pace; a house runs instantly.
 ✅ **three-way match / wait** (`Robot.matchState` → match | mismatch | wait;
 team-level `teamMatch`): an INCOMPLETE box (a hole the rule needs is empty, or
 holds an *empty nest*) makes the robot **wait, not stop** — the loop suspends

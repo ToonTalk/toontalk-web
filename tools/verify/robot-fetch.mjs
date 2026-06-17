@@ -25,9 +25,10 @@ const geo = await page.evaluate(async () => {
   drag.resolve(box, robot, {}); // run → first insert fetches from Tooly
   return { boxX: 380 };
 });
-// Mid-flight (~250ms into a 520ms fly): a high-zIndex display node should exist,
-// somewhere between Tooly (right) and the box (left).
-await page.waitForTimeout(250);
+// The robot first walks to Tooly (~380ms), THEN the fresh element flies in. Sample
+// mid-flight (~600ms): a high-zIndex display node should exist, between Tooly
+// (right) and the box (left).
+await page.waitForTimeout(600);
 const fly = await page.evaluate(() => {
   const layer = window.__ttDrag.renderer.thingLayer;
   const node = layer.children.find((c) => c.zIndex >= 6000);

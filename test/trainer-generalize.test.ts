@@ -12,8 +12,10 @@ describe('Trainer — partial generalisation', () => {
   it('erasing one hole drops only that hole\'s value guard', () => {
     const w = new World();
     const t = new Trainer(w);
-    const robot = w.add(new Robot({}));
-    const box = w.add(new Box({ holes: [new NumberThing({ value: 3 }), new NumberThing({ value: 7 })] }));
+    const robot = new Robot({});
+    const box = new Box({ holes: [new NumberThing({ value: 3 }), new NumberThing({ value: 7 })] });
+    w.add(robot);
+    w.add(box);
     t.start(robot, box); // condition [number,number], guards [3,7]
     t.eraseHole(0); // generalise hole 0's value
     t.finish();
@@ -30,8 +32,10 @@ describe('Trainer — partial generalisation', () => {
   it('removing a hole imposes "this hole is empty" as a condition', () => {
     const w = new World();
     const t = new Trainer(w);
-    const robot = w.add(new Robot({}));
-    const box = w.add(new Box({ holes: [new NumberThing({ value: 3 }), new NumberThing({ value: 7 })] }));
+    const robot = new Robot({});
+    const box = new Box({ holes: [new NumberThing({ value: 3 }), new NumberThing({ value: 7 })] });
+    w.add(robot);
+    w.add(box);
     t.start(robot, box);
     t.removeHole(0); // suck hole 0 out → that hole must be empty
     t.finish();

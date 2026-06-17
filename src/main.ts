@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17u (running robot fetches a fresh element from Tooly to re-enact its training)';
+const BUILD = 'build 2026-06-17v (running robot walks to Tooly, carries a fresh element to the box, walks home)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -515,6 +515,23 @@ async function start(): Promise<void> {
         });
         return;
       }
+      // Walk the robot (the actor) to a world point; stops cleanly if the loop is
+      // cancelled (you grabbed it) or the robot is gone.
+      const walk = (to: { x: number; y: number }, ms: number, done: () => void): void => {
+        const from = { x: robot.x, y: robot.y };
+        const t0 = performance.now();
+        const tick = (): void => {
+          if (loop.cancelled || !world.get(robot.id)) { renderer.app.ticker.remove(tick); return; }
+          const t = Math.min(1, (performance.now() - t0) / ms);
+          const e = t * (2 - t); // ease-out
+          world.moveThing(robot.id, { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e });
+          if (t >= 1) {
+            renderer.app.ticker.remove(tick);
+            done();
+          }
+        };
+        renderer.app.ticker.add(tick);
+      };
       const actions = runner!.actions;
       let i = 0;
       const step = (): void => {
@@ -536,20 +553,29 @@ async function start(): Promise<void> {
           recomputeScales(box);
           world.notifyChanged(box);
         };
-        // An INSERT re-enacts training: the robot fetches a FRESH copy from Tooly
-        // and drops it on the box (robot.htm — a "new" thing comes from the
-        // toolbox each run). Fly it in from Tooly, then drop it (combine → Bammer).
+        // An INSERT re-enacts training: the robot WALKS to Tooly, picks up a FRESH
+        // copy, carries it to the box and drops it (robot.htm — a "new" thing comes
+        // from the toolbox each run). The robot's body walks; the fresh element
+        // flies in its hand; then it walks home.
         if (action.type === 'insert') {
-          const fresh = renderThingDisplay(action.thing, textures, theme, 46);
+          const home = { x: robot.x, y: robot.y };
           const src = toolboxSource();
-          fresh.position.set(src.x, src.y);
-          fresh.zIndex = 6000;
-          renderer.thingLayer.addChild(fresh);
-          flyThing(fresh, holeWorld(box, action.to), 520, () => {
-            if (merging) bamMouseAt(box, apply); // dropped onto a number → combine
-            else apply(); // dropped into an empty hole → just lands
+          const target = holeWorld(box, action.to);
+          walk({ x: src.x - 70, y: src.y + 60 }, 380, () => {
+            // at Tooly: grab a fresh copy and carry it to the box
+            const fresh = renderThingDisplay(action.thing, textures, theme, 46);
+            fresh.position.set(src.x, src.y);
+            fresh.zIndex = 6000;
+            renderer.thingLayer.addChild(fresh);
+            flyThing(fresh, target, 460, () => {
+              if (merging) bamMouseAt(box, apply); // dropped onto a number → combine
+              else apply(); // dropped into an empty hole → just lands
+            });
+            walk({ x: target.x + 130, y: target.y - 10 }, 460, () => {
+              // after the drop/combine settles, walk home, then take the next step
+              setTimeout(() => { apply(); walk(home, 380, step); }, merging ? 1350 : 250);
+            });
           });
-          setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 520 + (merging ? 1450 : 350));
           return;
         }
         // For a combine, Bammer runs IN and the numbers merge only when the hammer
