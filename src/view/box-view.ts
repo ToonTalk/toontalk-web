@@ -72,7 +72,6 @@ export class BoxView extends ThingView {
     const left = -totalW / 2;
     this.spanLeft = left;
     this.spanW = totalW;
-    const contentSize = H * 0.6;
 
     // An ERASED box (Dusty) shows the blank blue studded panel (CUBBYB) — the
     // hole plates with no box walls/contents: a "any box of this size" wildcard.
@@ -122,7 +121,12 @@ export class BoxView extends ThingView {
 
       const occupant = blank ? null : box.contentsAt(i);
       if (occupant) {
-        const node = renderThingDisplay(occupant, this.textures, this.theme, contentSize);
+        // Contents expand to fill the hole (a number/text pad sits snugly in its
+        // hole, like the original), fit inside the hole's opening (w × h).
+        const node = renderThingDisplay(occupant, this.textures, this.theme, pieceW * 0.68, {
+          scaleUp: true,
+          maxHeight: H * 0.82,
+        });
         node.position.set(cx, 0);
         this.container.addChild(node);
         this.holeNodes[i] = { node, x: cx, y: 0 };

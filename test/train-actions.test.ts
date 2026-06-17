@@ -87,6 +87,19 @@ describe('Trainer records take-out and put-in', () => {
     expect((fresh2.contentsAt(1) as NumberThing).value.toString()).toBe('0');
   });
 
+  it('Dusty in the bubble (eraseHole) generalises a hole, keeping others guarded', () => {
+    const w = new World();
+    const robot = w.add(new Robot({})) as Robot;
+    const sample = w.add(new Box({ holes: [new NumberThing({ value: 4 }), new NumberThing({ value: 5 }) ] })) as Box;
+    const t = new Trainer(w);
+    t.start(robot, sample);
+    expect(t.eraseHole(1)).toBe(true); // suck the value out of hole 1
+    t.finish();
+    // hole 0 still must equal 4; hole 1 matches any number
+    expect(robot.matches(new Box({ holes: [new NumberThing({ value: 4 }), new NumberThing({ value: 99 }) ] }))).toBe(true);
+    expect(robot.matches(new Box({ holes: [new NumberThing({ value: 7 }), new NumberThing({ value: 99 }) ] }))).toBe(false);
+  });
+
   it('an insert-trained robot survives a save/load round-trip and still runs', () => {
     const w = new World();
     const robot = w.add(new Robot({})) as Robot;

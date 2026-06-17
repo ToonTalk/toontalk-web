@@ -467,14 +467,24 @@ export class DragController {
   private applyHeldTool(x: number, y: number): void {
     const tool = this.heldTool;
     if (!tool) return;
-    // Inside a robot's thoughts (training): dropping a thing carried from Tooly
-    // onto a hole is a PUT-IN demonstration (robot.htm "put things into a box").
+    // Inside a robot's thoughts (training):
     if (this.trainer.active) {
       const bv = this.trainingBoxView();
       const to = bv && bv.withinBox(x, y) ? bv.holeIndexAt(x, y) : null;
-      const source = tool.thing;
+      const held = tool.thing;
+      if (this.isTool(held)) {
+        // A tool acts on the hole's content and STAYS in hand: Dusty erases the
+        // value → generalises that hole; other tools apply their normal effect.
+        const content = to != null ? this.trainer.box?.contentsAt(to) ?? null : null;
+        if (content) {
+          if (held instanceof Dusty) this.trainer.eraseHole(to!);
+          else this.resolve(held, content, {});
+        }
+        return;
+      }
+      // An element carried from Tooly → put it IN (consumed by the box).
       this.putDownTool();
-      if (to != null) this.onTrainStep({ kind: 'insert', to, source });
+      if (to != null) this.onTrainStep({ kind: 'insert', to, source: held });
       return;
     }
     const target = this.world.topAt({ x, y }, (thing, p) => {

@@ -3,7 +3,7 @@ import { World } from '../src/model/world';
 import { NumberThing } from '../src/model/number';
 import { TextThing } from '../src/model/text';
 import { Box } from '../src/model/box';
-import { Robot, runRobot, trainByExample } from '../src/model/robot';
+import { Robot, runRobot, trainByExample, matchingRunner } from '../src/model/robot';
 import { resolveDrop } from '../src/model/interactions';
 
 function twoNumberBox(a: number, b: number): Box {
@@ -92,6 +92,15 @@ describe('runRobot', () => {
     const adder = new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] });
     const box = new Box({ size: 2 }); // empty
     expect(runRobot(w, adder, box)).toBe(false);
+  });
+});
+
+describe('matchingRunner (for animated replay)', () => {
+  it('returns the trained robot that would run, or null', () => {
+    const adder = new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] });
+    expect(matchingRunner(adder, twoNumberBox(3, 4))).toBe(adder);
+    expect(matchingRunner(adder, new Box({ size: 2 }))).toBe(null); // empty holes → no match
+    expect(matchingRunner(new Robot({}), twoNumberBox(3, 4))).toBe(null); // untrained
   });
 });
 

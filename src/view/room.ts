@@ -24,7 +24,7 @@ import { Bomb } from '../model/bomb';
 import { renderThingDisplay } from './display';
 import { addModeButton } from './lego-button';
 
-const ROOM_KEYS = ['floor', 'toolbox', 'toolbox-open', 'notebook', 'hand', 'hand-point', 'hand-grab', 'hand-wand', 'truck'] as const;
+const ROOM_KEYS = ['floor', 'toolbox', 'toolbox-open', 'notebook', 'hand', 'hand-point', 'hand-grab', 'hand-wand', 'truck', 'thought-bubble'] as const;
 
 export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, PIXI.Texture>> {
   const scaleMode =
@@ -102,8 +102,6 @@ export class Room {
   private tbWired = false;
   /** The full-screen mist while inside a robot's thoughts (training), or none. */
   private thoughtMist?: PIXI.Container;
-  /** Chrome children hidden during the thought bubble (kept: only the toolbox). */
-  private hiddenChrome?: PIXI.DisplayObject[];
 
   constructor(
     private readonly renderer: Renderer,
@@ -200,17 +198,10 @@ export class Room {
     if (this.thoughtMist) return;
     const mist = this.makeMist(this.renderer.width, this.renderer.height);
     mist.eventMode = 'none';
-    // index 1 = above the floor (0), below the chrome/toolbox.
+    // index 1 = above the floor (0), below the chrome — so Tooly AND the spilled
+    // tools (wand/Dusty/Pumpy) stay available inside the thoughts.
     this.renderer.background.addChildAt(mist, 1);
     this.thoughtMist = mist;
-    // Inside the thoughts only Tooly is present — hide the spilled tool chips etc.
-    this.hiddenChrome = [];
-    for (const child of this.chrome.children) {
-      if (child !== this.tbBox && child.visible) {
-        child.visible = false;
-        this.hiddenChrome.push(child);
-      }
-    }
   }
 
   /** Leave the robot's thoughts — remove the mist, the floor returns. */
@@ -219,35 +210,38 @@ export class Room {
       if (!this.thoughtMist.destroyed) this.thoughtMist.destroy({ children: true });
       this.thoughtMist = undefined;
     }
-    if (this.hiddenChrome) {
-      for (const c of this.hiddenChrome) if (!c.destroyed) c.visible = true;
-      this.hiddenChrome = undefined;
-    }
   }
 
   get inThoughtBubble(): boolean {
     return this.thoughtMist != null;
   }
 
-  /** A soft billowy white-grey mist filling (w,h) — the thought-bubble interior. */
+  /** The thought-bubble interior filling (w,h) — the real BIGBUBBL cloud
+   * (cover-scaled), or a soft procedural mist if the art is missing. */
   private makeMist(w: number, h: number): PIXI.Container {
+    const c = new PIXI.Container();
+    const tex = this.room.get('thought-bubble');
+    if (tex && tex !== PIXI.Texture.WHITE) {
+      const s = new PIXI.Sprite(tex);
+      const cover = Math.max(w / tex.width, h / tex.height);
+      s.scale.set(cover);
+      s.anchor.set(0.5);
+      s.position.set(w / 2, h / 2); // centre-cover the viewport
+      c.addChild(s);
+      return c;
+    }
     const g = new PIXI.Graphics();
-    g.beginFill(0xeef0f6, 1); // pale base, fully covers the floor
+    g.beginFill(0xeef0f6, 1);
     g.drawRect(0, 0, w, h);
     g.endFill();
-    // Billowy puffs: large soft ellipses, lighter and slightly darker, scattered.
-    const blobs = 22;
-    for (let i = 0; i < blobs; i++) {
-      const cx = (i * 137.5) % w; // spread without RNG so it's deterministic
-      const cy = ((i * 89.3) % h);
-      const rxr = 120 + ((i * 53) % 140);
-      const ryr = 90 + ((i * 37) % 110);
+    for (let i = 0; i < 22; i++) {
       const light = i % 3 !== 0;
       g.beginFill(light ? 0xffffff : 0xd9dbe6, light ? 0.45 : 0.4);
-      g.drawEllipse(cx, cy, rxr, ryr);
+      g.drawEllipse((i * 137.5) % w, (i * 89.3) % h, 120 + ((i * 53) % 140), 90 + ((i * 37) % 110));
       g.endFill();
     }
-    return g;
+    c.addChild(g);
+    return c;
   }
 
   /** Move the hand so its fingertip points at (x, y); the sleeve continues the

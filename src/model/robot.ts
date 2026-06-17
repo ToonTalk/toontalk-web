@@ -254,6 +254,16 @@ export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext):
 }
 
 /**
+ * The robot in the team that would run on this box (the first trained one whose
+ * condition matches), or null. Lets the UI replay its actions step-by-step
+ * without applying them instantly.
+ */
+export function matchingRunner(robot: Robot, box: Box): Robot | null {
+  recomputeScales(box);
+  return robot.lineup().find((r) => r.actions.length > 0 && r.matches(box)) ?? null;
+}
+
+/**
  * Run a team on a box: the front robot is offered the box, then each teammate;
  * the first trained robot whose condition matches replays its actions. Returns
  * whether any robot ran (false = nothing matched, the box is left untouched).

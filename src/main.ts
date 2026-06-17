@@ -18,7 +18,7 @@ import { Wand } from './model/wand';
 import { Dusty } from './model/dusty';
 import { Bomb } from './model/bomb';
 import { Scale, recomputeScales } from './model/scale';
-import { Robot } from './model/robot';
+import { Robot, applyAction, matchingRunner } from './model/robot';
 import { Truck } from './model/truck';
 import { House, runHouse } from './model/house';
 import { Notebook } from './model/notebook';
@@ -51,7 +51,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17a (training inside a full-screen thought bubble)';
+const BUILD = 'build 2026-06-17b (training: imagine on a copy + animated replay)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -177,6 +177,17 @@ async function start(): Promise<void> {
     renderer,
     views,
     (dragged, target, ctx) => {
+      // A trained robot meeting a matching box REPLAYS its actions step-by-step
+      // (watch it work), instead of resolveDrop applying the instant outcome.
+      const rbt = dragged instanceof Robot ? dragged : target instanceof Robot ? target : null;
+      const bx = dragged instanceof Box ? dragged : target instanceof Box ? target : null;
+      if (rbt && bx) {
+        const runner = matchingRunner(rbt, bx);
+        if (runner) {
+          animateRun(runner, bx);
+          return;
+        }
+      }
       const result = resolveDrop(world, dragged, target, ctx);
       // One-shot effects at the action site.
       if (result === 'exploded') {
@@ -203,20 +214,12 @@ async function start(): Promise<void> {
         (result === 'combined' || result === 'joined') &&
         (target instanceof NumberThing || target instanceof TextThing || target instanceof Box)
       ) {
-        const tv = views.get(target.id);
-        runMouse(
-          renderer.thingLayer,
-          { x: floorCamera.x - 240, y: floorCamera.y + renderer.height + 200 },
-          { x: target.x, y: target.y },
-          { x: floorCamera.x + renderer.width + 240, y: floorCamera.y - 200 },
-          () => { if (tv && !tv.container.destroyed) tweenScale(tv.container, 1.25, 1, 150); },
-        );
+        bamMouseAt(target);
       }
       if (result === 'train') {
         const robot = (dragged instanceof Robot ? dragged : target) as Robot;
         const box = dragged instanceof Box ? dragged : (target as Box);
-        trainer.start(robot, box);
-        enterThoughts(robot, box); // step inside the robot's thoughts (full-screen)
+        enterThoughts(robot, box); // step inside the robot's thoughts (trains on a copy)
       }
       updateHud(result);
       // Faithful abort hint: a bomb does nothing unless used on a house
@@ -229,13 +232,18 @@ async function start(): Promise<void> {
     },
     trainer,
     (gesture) => {
+      const box = trainer.box;
       if (gesture.kind === 'combine') {
-        trainer.recordCombine(gesture.from, gesture.to);
+        const merging = !!box && !box.isHoleEmpty(gesture.to); // filled target → a real merge
+        if (trainer.recordCombine(gesture.from, gesture.to) && merging && box) bamMouseAt(box);
       } else if (gesture.kind === 'remove') {
         trainer.recordRemove(gesture.from);
       } else if (gesture.kind === 'insert') {
-        // The floor thing goes INTO the box: record it, then remove the original.
-        if (trainer.recordInsert(gesture.to, gesture.source)) world.remove(gesture.source.id);
+        const merging = !!box && !box.isHoleEmpty(gesture.to);
+        if (trainer.recordInsert(gesture.to, gesture.source)) {
+          world.remove(gesture.source.id); // the carried thing goes INTO the box
+          if (merging && box) bamMouseAt(box);
+        }
       }
       updateHud('train');
     },
@@ -413,43 +421,92 @@ async function start(): Promise<void> {
     }
   });
 
+  // A trained robot REPLAYS its actions step-by-step on a matching box (you
+  // watch it work), rather than the box jumping to the final result. Bammer
+  // shows up on each combine, like a live demonstration.
+  function animateRun(runner: Robot, box: Box): void {
+    const actions = runner.actions;
+    let i = 0;
+    const step = (): void => {
+      if (i >= actions.length) {
+        recomputeScales(box);
+        world.notifyChanged(box);
+        updateHud('ran');
+        return;
+      }
+      const action = actions[i++]!;
+      const merging =
+        action.type === 'combine' || (action.type === 'insert' && !box.isHoleEmpty(action.to));
+      applyAction(box, action);
+      recomputeScales(box);
+      world.notifyChanged(box);
+      if (merging) bamMouseAt(box);
+      setTimeout(step, 700);
+    };
+    step();
+  }
+
+  // Bammer the mouse runs in and slams when two things are combined (arithmetic,
+  // text concat, hole-combine) — on the floor AND in a robot's thoughts.
+  function bamMouseAt(t: Thing): void {
+    const tv = views.get(t.id);
+    runMouse(
+      renderer.thingLayer,
+      { x: floorCamera.x - 240, y: floorCamera.y + renderer.height + 200 },
+      { x: t.x, y: t.y },
+      { x: floorCamera.x + renderer.width + 240, y: floorCamera.y - 200 },
+      () => { if (tv && !tv.container.destroyed) tweenScale(tv.container, 1.25, 1, 150); },
+    );
+  }
+
   // Entering the robot's thoughts (robot.htm): training happens inside a
   // full-screen thought-bubble view, not on the floor. We mist over the floor,
   // hide the other floor things, and bring the box + robot into the bubble
   // (the toolbox stays usable). Esc/Backspace exits and restores the floor.
   let thoughtState:
-    | { hidden: PIXI.DisplayObject[]; boxId: string; boxOrig: { x: number; y: number }; robotId: string; robotOrig: { x: number; y: number } }
+    | { hidden: PIXI.DisplayObject[]; realBoxId: string; bubbleBoxId: string; robotId: string; robotOrig: { x: number; y: number } }
     | null = null;
 
-  function enterThoughts(robot: Robot, box: Box): void {
+  /** Enter a robot's thoughts to train it. The robot only *imagines* doing
+   * things, so we train on a COPY of the box inside the bubble — the real box is
+   * hidden and untouched. */
+  function enterThoughts(robot: Robot, realBox: Box): void {
     exitThoughts(); // safety: never stack
     room.enterThoughtBubble();
-    const keep = new Set<PIXI.DisplayObject>(
-      [views.get(box.id)?.container, views.get(robot.id)?.container].filter((c): c is PIXI.Container => !!c),
-    );
+    // Hide every floor thing (incl. the real box) except the robot itself.
+    const robotC = views.get(robot.id)?.container;
     const hidden: PIXI.DisplayObject[] = [];
     for (const child of renderer.thingLayer.children) {
-      if (!keep.has(child) && child.visible) {
+      if (child !== robotC && child.visible) {
         child.visible = false;
         hidden.push(child);
       }
     }
-    // Bring the box (prominent, left) and robot (bottom-centre) into the bubble,
-    // in world coords (camera + screen offset), like the original's view.
-    const boxOrig = { x: box.x, y: box.y };
+    // The imagined box (a copy) sits prominent at left; the robot at bottom-centre.
+    const bubbleBox = realBox.copy() as Box;
+    world.add(bubbleBox);
+    world.moveThing(bubbleBox.id, { x: floorCamera.x + renderer.width * 0.26, y: floorCamera.y + renderer.height * 0.4 });
     const robotOrig = { x: robot.x, y: robot.y };
-    world.moveThing(box.id, { x: floorCamera.x + renderer.width * 0.26, y: floorCamera.y + renderer.height * 0.4 });
     world.moveThing(robot.id, { x: floorCamera.x + renderer.width * 0.5, y: floorCamera.y + renderer.height * 0.8 });
-    thoughtState = { hidden, boxId: box.id, boxOrig, robotId: robot.id, robotOrig };
+    trainer.start(robot, bubbleBox); // record against the imagined copy
+    thoughtState = { hidden, realBoxId: realBox.id, bubbleBoxId: bubbleBox.id, robotId: robot.id, robotOrig };
   }
 
-  function exitThoughts(): void {
+  /** Leave the thoughts: discard the imagined copy, restore the floor (the real
+   * box is unchanged). `placeBy` positions the robot: by the box after a finish,
+   * or back where it was on cancel. */
+  function exitThoughts(placeBy?: 'finish' | 'cancel'): void {
     room.exitThoughtBubble();
     if (!thoughtState) return;
-    for (const c of thoughtState.hidden) if (!c.destroyed) c.visible = true;
-    if (world.get(thoughtState.boxId)) world.moveThing(thoughtState.boxId, thoughtState.boxOrig);
-    if (world.get(thoughtState.robotId)) world.moveThing(thoughtState.robotId, thoughtState.robotOrig);
+    const ts = thoughtState;
     thoughtState = null;
+    if (world.get(ts.bubbleBoxId)) world.remove(ts.bubbleBoxId); // the imagining is over
+    for (const c of ts.hidden) if (!c.destroyed) c.visible = true; // floor returns, box unchanged
+    const realBox = world.get(ts.realBoxId);
+    if (world.get(ts.robotId)) {
+      if (placeBy === 'finish' && realBox) world.moveThing(ts.robotId, { x: realBox.x + 170, y: realBox.y - 96 });
+      else world.moveThing(ts.robotId, ts.robotOrig);
+    }
   }
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
@@ -457,15 +514,13 @@ async function start(): Promise<void> {
   window.addEventListener('keydown', (ev) => {
     if (!trainer.active) return;
     if (ev.key === 'Escape') {
-      const box = trainer.box;
-      const robot = trainer.finish();
-      exitThoughts(); // leave the thoughts, floor returns, box back in place
-      if (robot && box) world.moveThing(robot.id, { x: box.x + 170, y: box.y - 96 });
+      trainer.finish(); // write the condition + actions onto the robot
+      exitThoughts('finish'); // discard the imagined copy; the real box is unchanged
       updateHud('none');
     } else if (ev.key === 'Backspace') {
       ev.preventDefault();
       trainer.cancel();
-      exitThoughts();
+      exitThoughts('cancel');
       updateHud('none');
     }
   });

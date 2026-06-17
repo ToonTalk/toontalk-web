@@ -86,6 +86,9 @@ bounds); pressing the **box frame/walls/gaps or an empty hole** grabs the *whole
 box*. Earlier we extracted on the *nearest* hole, so a full box could never be
 picked up — fixed. The hover wiggle matches (item wiggles when you'd pull it, the
 box when you'd grab it).
+✅ **contents fill their hole** — a number/text (or other) pad in a hole is sized
+to fill the hole opening (`renderThingDisplay` with `scaleUp` + the hole's w×h),
+so it sits snugly like the original, not as a small centred icon.
 
 ## Birds & nests (`bird.cpp`)
 
@@ -148,17 +151,26 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     `holeIndexAt`; the `insert` template is serialised in the snapshot and rebuilt
     on load (round-trip tested). Put-in inside the thought bubble pulls the thing
     from Tooly (held), then a click on a hole records the `insert`
-    (`applyHeldTool` special-cases the training box). ⚠ still ▢: using **tools
-    mid-demo** (wand copy, Dusty erase as a *recorded step*) — Dusty before
-    training still generalises, but a tool action isn't captured into the list.
+    (`applyHeldTool` special-cases the training box). **Bammer the mouse** runs in
+    on every combine (`bamMouseAt`), in the bubble as on the floor. ⚠ still ▢:
+    using a **tool as a *recorded* step** (e.g. wand-copy during the demo).
+  - ✅ **imagination** (pad.cpp:5085 "just the robot's imagination so don't make
+    these changes stick"): training works on a **copy** of the box inside the
+    bubble — the real box is hidden and **untouched after you exit** (verified).
+    `Dusty` inside the bubble erases a hole's value → **generalises** it
+    (`Trainer.eraseHole` clears the guard); the wand/Dusty/Pumpy chips stay
+    available in the thoughts.
   - ✅ **"enter his thoughts"** (robot.cpp/prgrmmr.cpp: dropping a box on the
     robot runs `Programmer …ABOUT_TO_ENTER_THOUGHT_BUBBLE → enter_thought_bubble`
-    with `screen->new_view(CAMERA_MOSTLY_ABOVE)`). We match it as a **full-screen
-    view**, not a small cloud: `Room.enterThoughtBubble()` mists over the floor
-    (between floor and chrome, so Tooly stays usable), main hides the other floor
-    things and brings the box (prominent, left) + robot (bottom-centre) into the
-    bubble; Esc/Backspace exits and restores the floor (`exitThoughtBubble`). The
-    box is edited in place at flat-box level (no nested in-bubble sub-world).
+    with `screen->new_view(CAMERA_MOSTLY_ABOVE)`). Matched as a **full-screen
+    view**: `Room.enterThoughtBubble()` lays the real `BIGBUBBL` cloud over the
+    floor (between floor and chrome, so the tools stay usable), main hides the
+    other floor things and brings the (copied) box + robot into the bubble;
+    Esc/Backspace exits and restores the floor. Flat-box level (no nested sub-world).
+  - ✅ **animated replay**: a trained robot meeting a matching box **replays its
+    actions one step at a time** (`matchingRunner` + main `animateRun`, ~700 ms a
+    step, Bammer on each combine), not the instant outcome. Houses still run
+    instantly via `runRobot`.
 ✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
 right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
 Dusty** — erasing a hole clears its value guard (the manual's "suck things out of

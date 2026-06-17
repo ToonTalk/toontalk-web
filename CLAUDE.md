@@ -71,7 +71,7 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
 | Text | ✅ | concat · number→blank pad ✅ · number→non-blank pad shifts edge char (next_in_alphabet) ✅ · edit ✅ · blank-pad wildcard ✅ |
 | Boxes | ✅ | join (faithful `closest_hole` geometry) ✅ · blank box sizes from number/text/robot/notebook ✅ · (no split exists in C++) |
 | Birds & nests | ✅ | FIFO (audited faithful), multi-nest, combine, hatch · accepts only pads/pics/boxes ✅ · flight anim/t-shirt/network ▢ · egg-on-reload ▢ |
-| Robots | ✅ | train (drop a box on it): hole→hole + take-out + put-in by example inside a **full-screen thought-bubble view** ✅ (source-audited)/match/teams/copy/module-recursion ✅ · tool-use mid-demo ▢ · non-recursive matching ⚠ · wait-on-nest/negation/wand-S self-copy ▢ |
+| Robots | ✅ | train (drop a box on it) in a **full-screen thought bubble**: imagines on a copy (real box unchanged), hole→hole/take-out/put-in/Dusty-generalise, Bammer on combine, **animated step-by-step replay** ✅ (source-audited) · match/teams/copy/module-recursion ✅ · tool-as-recorded-step ▢ · non-recursive matching ⚠ · wait-on-nest/negation/wand-S self-copy ▢ |
 | Scale | ✅ | `<` `>` `=` guards work |
 | Dusty | ✅ | S/R/E modes; defaults to **suck** (faithful, audited) |
 | Wand | ✅ | C/O/S modes |

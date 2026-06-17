@@ -112,6 +112,22 @@ export class Trainer {
     return true;
   }
 
+  /**
+   * Generalize a hole with Dusty *inside the thought bubble* (robot.htm "suck
+   * things out of the box… to make the robot work when you want"): erase the
+   * imagined hole's value and drop its exact-value guard, so the robot matches
+   * any value of that kind there. Returns success.
+   */
+  eraseHole(i: number): boolean {
+    if (!this.session) return false;
+    const content = this.session.box.contentsAt(i);
+    if (!content) return false;
+    content.erased = true; // show the blank/"any" form in the bubble
+    this.session.exactValues[i] = null; // drop the value guard → wildcard
+    this.world.notifyChanged(this.session.box);
+    return true;
+  }
+
   /** Finish: write the condition + actions onto the robot. Returns it. */
   finish(): Robot | null {
     if (!this.session) return null;
