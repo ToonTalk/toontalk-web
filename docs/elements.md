@@ -174,7 +174,14 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     generalise), **suck (S)** removes it (`Trainer.removeHole`, hole → empty); the
     wand/Dusty/Pumpy chips stay available. A carried element/tool applies on the
     **drop (release)**, so dragging straight out of Tooly onto a hole works (not
-    only a separate click).
+    only a separate click). In the bubble a held tool is drawn **on the active
+    point** (`DragController.heldOffset` → 0 while training, vs the floor's
+    `HELD_OFFSET`), so aiming the nozzle at a hole is what gets clicked — and the
+    **mode keys (E/S/R) stay live during training** (`onKeyDown` no longer bails
+    on `trainer.active`), so you can switch Dusty to erase, not only suck. Guards:
+    `tools/verify/bubble-dusty.mjs`. (Both were broken before: the tool sat
+    ~`HELD_OFFSET` below the active point so `holeIndexAt` missed, and the keys
+    were dead, so Dusty could only ever suck.)
   - ✅ **"enter his thoughts"** (robot.cpp/prgrmmr.cpp: dropping a box on the
     robot runs `Programmer …ABOUT_TO_ENTER_THOUGHT_BUBBLE → enter_thought_bubble`
     with `screen->new_view(CAMERA_MOSTLY_ABOVE)`; the programmer's appearance is
@@ -189,9 +196,13 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     clickable in the room scene — in the boot city scene the room `chrome` is
     `visible:false`, so harness real-click tests must switch scenes first.
   - ✅ **animated replay**: a trained robot meeting a matching box **replays its
-    actions one step at a time** (`matchingRunner` + main `animateRun`, ~700 ms a
-    step, Bammer on each combine), not the instant outcome. Houses still run
-    instantly via `runRobot`.
+    actions one step at a time** (`matchingRunner` + main `animateRun`), not the
+    instant outcome. A combine's result lands **on the bam** — `bamMouseAt` takes
+    an `onSlam` callback and the merge is applied when the hammer connects (~1.2 s
+    in), with the step then waiting it out (~1.4 s), so you see the mouse run in
+    and strike *before* the numbers change (was: result applied instantly, mouse
+    arrived after). Non-merging steps apply at once (~700 ms). Guard:
+    `tools/verify/bubble-replay.mjs`. Houses still run instantly via `runRobot`.
 ✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
 right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
 Dusty** — erasing a hole clears its value guard (the manual's "suck things out of

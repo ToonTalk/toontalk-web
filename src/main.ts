@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17j (fix bubble box hit-testing — geometry now survives view construction)';
+const BUILD = 'build 2026-06-17k (bubble: Dusty aims true + erase/suck keys; replay result lands on the bam)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -459,25 +459,39 @@ async function start(): Promise<void> {
       const action = actions[i++]!;
       const merging =
         action.type === 'combine' || (action.type === 'insert' && !box.isHoleEmpty(action.to));
-      applyAction(box, action);
-      recomputeScales(box);
-      world.notifyChanged(box);
-      if (merging) bamMouseAt(box);
-      setTimeout(step, 700);
+      let applied = false;
+      const apply = (): void => {
+        if (applied) return;
+        applied = true;
+        applyAction(box, action);
+        recomputeScales(box);
+        world.notifyChanged(box);
+      };
+      // For a combine, Bammer runs IN and the numbers merge only when the hammer
+      // strikes (~1.2 s) — so you watch the mouse arrive and slam *before* the
+      // result appears, not after. Other actions apply at once. `apply` is
+      // guarded so it still happens exactly once even if the slam is skipped
+      // (e.g. art missing → runMouse fires its callback immediately).
+      if (merging) bamMouseAt(box, apply);
+      else apply();
+      setTimeout(() => { apply(); step(); }, merging ? 1400 : 700);
     };
     step();
   }
 
   // Bammer the mouse runs in and slams when two things are combined (arithmetic,
   // text concat, hole-combine) — on the floor AND in a robot's thoughts.
-  function bamMouseAt(t: Thing): void {
+  function bamMouseAt(t: Thing, onSlam?: () => void): void {
     const tv = views.get(t.id);
     runMouse(
       renderer.thingLayer,
       { x: floorCamera.x - 240, y: floorCamera.y + renderer.height + 200 },
       { x: t.x, y: t.y },
       { x: floorCamera.x + renderer.width + 240, y: floorCamera.y - 200 },
-      () => { if (tv && !tv.container.destroyed) tweenScale(tv.container, 1.25, 1, 150); },
+      () => {
+        onSlam?.(); // the combine result lands exactly when the hammer connects
+        if (tv && !tv.container.destroyed) tweenScale(tv.container, 1.25, 1, 150);
+      },
     );
   }
 

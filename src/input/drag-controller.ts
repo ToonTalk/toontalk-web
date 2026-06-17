@@ -190,7 +190,19 @@ export class DragController {
    * Backspace deletes.
    */
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (!this.enabled || this.trainer.active || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!this.enabled || e.ctrlKey || e.metaKey || e.altKey) return;
+
+    // While training (the thought bubble) the only keys we act on are a held
+    // tool's MODE keys — e.g. E/S/R to switch Dusty to erase/suck/reverse, so
+    // you can generalise a hole, not just remove it. Esc/Backspace are the
+    // trainer's done/cancel (handled separately) and pad-editing is off here.
+    if (this.trainer.active) {
+      if (this.heldTool && this.setToolMode(this.heldTool.thing, e.key)) {
+        e.preventDefault();
+        this.world.notifyChanged(this.heldTool.thing);
+      }
+      return;
+    }
 
     // Holding a tool: space applies it (like a click); Escape puts it down;
     // letters set its mode.
@@ -349,6 +361,17 @@ export class DragController {
     return `box centre ~${this.scr(box.x, box.y)} (${box.size} hole${box.size === 1 ? '' : 's'})`;
   }
 
+  /** Where a held tool/element is drawn relative to the active point. On the
+   * floor it hangs below-right of the (hidden) pointer. In a robot's thoughts
+   * the active point IS the reticle at the robot's hand, so the tool sits right
+   * on it — you aim the tool at a hole and that exact spot is what's clicked.
+   * (Before this, Dusty/wand were drawn ~HELD_OFFSET below the active point, so
+   * aiming the nozzle put the real hit-point above the hole and the click
+   * missed — `holeIndexAt` is not forgiving the way put-in's `dropHole` is.) */
+  private heldOffset(): { x: number; y: number } {
+    return this.trainer.active ? { x: 0, y: 0 } : HELD_OFFSET;
+  }
+
   /** Cursor → world: the floor view is panned by the floor camera, so a screen
    * point maps to a world point by adding the camera offset. All placement and
    * hit-testing here works in WORLD coords. */
@@ -460,7 +483,8 @@ export class DragController {
     if (this.isTool(picked)) {
       this.heldTool = view;
       view.container.zIndex = 1000;
-      this.world.moveThing(picked.id, { x: x + HELD_OFFSET.x, y: y + HELD_OFFSET.y });
+      const o = this.heldOffset();
+      this.world.moveThing(picked.id, { x: x + o.x, y: y + o.y });
       this.onGrab(picked);
       return;
     }
@@ -491,7 +515,8 @@ export class DragController {
     this.justGrabbedTool = true; // ignore this same click's apply/drop on the stage
     view.container.zIndex = 1000;
     if (this.pointer.x >= 0) {
-      this.world.moveThing(thing.id, { x: this.pointer.x + HELD_OFFSET.x, y: this.pointer.y + HELD_OFFSET.y });
+      const o = this.heldOffset();
+      this.world.moveThing(thing.id, { x: this.pointer.x + o.x, y: this.pointer.y + o.y });
     }
     this.onGrab(thing);
   }
@@ -652,9 +677,10 @@ export class DragController {
     this.updateHoverTarget();
     // A held tool follows the cursor (it's in hand), even with no button down.
     if (this.heldTool) {
+      const o = this.heldOffset();
       this.world.moveThing(this.heldTool.thing.id, {
-        x: w.x + HELD_OFFSET.x,
-        y: w.y + HELD_OFFSET.y,
+        x: w.x + o.x,
+        y: w.y + o.y,
       });
       return;
     }
