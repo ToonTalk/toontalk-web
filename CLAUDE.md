@@ -93,7 +93,16 @@ Skills: `/new-element` (faithful scaffold checklist), `/fidelity-audit
   animated scenes make screenshots time out. The harness pumps
   `__ttApp.ticker.update()` manually in headless Chromium — deterministic
   captures, frame series, and `--eval` checks against the debug globals.
-- Debug globals: `__ttApp` (PIXI app), `__ttWorld`, `__ttCity`, `__ttInput`.
+- Debug globals: `__ttApp` (PIXI app), `__ttWorld`, `__ttCity`, `__ttDrag`,
+  `__ttRoom`, `__ttInput`. `__ttLog()` returns the debug-log text.
+- **Debug log** (`debug-log.ts`): the toolbar **Log** button toggles a copyable
+  panel tracing interactions (grab / drop+result / toolbox pick / train gesture /
+  scene / thoughts). Tell testers to open it, reproduce, and click it to copy —
+  the trace shows e.g. `drop: num(3) → num(5) : combined` or `: none`.
+- **Real-click harness gotcha**: standalone Playwright tests must press Backquote
+  to switch from the boot **city** scene to the **room** before clicking the
+  floor/toolbox (the city hides the room `chrome`, so clicks fall through). The
+  city sit→floor needs Pointer Lock (headless can't), so jump scenes instead.
 - Houses run on a real `setInterval(800ms)`; give them real time
   (`--settle 3000`) or verify via tests.
 

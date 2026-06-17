@@ -478,9 +478,11 @@ export class Room {
       const sample = this.sampleThing(pick);
       if (sample) {
         // static: the robot stays a still Lego figure in Tooly until taken out.
+        // stretch: reshaped to fill its compartment (taken out → natural size).
         const icon = renderThingDisplay(sample, this.tools, this.theme, cellW, {
           static: true,
           maxHeight: cellH,
+          stretch: true,
         });
         icon.position.set(cx, cy);
         box.addChild(icon);

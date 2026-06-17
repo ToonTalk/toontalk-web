@@ -86,9 +86,11 @@ bounds); pressing the **box frame/walls/gaps or an empty hole** grabs the *whole
 box*. Earlier we extracted on the *nearest* hole, so a full box could never be
 picked up — fixed. The hover wiggle matches (item wiggles when you'd pull it, the
 box when you'd grab it).
-✅ **contents fill their hole** — a number/text (or other) pad in a hole is sized
-to fill the hole opening (`renderThingDisplay` with `scaleUp` + the hole's w×h),
-so it sits snugly like the original, not as a small centred icon.
+✅ **contents reshape to fill their hole** — a pad in a hole is stretched to the
+hole opening, **width and height independently** (`renderThingDisplay` `stretch`,
+cubby.cpp `set_size_and_location`); taken out, it returns to natural size (the
+extracted thing gets its own un-stretched view). Toolbox compartments stretch the
+same way.
 
 ## Birds & nests (`bird.cpp`)
 

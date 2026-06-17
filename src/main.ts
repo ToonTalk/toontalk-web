@@ -33,6 +33,7 @@ import { createThingView } from './view/view-factory';
 import { renderThingDisplay } from './view/display';
 import { floorCamera, FLOOR_W, FLOOR_H, clampFloorCamera } from './view/floor-camera';
 import * as PIXI from 'pixi.js';
+import { tlog, desc, toggleDebugPanel } from './debug-log';
 import { BoxView } from './view/box-view';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
@@ -51,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17g (thought bubble: reticle at the robot hand)';
+const BUILD = 'build 2026-06-17h (debug Log panel + reshape hole contents)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -81,6 +82,7 @@ async function start(): Promise<void> {
   // original); picking an element drops it on the floor to drag.
   const room = new Room(renderer, roomTextures, textures, theme, (key, x, y) => {
     const made = spawnTool(key, x, y);
+    tlog(`toolbox pick: ${key}${made ? ' → ' + desc(made) : ' (failed)'}`);
     if (!made) return;
     const v = views.get(made.id);
     // Clicking ANYTHING in Tooly: it expands (grows from small) and ends up in
@@ -142,6 +144,7 @@ async function start(): Promise<void> {
   // thing → grab, nothing → point.
   let carriedWand: ThingView | undefined;
   const onGrab = (thing: Thing | null): void => {
+    tlog(thing ? `grab: ${desc(thing)}` : 'release (hand empty)');
     // Stopped carrying the wand → un-hide its sprite (the holdwand pose drew it
     // while carried). Without this the wand vanished when picked up and dropped.
     if (carriedWand && !(thing instanceof Wand && views.get(thing.id) === carriedWand)) {
@@ -184,11 +187,15 @@ async function start(): Promise<void> {
       if (rbt && bx) {
         const runner = matchingRunner(rbt, bx);
         if (runner) {
+          tlog(`run: robot replays ${runner.actions.length} action(s) on ${desc(bx)}`);
           animateRun(runner, bx);
           return;
         }
       }
+      const dDesc = desc(dragged);
+      const tDesc = desc(target); // describe BEFORE the drop mutates values
       const result = resolveDrop(world, dragged, target, ctx);
+      tlog(`drop: ${dDesc} → ${tDesc}${ctx.holeIndex != null ? ` hole ${ctx.holeIndex}` : ''} : ${result}`);
       // One-shot effects at the action site.
       if (result === 'exploded') {
         playOnce('explode', renderer.thingLayer, dragged.x, dragged.y);
@@ -233,21 +240,31 @@ async function start(): Promise<void> {
     trainer,
     (gesture) => {
       const box = trainer.box;
+      let ok = false;
       if (gesture.kind === 'combine') {
         const merging = !!box && !box.isHoleEmpty(gesture.to); // filled target → a real merge
-        if (trainer.recordCombine(gesture.from, gesture.to) && merging && box) bamMouseAt(box);
+        ok = trainer.recordCombine(gesture.from, gesture.to);
+        if (ok && merging && box) bamMouseAt(box);
       } else if (gesture.kind === 'remove') {
-        trainer.recordRemove(gesture.from);
+        ok = trainer.recordRemove(gesture.from);
       } else if (gesture.kind === 'insert') {
         const merging = !!box && !box.isHoleEmpty(gesture.to);
-        if (trainer.recordInsert(gesture.to, gesture.source)) {
+        ok = trainer.recordInsert(gesture.to, gesture.source);
+        if (ok) {
           world.remove(gesture.source.id); // the carried thing goes INTO the box
           if (merging && box) bamMouseAt(box);
         }
       } else if (gesture.kind === 'copy') {
         const merging = !!box && !box.isHoleEmpty(gesture.to); // copy onto a full hole → merge
-        if (trainer.recordCopy(gesture.from, gesture.to) && merging && box) bamMouseAt(box);
+        ok = trainer.recordCopy(gesture.from, gesture.to);
+        if (ok && merging && box) bamMouseAt(box);
       }
+      const g =
+        gesture.kind === 'insert' ? `insert ${desc(gesture.source)} → hole ${gesture.to}`
+        : gesture.kind === 'combine' ? `combine hole ${gesture.from}→${gesture.to}`
+        : gesture.kind === 'copy' ? `copy hole ${gesture.from}→${gesture.to}`
+        : `remove hole ${gesture.from}`;
+      tlog(`train gesture: ${g} → ${ok ? 'recorded' : 'no-op'} (${trainer.stepCount} steps)`);
       updateHud('train');
     },
     textures,
@@ -312,6 +329,7 @@ async function start(): Promise<void> {
 
   /** Show the city (street/flying); hide the room/World and its input. */
   function showCity(): void {
+    tlog('scene: CITY (flying)');
     city.setActive(true);
     room.setVisible(false);
     renderer.thingLayer.visible = false;
@@ -335,6 +353,7 @@ async function start(): Promise<void> {
    * floor) is centred — the toolbox stays at hand, things stay where you left
    * them. */
   function enterRoom(style: 'a' | 'b' | 'c' = 'a', sitFx = 0.5, sitFy = 0.5): void {
+    tlog(`scene: FLOOR (style ${style})`);
     room.setFloorStyle(style);
     setFloorCamera(sitFx * FLOOR_W - renderer.width / 2, sitFy * FLOOR_H - renderer.height / 2);
     city.setActive(false);
@@ -489,6 +508,7 @@ async function start(): Promise<void> {
    * things, so we train on a COPY of the box inside the bubble — the real box is
    * hidden and untouched. */
   function enterThoughts(robot: Robot, realBox: Box): void {
+    tlog(`thoughts: ENTER — training ${desc(robot)} on ${desc(realBox)}`);
     exitThoughts(); // safety: never stack
     room.enterThoughtBubble();
     room.setHandHidden(true); // you ARE the robot in here — no hand cursor
@@ -523,6 +543,7 @@ async function start(): Promise<void> {
    * box is unchanged). `placeBy` positions the robot: by the box after a finish,
    * or back where it was on cancel. */
   function exitThoughts(placeBy?: 'finish' | 'cancel'): void {
+    if (thoughtState) tlog(`thoughts: EXIT (${placeBy ?? 'reset'})`);
     room.exitThoughtBubble();
     room.setHandHidden(false); // the hand cursor returns on the floor
     activePoint.visible = false;
@@ -800,6 +821,8 @@ async function start(): Promise<void> {
     mainNotebook = installMainNotebook();
     updateHud('none');
   });
+  // Toggle the copyable debug-log panel (click the panel to copy it).
+  document.getElementById('log-btn')?.addEventListener('click', toggleDebugPanel);
 
   // Render-mode toggle link.
   const toggle = document.getElementById('mode-toggle') as HTMLAnchorElement | null;

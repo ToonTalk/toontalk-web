@@ -13,7 +13,7 @@ export function renderThingDisplay(
   textures: Map<string, PIXI.Texture>,
   theme: RenderTheme,
   size: number,
-  opts: { scaleUp?: boolean; static?: boolean; maxHeight?: number } = {},
+  opts: { scaleUp?: boolean; static?: boolean; maxHeight?: number; stretch?: boolean } = {},
 ): PIXI.Container {
   const view = createThingView(thing, textures, theme, { static: opts.static });
   const node = view.container;
@@ -21,15 +21,20 @@ export function renderThingDisplay(
   node.position.set(0, 0); // createThingView places it at the thing's world coords; centre it
   if (opts.static) freezeAnimations(node); // e.g. the robot stays still in Tooly until taken out
   const bounds = node.getLocalBounds();
-  // Fit INSIDE a `size` × `maxHeight` box (the original's TO_FIT_INSIDE). When
-  // maxHeight is omitted this is a `size`×`size` square = fit-largest-dim-to-size
-  // (back-compatible). Toolbox compartments are wider than tall, so passing both
-  // lets a tall plate and a wide truck each fill their cell without overflowing.
   const maxH = opts.maxHeight ?? size;
-  const fit = Math.min(size / Math.max(bounds.width, 1), maxH / Math.max(bounds.height, 1));
-  // Shrink to fit by default; with scaleUp, also enlarge small things to fill
-  // the cell (used so a delivered thing fully covers its nest).
-  if (fit < 1 || opts.scaleUp) node.scale.set(fit);
+  const sx = size / Math.max(bounds.width, 1);
+  const sy = maxH / Math.max(bounds.height, 1);
+  if (opts.stretch) {
+    // Reshape to FILL a `size` × `maxHeight` box, x and y independently — a pad
+    // in a box/toolbox hole is squished to fit the hole (cubby.cpp
+    // set_size_and_location), and restored to natural size when taken out (the
+    // extracted thing gets its own un-stretched view).
+    node.scale.set(sx, sy);
+  } else {
+    // Fit INSIDE the box (the original's TO_FIT_INSIDE), preserving aspect.
+    const fit = Math.min(sx, sy);
+    if (fit < 1 || opts.scaleUp) node.scale.set(fit);
+  }
   return node;
 }
 
