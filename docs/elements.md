@@ -172,7 +172,13 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     bubble — the real box is hidden and **untouched after you exit** (verified).
     `Dusty` per mode: **erase (E)** wildcards a hole's value (`Trainer.eraseHole`,
     generalise), **suck (S)** removes it (`Trainer.removeHole`, hole → empty); the
-    wand/Dusty/Pumpy chips stay available. A carried element/tool applies on the
+    wand/Dusty/Pumpy chips stay available. Dusty in the bubble uses the **same
+    forgiving snap as put-in** (`BoxView.dropHole`, ~30px) so a near-miss still
+    hits the hole (it used the strict `holeIndexAt` before — that's why put-in
+    worked but Dusty missed), plays the **dusty-suck animation** as feedback (the
+    floor got it via `resolveDrop`; the training path didn't), and the held tool
+    is drawn **see-through** there so it doesn't hide the small box (guard:
+    `bubble-tool-aim.mjs`). A carried element/tool applies on the
     **drop (release)**, so dragging straight out of Tooly onto a hole works (not
     only a separate click). A held tool's **business end is the active point** —
     `DragController.heldVec` places it so `ThingView.activeOffset` (Dusty's nose,

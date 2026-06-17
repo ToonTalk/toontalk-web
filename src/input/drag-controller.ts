@@ -35,7 +35,7 @@ import { BoxView } from '../view/box-view';
 import { NestView } from '../view/nest-view';
 import { NotebookView } from '../view/notebook-view';
 import { renderThingDisplay } from '../view/display';
-import { tweenScale } from '../view/animation';
+import { tweenScale, playOnce } from '../view/animation';
 import { floorCamera } from '../view/floor-camera';
 import { tlog, desc } from '../debug-log';
 
@@ -578,14 +578,20 @@ export class DragController {
       const held = tool.thing;
       const at = this.scr(x, y);
       if (this.isTool(held)) {
-        // A tool acts on the hole's content (exact hit) and STAYS in hand: Dusty
-        // erases (generalise) or removes; other tools apply their normal effect.
-        const to = bv && bv.withinBox(x, y) ? bv.holeIndexAt(x, y) : null;
+        // A tool acts on the hole's content and STAYS in hand: Dusty erases
+        // (generalise) or removes; other tools apply their normal effect. Use the
+        // SAME forgiving snap as put-in (`dropHole`, ~30px) so a near-miss still
+        // lands on the hole — Dusty was using the strict `holeIndexAt`, which is
+        // why it kept missing when put-in (forgiving) worked.
+        const to = bv ? bv.dropHole(x, y, 30) : null;
         const content = to != null ? this.trainer.box?.contentsAt(to) ?? null : null;
         if (content) {
           if (held instanceof Dusty) {
             if (held.mode === 'erase') this.trainer.eraseHole(to!);
             else this.trainer.removeHole(to!);
+            // Visible feedback that Dusty acted — the floor plays this via
+            // resolveDrop; the training path bypasses it, so play it here too.
+            playOnce('dusty-suck', this.renderer.thingLayer, x, y);
           } else {
             this.resolve(held, content, {});
           }
@@ -715,6 +721,13 @@ export class DragController {
         x: w.x + o.x,
         y: w.y + o.y,
       });
+      // In the thought bubble the box is small and the tool would cover it — make
+      // the held tool see-through there so you can see the hole you're aiming at
+      // (the reticle still marks the exact active point). The wand manages its own
+      // alpha (hold-pose), so leave it.
+      if (!(this.heldTool.thing instanceof Wand)) {
+        this.heldTool.container.alpha = this.trainer.active ? 0.45 : 1;
+      }
       return;
     }
     if (this.trainer.active) {
