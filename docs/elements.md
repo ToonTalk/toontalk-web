@@ -178,12 +178,16 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     `DragController.heldVec` places it so `ThingView.activeOffset` (Dusty's nose,
     the wand's star, from `TOOL_TIP_FRAC` × texture size) lands on the cursor/
     reticle, on the floor and in the bubble alike, so aiming the tip is what gets
-    clicked (guard: `tools/verify/tool-tip.mjs`). The **mode keys (E/S/R) stay
-    live during training** (`onKeyDown` no longer bails on `trainer.active`), so
-    you can switch Dusty to erase, not only suck (guard: `bubble-dusty.mjs`).
-    (Both were broken before: the tool sat ~`HELD_OFFSET` below the active point
-    so `holeIndexAt` missed — its nose was nowhere near the cursor — and the keys
-    were dead, so Dusty could only ever suck.)
+    clicked (guard: `tools/verify/tool-tip.mjs`). That active point is now **shown
+    as a reticle on the floor** too — not just in the bubble — whenever a tool is
+    held (`main.ts`, driven by `holdingTool` from `onGrab`), since an *invisible*
+    floor active point was why held tools kept clicking empty space (guards:
+    `tool-reticle.mjs`, and `floor-dusty.mjs` proves the floor tool path works
+    when the point is on target). The **mode keys (E/S/R) stay live during
+    training** (`onKeyDown` no longer bails on `trainer.active`), so you can
+    switch Dusty to erase, not only suck (guard: `bubble-dusty.mjs`). (All were
+    broken before: the tool sat ~`HELD_OFFSET` below an invisible active point so
+    `holeIndexAt` missed, and the keys were dead, so Dusty could only ever suck.)
   - ✅ **"enter his thoughts"** (robot.cpp/prgrmmr.cpp: dropping a box on the
     robot runs `Programmer …ABOUT_TO_ENTER_THOUGHT_BUBBLE → enter_thought_bubble`
     with `screen->new_view(CAMERA_MOSTLY_ABOVE)`; the programmer's appearance is

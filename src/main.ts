@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17m (bubble wiggles the targeted hole; Tooly items wiggle on hover)';
+const BUILD = 'build 2026-06-17n (held tools show the active-point reticle on the floor too)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -143,8 +143,14 @@ async function start(): Promise<void> {
   // (and the floor wand is hidden, since it's now in the cursor), any other
   // thing → grab, nothing → point.
   let carriedWand: ThingView | undefined;
+  // True while a TOOL (wand/Dusty/Pumpy) is in hand — drives the floor active-
+  // point reticle so it's clear where the tool's tip will act (it was invisible
+  // on the floor, so tools kept missing).
+  let holdingTool = false;
   const onGrab = (thing: Thing | null): void => {
     tlog(thing ? `grab: ${desc(thing)}` : 'release (hand empty)');
+    holdingTool = !!thing && (thing.kind === 'wand' || thing.kind === 'dusty' || thing.kind === 'pumpy');
+    if (!holdingTool && !thoughtState) activePoint.visible = false; // dropped a tool on the floor
     // Stopped carrying the wand → un-hide its sprite (the holdwand pose drew it
     // while carried). Without this the wand vanished when picked up and dropped.
     if (carriedWand && !(thing instanceof Wand && views.get(thing.id) === carriedWand)) {
@@ -581,15 +587,23 @@ async function start(): Promise<void> {
   // In the thought bubble you ARE the robot: it follows the pointer (its arm is
   // the cursor) and holds whatever tool you've picked up. No hand here.
   renderer.app.stage.on('pointermove', (e) => {
-    if (!thoughtState || !world.get(thoughtState.robotId)) return;
-    activePoint.position.set(e.global.x, e.global.y); // reticle marks the action point
-    // Offset the robot down-and-right of the pointer so its RAISED HAND (upper-
-    // left of the sprite) sits at the action point — the robot reaches in with its
-    // hand, not its eye.
-    world.moveThing(thoughtState.robotId, {
-      x: e.global.x + floorCamera.x + 34,
-      y: e.global.y + floorCamera.y + 34,
-    });
+    if (thoughtState && world.get(thoughtState.robotId)) {
+      activePoint.position.set(e.global.x, e.global.y); // reticle marks the action point
+      // Offset the robot down-and-right of the pointer so its RAISED HAND (upper-
+      // left of the sprite) sits at the action point — the robot reaches in with its
+      // hand, not its eye.
+      world.moveThing(thoughtState.robotId, {
+        x: e.global.x + floorCamera.x + 34,
+        y: e.global.y + floorCamera.y + 34,
+      });
+      return;
+    }
+    // On the floor, a held tool's tip sits on the cursor — mark it with the same
+    // reticle so it's clear exactly where Dusty/the wand will act.
+    if (holdingTool) {
+      activePoint.position.set(e.global.x, e.global.y);
+      activePoint.visible = true;
+    }
   });
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
