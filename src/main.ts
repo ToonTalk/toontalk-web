@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17h (debug Log panel + reshape hole contents)';
+const BUILD = 'build 2026-06-17i (forgiving put-in + click/position logging)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

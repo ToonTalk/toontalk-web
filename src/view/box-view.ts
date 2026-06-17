@@ -177,6 +177,24 @@ export class BoxView extends ThingView {
     );
   }
 
+  /** The hole nearest a drop point, forgiving by `margin` px around the box (so
+   * dropping a thing *near* a hole still lands in it); null only if well clear of
+   * the box. Used for put-in, which should be lenient. */
+  dropHole(worldX: number, worldY: number, margin = 0): number | null {
+    const lx = worldX - this.container.position.x;
+    const ly = worldY - this.container.position.y;
+    if (this.holeCenters.length === 0) return null;
+    if (ly < -H / 2 - margin || ly > H / 2 + margin) return null;
+    if (lx < this.spanLeft - margin || lx > this.spanLeft + this.spanW + margin) return null;
+    let best = 0;
+    let bestD = Infinity;
+    this.holeCenters.forEach((cx, i) => {
+      const d = Math.abs(lx - cx);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
+
   /** Index of the hole nearest a world-space point (within the box), or null. */
   holeIndexAt(worldX: number, worldY: number): number | null {
     const localX = worldX - this.container.position.x;

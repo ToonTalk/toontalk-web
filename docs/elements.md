@@ -152,8 +152,9 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     into a filled one). The gesture is read by `BoxView.withinBox` +
     `holeIndexAt`; the `insert` template is serialised in the snapshot and rebuilt
     on load (round-trip tested). Put-in inside the thought bubble pulls the thing
-    from Tooly (held), then a click on a hole records the `insert`
-    (`applyHeldTool` special-cases the training box). **Bammer the mouse** runs in
+    from Tooly (held), then a click on/near a hole records the `insert`
+    (`applyHeldTool` → `BoxView.dropHole` is forgiving by ~32px so a small miss
+    still lands; a clear miss is logged with its screen position). **Bammer the mouse** runs in
     on every combine (`bamMouseAt`), in the bubble as on the floor. ✅ **wand-copy
     as a recorded step**: hold the wand and drag a hole onto another → a `copy`
     action duplicates that hole's current content into the target each run (fills

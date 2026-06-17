@@ -37,6 +37,7 @@ import { NotebookView } from '../view/notebook-view';
 import { renderThingDisplay } from '../view/display';
 import { tweenScale } from '../view/animation';
 import { floorCamera } from '../view/floor-camera';
+import { tlog, desc } from '../debug-log';
 
 export type DropResolver = (dragged: Thing, target: Thing | undefined, ctx: DropContext) => void;
 
@@ -336,6 +337,18 @@ export class DragController {
     return view instanceof BoxView ? view : null;
   }
 
+  /** Format a WORLD point as on-screen coords for the debug log. */
+  private scr(x: number, y: number): string {
+    return `screen(${Math.round(x - floorCamera.x)},${Math.round(y - floorCamera.y)})`;
+  }
+
+  /** Where the training box sits on screen, for the debug log. */
+  private boxAt(): string {
+    const box = this.trainer.box;
+    if (!box) return 'no box';
+    return `box centre ~${this.scr(box.x, box.y)} (${box.size} hole${box.size === 1 ? '' : 's'})`;
+  }
+
   /** Cursor → world: the floor view is panned by the floor camera, so a screen
    * point maps to a world point by adding the camera offset. All placement and
    * hit-testing here works in WORLD coords. */
@@ -411,6 +424,11 @@ export class DragController {
         this.renderer.thingLayer.addChild(ghost);
         this.trainGhost = ghost;
       }
+      const what =
+        this.trainFrom != null ? `grabbed hole ${this.trainFrom}${lift ? ' = ' + desc(lift) : ' (empty)'}`
+        : this.trainInsertThing ? `grabbed ${desc(this.trainInsertThing)} (to put in)`
+        : `nothing here — ${this.boxAt()}`;
+      tlog(`train press ${this.scr(x, y)}: ${what}`);
       return;
     }
 
@@ -426,7 +444,10 @@ export class DragController {
       const view = this.views.get(thing.id);
       return view ? view.containsPoint(p.x, p.y) : false;
     });
-    if (!hit) return;
+    if (!hit) {
+      tlog(`click ${this.scr(x, y)}: empty floor (nothing grabbed)`);
+      return;
+    }
 
     // If the press lands on a thing inside a box hole or on a nest, pull it out
     // and drag *that* instead of the container.
@@ -496,26 +517,35 @@ export class DragController {
     // Inside a robot's thoughts (training):
     if (this.trainer.active) {
       const bv = this.trainingBoxView();
-      const to = bv && bv.withinBox(x, y) ? bv.holeIndexAt(x, y) : null;
       const held = tool.thing;
+      const at = this.scr(x, y);
       if (this.isTool(held)) {
-        // A tool acts on the hole's content and STAYS in hand: Dusty erases the
-        // value → generalises that hole; other tools apply their normal effect.
+        // A tool acts on the hole's content (exact hit) and STAYS in hand: Dusty
+        // erases (generalise) or removes; other tools apply their normal effect.
+        const to = bv && bv.withinBox(x, y) ? bv.holeIndexAt(x, y) : null;
         const content = to != null ? this.trainer.box?.contentsAt(to) ?? null : null;
         if (content) {
           if (held instanceof Dusty) {
-            // erase → wildcard the value (generalise); suck/reverse → remove it.
             if (held.mode === 'erase') this.trainer.eraseHole(to!);
             else this.trainer.removeHole(to!);
           } else {
             this.resolve(held, content, {});
           }
+          tlog(`tool ${desc(held)} on hole ${to} ${at}`);
+        } else {
+          tlog(`tool ${desc(held)} ${at} → no hole there (no-op); ${this.boxAt()}`);
         }
         return;
       }
-      // An element carried from Tooly → put it IN (consumed by the box).
+      // An element carried from Tooly → put it IN (forgiving: snap to the nearest
+      // hole near the box, so a small miss still lands).
+      const to = bv ? bv.dropHole(x, y, 32) : null;
       this.putDownTool();
-      if (to != null) this.onTrainStep({ kind: 'insert', to, source: held });
+      if (to != null) {
+        this.onTrainStep({ kind: 'insert', to, source: held });
+      } else {
+        tlog(`put-in MISSED: dropped ${desc(held)} ${at} — not on a hole; ${this.boxAt()}`);
+      }
       return;
     }
     const target = this.world.topAt({ x, y }, (thing, p) => {
