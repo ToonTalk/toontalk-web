@@ -233,9 +233,15 @@ run cancels the loop, freezing the box exactly (`runningLoop`/`cancelRunningLoop
 in main.ts; guard `robot-iterate.mjs`). A **house** is the same loop as a
 persistent background process (`runHouse` + the 800 ms tick) — build one by
 dropping a robot + box into a **truck** (`robot-counter.mjs`); bomb it to stop.
-⚠ still ▢: **wait** — pausing (not stopping) when the box is *incomplete* (an
-empty hole, or an empty nest awaiting a bird) and resuming when it's filled;
-today an incomplete or mismatched box just stops the loop. ✅ **finish key**: Escape finishes training (Backspace
+✅ **three-way match / wait** (`Robot.matchState` → match | mismatch | wait;
+team-level `teamMatch`): an INCOMPLETE box (a hole the rule needs is empty, or
+holds an *empty nest*) makes the robot **wait, not stop** — the loop suspends
+and resumes the instant the missing thing is added (the loop subscribes for the
+next content change; a user fill *and* a bird delivery both `notifyChanged`).
+Matching is **transparent to a nest** — it tests what's on TOP (`Nest.front`),
+empty = wait. Guards: `robot-matchstate.test.ts` (unit), `robot-wait.mjs`
+(waits on [5,empty], resumes to 8 when filled). ⚠ ▢: a robot's *actions* aren't
+yet nest-transparent (it reads the nest, not its top). ✅ **finish key**: Escape finishes training (Backspace
 cancels as a web-only helper). ✅ **teams**: drop robot on robot → the dragged
 robot (+ its team) lines up behind the target (`Robot.team`, front-to-back); a
 box is offered front-to-back via `runRobot`→`lineup()`, first trained matching

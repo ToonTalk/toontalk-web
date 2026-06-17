@@ -18,6 +18,7 @@ import type { World } from './world';
 import type { Notebook } from './notebook';
 import { NumberThing, type NumberOp } from './number';
 import { TextThing } from './text';
+import { Nest } from './nest';
 import { recomputeScales } from './scale';
 
 /** Extra context an action may need (the running house's module, for recursion). */
@@ -138,16 +139,49 @@ export class Robot extends Thing {
     return 'robot';
   }
 
-  /** True if this robot's condition fits the given box (shape + any value guards). */
-  matches(box: Box): boolean {
-    if (box.size !== this.condition.length) return false;
-    return this.condition.every((c, i) => {
-      const occupant = box.contentsAt(i);
-      if (c === null) return occupant === null;
-      if (occupant === null || occupant.kind !== c) return false;
+  /**
+   * Three-way match (robot.cpp): how the box stands against this condition.
+   *  - 'match'    — every hole fits → the robot runs.
+   *  - 'wait'     — the box is INCOMPLETE: a hole the condition needs is empty,
+   *                 or holds an *empty nest* (awaiting a bird). The robot doesn't
+   *                 fail — it suspends and resumes when the missing thing arrives.
+   *  - 'mismatch' — a hole holds the wrong thing, or the box is the wrong size →
+   *                 the robot can't run (stop / pass to the next teammate).
+   * Matching is transparent to a NEST: it tests what sits ON TOP (the nest's
+   * front delivery), not the nest itself; an empty nest reads as "nothing yet".
+   */
+  matchState(box: Box): 'match' | 'mismatch' | 'wait' {
+    if (box.size !== this.condition.length) return 'mismatch';
+    let waiting = false;
+    for (let i = 0; i < this.condition.length; i++) {
+      const c = this.condition[i];
+      let occ = box.contentsAt(i);
+      if (occ instanceof Nest) {
+        const top = occ.front();
+        if (top === null) {
+          if (c !== null) waiting = true; // empty nest where content is needed → wait for a bird
+          continue;
+        }
+        occ = top; // otherwise match against what's on the nest
+      }
+      if (c === null) {
+        if (occ !== null) return 'mismatch'; // this hole must be empty
+        continue;
+      }
+      if (occ === null) {
+        waiting = true; // the thing isn't here yet → wait for the user to add it
+        continue;
+      }
+      if (occ.kind !== c) return 'mismatch';
       const guard = this.exactValues[i];
-      return guard == null || occupant.equals(guard);
-    });
+      if (guard != null && !occ.equals(guard)) return 'mismatch';
+    }
+    return waiting ? 'wait' : 'match';
+  }
+
+  /** True if this robot's condition fully fits the box (it can run right now). */
+  matches(box: Box): boolean {
+    return this.matchState(box) === 'match';
   }
 
   copy(): Robot {
@@ -282,6 +316,24 @@ export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext):
 export function matchingRunner(robot: Robot, box: Box): Robot | null {
   recomputeScales(box);
   return robot.lineup().find((r) => r.actions.length > 0 && r.matches(box)) ?? null;
+}
+
+/**
+ * Offer the box to the team front-to-back: the first member that MATCHES runs;
+ * if none matches but some would WAIT (the box is incomplete — a missing thing
+ * or an empty nest), the team waits; otherwise the box is a mismatch. Drives the
+ * floor run-loop's three outcomes (run / suspend / stop).
+ */
+export function teamMatch(robot: Robot, box: Box): { runner: Robot | null; state: 'match' | 'wait' | 'mismatch' } {
+  recomputeScales(box);
+  let waiting = false;
+  for (const r of robot.lineup()) {
+    if (r.actions.length === 0) continue;
+    const s = r.matchState(box);
+    if (s === 'match') return { runner: r, state: 'match' };
+    if (s === 'wait') waiting = true;
+  }
+  return { runner: null, state: waiting ? 'wait' : 'mismatch' };
 }
 
 /**

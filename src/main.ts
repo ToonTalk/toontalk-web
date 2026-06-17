@@ -18,7 +18,7 @@ import { Wand } from './model/wand';
 import { Dusty } from './model/dusty';
 import { Bomb } from './model/bomb';
 import { Scale, recomputeScales } from './model/scale';
-import { Robot, applyAction, matchingRunner } from './model/robot';
+import { Robot, applyAction, teamMatch } from './model/robot';
 import { Truck } from './model/truck';
 import { House, runHouse } from './model/house';
 import { Notebook } from './model/notebook';
@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17p (robots iterate while matching; stop on mismatch / scale / grab)';
+const BUILD = 'build 2026-06-17q (robots wait on an incomplete box / empty nest, resume when filled)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -151,10 +151,11 @@ async function start(): Promise<void> {
   // over and over, stopping when the box stops matching its thought bubble. We
   // track it so grabbing the robot (or its box) mid-run stops it — the manual
   // "pick it up to stop" escape hatch.
-  let runningLoop: { robotId: string; boxId: string; cancelled: boolean } | null = null;
+  let runningLoop: { robotId: string; boxId: string; cancelled: boolean; unsub?: () => void } | null = null;
   function cancelRunningLoop(): void {
     if (runningLoop) {
       runningLoop.cancelled = true;
+      runningLoop.unsub?.(); // drop any wait-for-change subscription
       runningLoop = null;
     }
   }
@@ -208,9 +209,11 @@ async function start(): Promise<void> {
       const rbt = dragged instanceof Robot ? dragged : target instanceof Robot ? target : null;
       const bx = dragged instanceof Box ? dragged : target instanceof Box ? target : null;
       if (rbt && bx) {
-        const runner = matchingRunner(rbt, bx);
-        if (runner) {
-          tlog(`run: robot starts on ${desc(bx)} (iterates while it matches)`);
+        // Start the robot if the box matches OR is merely incomplete (it'll wait
+        // and resume); only a true mismatch falls through to a plain drop.
+        const { state } = teamMatch(rbt, bx);
+        if (state === 'match' || state === 'wait') {
+          tlog(`run: robot starts on ${desc(bx)} (${state})`);
           animateRun(rbt, bx);
           return;
         }
@@ -471,7 +474,11 @@ async function start(): Promise<void> {
   // shows up on each combine, like a live demonstration.
   function animateRun(robot: Robot, box: Box): void {
     cancelRunningLoop(); // never two loops on one box
-    const loop = { robotId: robot.id, boxId: box.id, cancelled: false };
+    const loop: { robotId: string; boxId: string; cancelled: boolean; unsub?: () => void } = {
+      robotId: robot.id,
+      boxId: box.id,
+      cancelled: false,
+    };
     runningLoop = loop;
     // One iteration: find the matching team member and replay its actions; when
     // the pass finishes, loop again while the box still matches. A robot is a
@@ -482,14 +489,29 @@ async function start(): Promise<void> {
     const iterate = (): void => {
       if (loop.cancelled) return;
       if (!world.get(box.id) || !world.get(robot.id)) { if (runningLoop === loop) runningLoop = null; return; }
-      const runner = matchingRunner(robot, box);
-      if (!runner) {
+      const { runner, state } = teamMatch(robot, box);
+      if (state === 'mismatch') {
         if (runningLoop === loop) runningLoop = null;
         tlog(`run: stopped — box no longer matches (${desc(box)})`);
         setHud('✋ The robot stopped — the box no longer matches its rule (e.g. a scale tipped).');
         return;
       }
-      const actions = runner.actions;
+      if (state === 'wait') {
+        // The box is incomplete (a needed hole is empty, or an empty nest awaits
+        // a bird). Don't stop — suspend, and resume the moment something is added
+        // (the user fills a hole, or a bird delivers → a 'changed'/'added' event).
+        tlog(`run: waiting — box incomplete (${desc(box)})`);
+        setHud('⏳ Waiting — the box is missing something (or an empty nest awaits a bird). Add it and the robot resumes.');
+        loop.unsub = world.subscribe((e) => {
+          if (loop.cancelled) return;
+          if (e.type === 'moved') return; // a mere move doesn't change the contents
+          loop.unsub?.();
+          loop.unsub = undefined;
+          iterate(); // re-evaluate now that the world changed
+        });
+        return;
+      }
+      const actions = runner!.actions;
       let i = 0;
       const step = (): void => {
         if (loop.cancelled) return;
