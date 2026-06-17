@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17n (held tools show the active-point reticle on the floor too)';
+const BUILD = 'build 2026-06-17o (hint: robot + box into a truck → a house that loops/counts)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -876,7 +876,8 @@ async function start(): Promise<void> {
         `render mode: ${mode}\n` +
         `things: ${world.size}\n` +
         `trained robot + 2-number box → it adds · UNtrained robot + filled box → train it\n` +
-        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty sucks/erases · bomb recycles a house · robot on robot → team\n` +
+        `numbers add · text joins · box holes fill · bird→nest · wand copies · dusty sucks/erases · robot on robot → team\n` +
+        `LOOP: drop a robot + a box into a TRUCK → it builds a HOUSE that runs the robot over and over (e.g. an "add 1" robot keeps counting) · bomb the house to stop\n` +
         `hold a number, press + − ×(x) ÷(/) % ^ = to set its op · − negates · number on a text pad → digits (blank) or next letter (non-blank)\n` +
         `a scale between two holes tips toward the bigger (robots can match the tilt) · drop a box on another box's edge to join` +
         (lastResult && lastResult !== 'none' && lastResult !== 'train'

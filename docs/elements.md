@@ -222,7 +222,14 @@ sucks/erases loose things but cannot change what an already-finished robot
 matches — the condition is fixed when you press Esc. Proven end-to-end by
 `tools/verify/robot-generalize.mjs` (erase the example 1 → the robot adds 1 to a
 box holding 5 → 6). NB re-opening a finished robot to edit it isn't supported
-yet (▢). ✅ **finish key**: Escape finishes training (Backspace
+yet (▢). ✅ **iteration / "keep counting"** — a robot run on the floor fires
+**once** per box-drop (`runRobot`/`animateRun`); the *loop* is a **house**, a
+running process that re-runs the team on its box every tick (`runHouse`, the
+`setInterval` in main.ts). So a counter is: generalise an "add 1" robot, drop it
+**and** a box into a **truck** → it builds a house that keeps adding 1 (bomb the
+house to stop). This is the loop primitive, NOT extra erasing in the bubble.
+Proven end-to-end by `tools/verify/robot-counter.mjs` (truck+robot+box → house,
+box climbs 5→8→…). ✅ **finish key**: Escape finishes training (Backspace
 cancels as a web-only helper). ✅ **teams**: drop robot on robot → the dragged
 robot (+ its team) lines up behind the target (`Robot.team`, front-to-back); a
 box is offered front-to-back via `runRobot`→`lineup()`, first trained matching
