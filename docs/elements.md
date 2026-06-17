@@ -193,7 +193,10 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     arm is the cursor, scaled down so it doesn't hide the box) and holds the
     picked-up tool (`room.setHandHidden`); a yellow **reticle marks the action
     point at the robot's raised hand** (offset so the robot reaches in with its
-    hand, not its eye) so it's clear where a click lands. Esc/Backspace exits and restores
+    hand, not its eye) so it's clear where a click lands. The **content of the
+    hole the active point is over wiggles** (`DragController.trainingHoverTarget`)
+    — selection feedback on *what a tool/drop will act on*, not the robot (guard:
+    `bubble-wiggle.mjs`). Esc/Backspace exits and restores
     the floor. Flat-box level (no nested sub-world). NB the toolbox is only
     clickable in the room scene — in the boot city scene the room `chrome` is
     `visible:false`, so harness real-click tests must switch scenes first.

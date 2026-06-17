@@ -147,8 +147,15 @@ export class DragController {
 
   /** Recompute the hovered wiggle target. Cheap per move, not per frame. */
   private updateHoverTarget(): void {
-    if (this.dragging || this.trainer.active) {
+    if (this.dragging) {
       this.hoverTarget = null;
+      return;
+    }
+    if (this.trainer.active) {
+      // In the thought bubble the active point is the hot spot: wiggle the hole's
+      // content it's over, so you see WHAT a combine/erase/wand will act on (not
+      // just the robot, which is the cursor).
+      this.hoverTarget = this.trainingHoverTarget();
       return;
     }
     const hit = this.world.topAt(this.pointer, (thing, p) => {
@@ -181,6 +188,19 @@ export class DragController {
       }
     }
     return { node: view.container, bx: hit.x, by: hit.y };
+  }
+
+  /** Wiggle target while training: the content of the training box's hole the
+   * active point is over (so the thing a tool/drop will act on shimmers). Empty
+   * holes have no node to wiggle; off the box → nothing. */
+  private trainingHoverTarget(): WiggleTarget | null {
+    const bv = this.trainingBoxView();
+    const box = this.trainer.box;
+    if (!bv || !box) return null;
+    const i = bv.holeIndexAt(this.pointer.x, this.pointer.y);
+    if (i == null || box.isHoleEmpty(i)) return null;
+    const hn = bv.holeNode(i);
+    return hn ? { node: hn.node, bx: hn.x, by: hn.y } : null;
   }
 
   /**

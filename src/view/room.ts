@@ -102,6 +102,9 @@ export class Room {
   private tbWired = false;
   /** The full-screen mist while inside a robot's thoughts (training), or none. */
   private thoughtMist?: PIXI.Container;
+  /** The Tooly compartment/chip icon under the pointer — it wiggles to show it's
+   * ready to be picked up (like a selected thing on the floor). */
+  private toolHover: { node: PIXI.Container; x: number; y: number } | null = null;
 
   constructor(
     private readonly renderer: Renderer,
@@ -129,6 +132,7 @@ export class Room {
     renderer.app.stage.addChild(this.cursor);
     this.applyPose('open');
     this.setHand(renderer.width * 0.45, renderer.height * 0.45);
+    renderer.app.ticker.add(this.tickToolWiggle);
 
     // (Cursor pose is driven by the drag controller via setPose, based on what
     // the hand is holding.)
@@ -303,6 +307,7 @@ export class Room {
     for (const [pick, badge, x, y, tilt] of spill) {
       const chip = this.makeToolChip(pick, badge, tilt);
       chip.position.set(x, y);
+      this.wireToolHover(chip, chip, x, y); // a spilled tool wiggles when hovered too
       this.chrome.addChild(chip);
     }
     // The `claude 1` main notebook is the real interactive World object (filed
@@ -476,10 +481,11 @@ export class Room {
       const cx = (colX[col] - 0.5) * W;
       const cy = (rowY[col][row] - 0.5) * H;
       const sample = this.sampleThing(pick);
+      let icon: PIXI.Container | null = null;
       if (sample) {
         // static: the robot stays a still Lego figure in Tooly until taken out.
         // stretch: reshaped to fill its compartment (taken out → natural size).
-        const icon = renderThingDisplay(sample, this.tools, this.theme, cellW, {
+        icon = renderThingDisplay(sample, this.tools, this.theme, cellW, {
           static: true,
           maxHeight: cellH,
           stretch: true,
@@ -498,10 +504,37 @@ export class Room {
         e.stopPropagation();
         this.onPick(pick, e.global.x, e.global.y);
       });
+      if (icon) this.wireToolHover(hit, icon, cx, cy); // wiggle it while hovered
       box.addChild(hit);
     }
     return box;
   }
+
+  /** While the pointer is over a Tooly compartment/chip, its icon wiggles —
+   * "this is ready to be picked up" — and settles when the pointer leaves. */
+  private wireToolHover(hit: PIXI.Container, icon: PIXI.Container, x: number, y: number): void {
+    hit.on('pointerover', () => {
+      this.toolHover = { node: icon, x, y };
+    });
+    hit.on('pointerout', () => {
+      if (this.toolHover?.node === icon) {
+        icon.position.set(x, y);
+        this.toolHover = null;
+      }
+    });
+  }
+
+  /** The 2px circular selection wiggle (sprite.cpp selection_delta), applied to
+   * the hovered Tooly icon. */
+  private tickToolWiggle = (): void => {
+    const t = this.toolHover;
+    if (!t || t.node.destroyed) return;
+    const D = 2;
+    const phase = Math.floor((performance.now() % 400) / 100);
+    const dx = phase === 0 ? D : phase === 2 ? -D : 0;
+    const dy = phase === 1 ? D : phase === 3 ? -D : 0;
+    t.node.position.set(t.x + dx, t.y + dy);
+  };
 
   private makeToolboxDrawn(): PIXI.Container {
     const box = new PIXI.Container();

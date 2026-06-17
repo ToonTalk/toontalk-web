@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = "build 2026-06-17l (tool's tip/nose is the active point — aim true on floor & in the bubble)";
+const BUILD = 'build 2026-06-17m (bubble wiggles the targeted hole; Tooly items wiggle on hover)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

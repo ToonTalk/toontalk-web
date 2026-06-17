@@ -150,7 +150,10 @@ doesn't match the video; the engine draws the grid dynamically. **Toolbox =
 infinite stacks: pressing an icon calls `onPick(key, x, y)` → `spawnTool`
 which adds a fresh element AT the cursor; the same (bubbled) pointerdown
 reaches the drag controller, which picks it up — so the element drags out of
-the box while the toolbox keeps its copy.**
+the box while the toolbox keeps its copy.** Each compartment icon (and each
+spilled tool chip) **wiggles while the pointer is over it** — the 2px circular
+selection wiggle (`Room.wireToolHover`/`tickToolWiggle`) — to show it's ready
+to be picked up; it settles when the pointer leaves.
 
 ▢ The seeded *world* still has the busy feature-demo on the floor; the
 video's room was nearly empty.
