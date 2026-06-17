@@ -51,7 +51,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17b (training: imagine on a copy + animated replay)';
+const BUILD = 'build 2026-06-17c (training: wand-copy as a recorded action)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -244,6 +244,9 @@ async function start(): Promise<void> {
           world.remove(gesture.source.id); // the carried thing goes INTO the box
           if (merging && box) bamMouseAt(box);
         }
+      } else if (gesture.kind === 'copy') {
+        const merging = !!box && !box.isHoleEmpty(gesture.to); // copy onto a full hole → merge
+        if (trainer.recordCopy(gesture.from, gesture.to) && merging && box) bamMouseAt(box);
       }
       updateHud('train');
     },
@@ -767,7 +770,8 @@ async function start(): Promise<void> {
         `TRAINING (${trainer.stepCount} step${trainer.stepCount === 1 ? '' : 's'}) — the robot is watching and will remember everything.\n` +
           `Demonstrate (it counts holes from the left): drag a hole ONTO another (combine/move), ` +
           `OUT of the box (take it out), or a floor thing INTO a hole (put it in).\n` +
-          `Esc = done (the robot learns it) · Backspace = cancel · erase a hole (Dusty) to generalise it.`,
+          `Tools: hold the WAND and drag a hole onto another to COPY it · hold DUSTY and click a hole to generalise.\n` +
+          `Esc = done (the robot learns it) · Backspace = cancel.`,
       );
       return;
     }

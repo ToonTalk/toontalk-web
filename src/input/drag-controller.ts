@@ -49,7 +49,8 @@ export type DropResolver = (dragged: Thing, target: Thing | undefined, ctx: Drop
 export type TrainGesture =
   | { kind: 'combine'; from: number; to: number }
   | { kind: 'remove'; from: number }
-  | { kind: 'insert'; to: number; source: Thing };
+  | { kind: 'insert'; to: number; source: Thing }
+  | { kind: 'copy'; from: number; to: number };
 export type TrainStep = (gesture: TrainGesture) => void;
 
 /** A node that's wiggling for selection feedback, plus its resting position. */
@@ -70,6 +71,8 @@ export class DragController {
   private trainFrom: number | null = null;
   /** A floor thing grabbed (outside the box) to be put INTO a hole, or null. */
   private trainInsertThing: Thing | null = null;
+  /** True while dragging a wand-copy from `trainFrom` to another hole. */
+  private trainWandCopy = false;
   /** Floating copy of a hole's contents, shown while demonstrating a combine. */
   private trainGhost: PIXI.Container | null = null;
   /** Last known pointer position, for hover-selection feedback. */
@@ -348,14 +351,36 @@ export class DragController {
     // Inside the box → grab a hole's thing (→ combine/move, or take-out if
     // released off the box). Outside the box → grab a floor thing to put IN.
     if (this.trainer.active) {
-      // Carrying something pulled from Tooly? Clicking a hole drops it IN.
       if (this.heldTool && !this.justGrabbedTool) {
-        this.applyHeldTool(x, y);
+        // The magic wand COPIES: drag from a filled hole to another (or itself)
+        // → records a copy. Other held things (Dusty, an element) apply on click.
+        if (this.heldTool.thing instanceof Wand) {
+          this.clearTrainGhost();
+          this.trainFrom = null;
+          this.trainInsertThing = null;
+          this.trainWandCopy = false;
+          const bv = this.trainingBoxView();
+          const from = bv && bv.withinBox(x, y) ? bv.holeIndexAt(x, y) : null;
+          const src = from != null ? this.trainer.box?.contentsAt(from) ?? null : null;
+          if (from != null && src) {
+            this.trainFrom = from;
+            this.trainWandCopy = true;
+            const ghost = renderThingDisplay(src, this.textures, this.theme, 56);
+            ghost.position.set(x, y);
+            ghost.alpha = 0.85;
+            ghost.zIndex = 5000;
+            this.renderer.thingLayer.addChild(ghost);
+            this.trainGhost = ghost;
+          }
+          return;
+        }
+        this.applyHeldTool(x, y); // Dusty erases / an element is put IN
         return;
       }
       this.clearTrainGhost();
       this.trainFrom = null;
       this.trainInsertThing = null;
+      this.trainWandCopy = false;
       const bv = this.trainingBoxView();
       const box = this.trainer.box;
       let lift: Thing | null = null;
@@ -626,6 +651,12 @@ export class DragController {
       const wp = this.worldPt(e.global);
       const insideBox = bv ? bv.withinBox(wp.x, wp.y) : false;
       const overHole = insideBox && bv ? bv.holeIndexAt(wp.x, wp.y) : null;
+      if (this.trainWandCopy && this.trainFrom != null) {
+        if (overHole != null) this.onTrainStep({ kind: 'copy', from: this.trainFrom, to: overHole });
+        this.trainWandCopy = false;
+        this.trainFrom = null;
+        return;
+      }
       if (this.trainFrom != null) {
         if (overHole != null && overHole !== this.trainFrom) {
           this.onTrainStep({ kind: 'combine', from: this.trainFrom, to: overHole });

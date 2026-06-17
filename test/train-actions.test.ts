@@ -35,6 +35,22 @@ describe('applyAction: insert (put-in)', () => {
   });
 });
 
+describe('applyAction: copy (wand)', () => {
+  it('duplicates a hole into an empty hole (source kept, copy independent)', () => {
+    const box = new Box({ holes: [new NumberThing({ value: 6 }), null] });
+    expect(applyAction(box, { type: 'copy', from: 0, to: 1 })).toBe(true);
+    expect((box.contentsAt(0) as NumberThing).value.toString()).toBe('6');
+    expect((box.contentsAt(1) as NumberThing).value.toString()).toBe('6');
+    expect(box.contentsAt(0)).not.toBe(box.contentsAt(1));
+  });
+
+  it('copy onto itself doubles a number', () => {
+    const box = new Box({ holes: [new NumberThing({ value: 5 })] });
+    expect(applyAction(box, { type: 'copy', from: 0, to: 0 })).toBe(true);
+    expect((box.contentsAt(0) as NumberThing).value.toString()).toBe('10');
+  });
+});
+
 describe('applyAction: remove (take-out)', () => {
   it('empties the hole, and is a no-op on an already-empty hole', () => {
     const box = new Box({ holes: [new NumberThing({ value: 1 }), null] });
@@ -98,6 +114,23 @@ describe('Trainer records take-out and put-in', () => {
     // hole 0 still must equal 4; hole 1 matches any number
     expect(robot.matches(new Box({ holes: [new NumberThing({ value: 4 }), new NumberThing({ value: 99 }) ] }))).toBe(true);
     expect(robot.matches(new Box({ holes: [new NumberThing({ value: 7 }), new NumberThing({ value: 99 }) ] }))).toBe(false);
+  });
+
+  it('trains a "duplicate hole 0 into hole 1" robot via recordCopy (the wand)', () => {
+    const w = new World();
+    const robot = w.add(new Robot({})) as Robot;
+    const sample = w.add(new Box({ holes: [new NumberThing({ value: 6 }), null] })) as Box;
+    sample.contentsAt(0)!.erased = true; // generalise hole 0 → any number
+    const t = new Trainer(w);
+    t.start(robot, sample);
+    expect(t.recordCopy(0, 1)).toBe(true);
+    t.finish();
+    expect((sample.contentsAt(1) as NumberThing).value.toString()).toBe('6'); // applied live
+
+    const fresh = new Box({ holes: [new NumberThing({ value: 8 }), null] });
+    expect(runRobot(w, robot, fresh)).toBe(true);
+    expect((fresh.contentsAt(0) as NumberThing).value.toString()).toBe('8'); // source kept
+    expect((fresh.contentsAt(1) as NumberThing).value.toString()).toBe('8'); // duplicated
   });
 
   it('an insert-trained robot survives a save/load round-trip and still runs', () => {

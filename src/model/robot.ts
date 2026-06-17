@@ -69,6 +69,14 @@ export type RobotAction =
        * external thing into the box (robot.htm "put things into a box"). Copied
        * on every run so the box owns its own instance. */
       thing: Thing;
+    }
+  | {
+      type: 'copy';
+      /** Hole whose CURRENT content is duplicated (with the magic wand)… */
+      from: number;
+      /** …a fresh copy dropped into this hole (fills it, or combines if full).
+       * `to === from` doubles the value. The wand "creates a copy" (robot.htm). */
+      to: number;
     };
 
 /** A condition hole: null = must be empty; a kind = must hold a thing of that kind. */
@@ -180,6 +188,26 @@ export function trainByExample(sample: Box, actions: RobotAction[]): Robot {
   return new Robot({ condition, actions });
 }
 
+/** Drop `thing` into hole `to`: fill it if empty, else combine into it (numbers
+ * add, text joins). Shared by `insert` (a carried copy) and `copy` (a hole's
+ * duplicate). Returns whether it did anything. */
+function placeOrCombine(box: Box, to: number, thing: Thing): boolean {
+  const dest = box.contentsAt(to);
+  if (!dest) {
+    box.put(to, thing);
+    return true;
+  }
+  if (dest instanceof NumberThing && thing instanceof NumberThing) {
+    dest.value = NumberThing.combine(dest.value, thing.value, thing.operation);
+    return true;
+  }
+  if (dest instanceof TextThing && thing instanceof TextThing) {
+    dest.concat(thing, 'right');
+    return true;
+  }
+  return false;
+}
+
 /**
  * Apply a single action to a box in place. Returns whether it did anything.
  * Shared by running and training.
@@ -193,21 +221,14 @@ export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext):
 
   if (action.type === 'insert') {
     // Put-in: the robot carries a copy of the demonstrated thing and drops it in.
-    const existing = box.contentsAt(action.to);
-    if (!existing) {
-      box.put(action.to, action.thing.copy()); // empty hole → fill with a fresh copy
-      return true;
-    }
-    // Filled hole → combine the carried thing into it (numbers add, text joins).
-    if (existing instanceof NumberThing && action.thing instanceof NumberThing) {
-      existing.value = NumberThing.combine(existing.value, action.thing.value, action.thing.operation);
-      return true;
-    }
-    if (existing instanceof TextThing && action.thing instanceof TextThing) {
-      existing.concat(action.thing, 'right');
-      return true;
-    }
-    return false;
+    return placeOrCombine(box, action.to, action.thing.copy());
+  }
+
+  if (action.type === 'copy') {
+    // Wand-copy: duplicate the CURRENT content of `from` into `to`.
+    const src = box.contentsAt(action.from);
+    if (!src) return false;
+    return placeOrCombine(box, action.to, src.copy());
   }
 
   if (action.type === 'fromModule') {

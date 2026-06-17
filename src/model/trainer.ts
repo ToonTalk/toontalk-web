@@ -113,6 +113,20 @@ export class Trainer {
   }
 
   /**
+   * Demonstrate **copying with the magic wand** (robot.htm "use the magic wand
+   * to create a copy"): duplicate hole `from`'s current content into hole `to`
+   * (fills it, or combines if full; `to === from` doubles it). Returns success.
+   */
+  recordCopy(from: number, to: number): boolean {
+    if (!this.session) return false;
+    const action: RobotAction = { type: 'copy', from, to };
+    if (!applyAction(this.session.box, action)) return false;
+    this.session.actions.push(action);
+    this.world.notifyChanged(this.session.box);
+    return true;
+  }
+
+  /**
    * Generalize a hole with Dusty *inside the thought bubble* (robot.htm "suck
    * things out of the box… to make the robot work when you want"): erase the
    * imagined hole's value and drop its exact-value guard, so the robot matches
