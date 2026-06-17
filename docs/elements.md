@@ -127,9 +127,9 @@ fill a nest).
 
 ## Robots (`robot.htm`)
 
-Audited against `robot.htm` + `robot.cpp` (re-audited 2026-06-16 against the
-manual page): the core is faithful at the modelled (flat-box) level; the gaps
-below are real, large simplifications, not quick fixes. The manual's loop is
+Audited against `robot.htm` + `robot.cpp`/`prgrmmr.cpp` (re-audited 2026-06-17
+against the source + a training screen-capture): the core is faithful at the
+modelled (flat-box) level. The manual's loop is
 "drop a box on him → you enter his thoughts and control him → he'll remember
 everything → press Esc → he's fussy and only works on a box like the one in his
 thought bubble; use Dusty to suck things out of that box to generalise."
@@ -146,14 +146,19 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     robot carrying a copy it drops in each run; fills an empty hole or combines
     into a filled one). The gesture is read by `BoxView.withinBox` +
     `holeIndexAt`; the `insert` template is serialised in the snapshot and rebuilt
-    on load (round-trip tested). ⚠ still ▢: using **tools mid-demo** (wand copy,
-    Dusty erase as a *recorded step*) — Dusty before training still generalises,
-    but a tool action isn't captured into the action list.
-  - ✅ **"enter his thoughts"**: while a session is active a **thought-bubble
-    cloud** is drawn around the demo box with puffs trailing to the trainee robot
-    (`view/training-bubble.ts`), so the box reads as "in his thoughts"; removed on
-    finish/cancel. (It frames the floor box rather than opening a separate
-    in-bubble editing surface — the box is edited in place.)
+    on load (round-trip tested). Put-in inside the thought bubble pulls the thing
+    from Tooly (held), then a click on a hole records the `insert`
+    (`applyHeldTool` special-cases the training box). ⚠ still ▢: using **tools
+    mid-demo** (wand copy, Dusty erase as a *recorded step*) — Dusty before
+    training still generalises, but a tool action isn't captured into the list.
+  - ✅ **"enter his thoughts"** (robot.cpp/prgrmmr.cpp: dropping a box on the
+    robot runs `Programmer …ABOUT_TO_ENTER_THOUGHT_BUBBLE → enter_thought_bubble`
+    with `screen->new_view(CAMERA_MOSTLY_ABOVE)`). We match it as a **full-screen
+    view**, not a small cloud: `Room.enterThoughtBubble()` mists over the floor
+    (between floor and chrome, so Tooly stays usable), main hides the other floor
+    things and brings the box (prominent, left) + robot (bottom-centre) into the
+    bubble; Esc/Backspace exits and restores the floor (`exitThoughtBubble`). The
+    box is edited in place at flat-box level (no nested in-bubble sub-world).
 ✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
 right kind, plus an optional per-hole exact-value guard. ✅ **generalize with
 Dusty** — erasing a hole clears its value guard (the manual's "suck things out of

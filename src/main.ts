@@ -32,8 +32,8 @@ import { ThingView } from './view/thing-view';
 import { createThingView } from './view/view-factory';
 import { renderThingDisplay } from './view/display';
 import { floorCamera, FLOOR_W, FLOOR_H, clampFloorCamera } from './view/floor-camera';
+import * as PIXI from 'pixi.js';
 import { BoxView } from './view/box-view';
-import { makeTrainingBubble } from './view/training-bubble';
 import { loadAssets } from './view/assets';
 import { Room, loadRoomTextures } from './view/room';
 import { loadAnimations, playOnce, flyBird, hatchNest, tweenScale, runMouse } from './view/animation';
@@ -51,7 +51,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-16s (train take-out/put-in + live thought bubble)';
+const BUILD = 'build 2026-06-17a (training inside a full-screen thought bubble)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -216,9 +216,7 @@ async function start(): Promise<void> {
         const robot = (dragged instanceof Robot ? dragged : target) as Robot;
         const box = dragged instanceof Box ? dragged : (target as Box);
         trainer.start(robot, box);
-        // Sit the robot just above the box it's learning from.
-        world.moveThing(robot.id, { x: box.x, y: box.y - 96 });
-        showTrainingBubble(robot, box); // the box is now "in his thoughts"
+        enterThoughts(robot, box); // step inside the robot's thoughts (full-screen)
       }
       updateHud(result);
       // Faithful abort hint: a bomb does nothing unless used on a house
@@ -415,20 +413,43 @@ async function start(): Promise<void> {
     }
   });
 
-  // The training thought bubble (the box "in his thoughts"): shown while a
-  // session is active, removed when it ends.
-  let trainingBubble: ReturnType<typeof makeTrainingBubble> | null = null;
-  function showTrainingBubble(robot: Robot, box: Box): void {
-    clearTrainingBubble();
-    const b = views.get(box.id)?.container.getLocalBounds();
-    const bubble = makeTrainingBubble(b?.width ?? 220, b?.height ?? 84, robot.x - box.x, robot.y - box.y);
-    bubble.position.set(box.x, box.y);
-    renderer.thingLayer.addChildAt(bubble, 0); // behind the box and its contents
-    trainingBubble = bubble;
+  // Entering the robot's thoughts (robot.htm): training happens inside a
+  // full-screen thought-bubble view, not on the floor. We mist over the floor,
+  // hide the other floor things, and bring the box + robot into the bubble
+  // (the toolbox stays usable). Esc/Backspace exits and restores the floor.
+  let thoughtState:
+    | { hidden: PIXI.DisplayObject[]; boxId: string; boxOrig: { x: number; y: number }; robotId: string; robotOrig: { x: number; y: number } }
+    | null = null;
+
+  function enterThoughts(robot: Robot, box: Box): void {
+    exitThoughts(); // safety: never stack
+    room.enterThoughtBubble();
+    const keep = new Set<PIXI.DisplayObject>(
+      [views.get(box.id)?.container, views.get(robot.id)?.container].filter((c): c is PIXI.Container => !!c),
+    );
+    const hidden: PIXI.DisplayObject[] = [];
+    for (const child of renderer.thingLayer.children) {
+      if (!keep.has(child) && child.visible) {
+        child.visible = false;
+        hidden.push(child);
+      }
+    }
+    // Bring the box (prominent, left) and robot (bottom-centre) into the bubble,
+    // in world coords (camera + screen offset), like the original's view.
+    const boxOrig = { x: box.x, y: box.y };
+    const robotOrig = { x: robot.x, y: robot.y };
+    world.moveThing(box.id, { x: floorCamera.x + renderer.width * 0.26, y: floorCamera.y + renderer.height * 0.4 });
+    world.moveThing(robot.id, { x: floorCamera.x + renderer.width * 0.5, y: floorCamera.y + renderer.height * 0.8 });
+    thoughtState = { hidden, boxId: box.id, boxOrig, robotId: robot.id, robotOrig };
   }
-  function clearTrainingBubble(): void {
-    if (trainingBubble && !trainingBubble.destroyed) trainingBubble.destroy({ children: true });
-    trainingBubble = null;
+
+  function exitThoughts(): void {
+    room.exitThoughtBubble();
+    if (!thoughtState) return;
+    for (const c of thoughtState.hidden) if (!c.destroyed) c.visible = true;
+    if (world.get(thoughtState.boxId)) world.moveThing(thoughtState.boxId, thoughtState.boxOrig);
+    if (world.get(thoughtState.robotId)) world.moveThing(thoughtState.robotId, thoughtState.robotOrig);
+    thoughtState = null;
   }
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
@@ -438,13 +459,13 @@ async function start(): Promise<void> {
     if (ev.key === 'Escape') {
       const box = trainer.box;
       const robot = trainer.finish();
-      clearTrainingBubble();
+      exitThoughts(); // leave the thoughts, floor returns, box back in place
       if (robot && box) world.moveThing(robot.id, { x: box.x + 170, y: box.y - 96 });
       updateHud('none');
     } else if (ev.key === 'Backspace') {
       ev.preventDefault();
       trainer.cancel();
-      clearTrainingBubble();
+      exitThoughts();
       updateHud('none');
     }
   });

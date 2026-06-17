@@ -100,6 +100,10 @@ export class Room {
   private tbDragging = false;
   private tbOff = { x: 0, y: 0 };
   private tbWired = false;
+  /** The full-screen mist while inside a robot's thoughts (training), or none. */
+  private thoughtMist?: PIXI.Container;
+  /** Chrome children hidden during the thought bubble (kept: only the toolbox). */
+  private hiddenChrome?: PIXI.DisplayObject[];
 
   constructor(
     private readonly renderer: Renderer,
@@ -182,6 +186,68 @@ export class Room {
     this.floor.visible = v;
     this.chrome.visible = v;
     this.cursor.visible = v;
+  }
+
+  /**
+   * Enter the robot's thoughts (robot.htm: "drop a box on him… you enter into
+   * the robot's thoughts and control him"). Lays a full-screen misty cloud over
+   * the floor — between the floor and the toolbox chrome, so Tooly stays usable
+   * inside the thoughts — replacing the room with the soft thought-bubble
+   * interior. The box + robot live in the thingLayer above it (main hides the
+   * other floor things). Idempotent.
+   */
+  enterThoughtBubble(): void {
+    if (this.thoughtMist) return;
+    const mist = this.makeMist(this.renderer.width, this.renderer.height);
+    mist.eventMode = 'none';
+    // index 1 = above the floor (0), below the chrome/toolbox.
+    this.renderer.background.addChildAt(mist, 1);
+    this.thoughtMist = mist;
+    // Inside the thoughts only Tooly is present — hide the spilled tool chips etc.
+    this.hiddenChrome = [];
+    for (const child of this.chrome.children) {
+      if (child !== this.tbBox && child.visible) {
+        child.visible = false;
+        this.hiddenChrome.push(child);
+      }
+    }
+  }
+
+  /** Leave the robot's thoughts — remove the mist, the floor returns. */
+  exitThoughtBubble(): void {
+    if (this.thoughtMist) {
+      if (!this.thoughtMist.destroyed) this.thoughtMist.destroy({ children: true });
+      this.thoughtMist = undefined;
+    }
+    if (this.hiddenChrome) {
+      for (const c of this.hiddenChrome) if (!c.destroyed) c.visible = true;
+      this.hiddenChrome = undefined;
+    }
+  }
+
+  get inThoughtBubble(): boolean {
+    return this.thoughtMist != null;
+  }
+
+  /** A soft billowy white-grey mist filling (w,h) — the thought-bubble interior. */
+  private makeMist(w: number, h: number): PIXI.Container {
+    const g = new PIXI.Graphics();
+    g.beginFill(0xeef0f6, 1); // pale base, fully covers the floor
+    g.drawRect(0, 0, w, h);
+    g.endFill();
+    // Billowy puffs: large soft ellipses, lighter and slightly darker, scattered.
+    const blobs = 22;
+    for (let i = 0; i < blobs; i++) {
+      const cx = (i * 137.5) % w; // spread without RNG so it's deterministic
+      const cy = ((i * 89.3) % h);
+      const rxr = 120 + ((i * 53) % 140);
+      const ryr = 90 + ((i * 37) % 110);
+      const light = i % 3 !== 0;
+      g.beginFill(light ? 0xffffff : 0xd9dbe6, light ? 0.45 : 0.4);
+      g.drawEllipse(cx, cy, rxr, ryr);
+      g.endFill();
+    }
+    return g;
   }
 
   /** Move the hand so its fingertip points at (x, y); the sleeve continues the

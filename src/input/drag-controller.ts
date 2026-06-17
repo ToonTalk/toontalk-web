@@ -348,6 +348,11 @@ export class DragController {
     // Inside the box → grab a hole's thing (→ combine/move, or take-out if
     // released off the box). Outside the box → grab a floor thing to put IN.
     if (this.trainer.active) {
+      // Carrying something pulled from Tooly? Clicking a hole drops it IN.
+      if (this.heldTool && !this.justGrabbedTool) {
+        this.applyHeldTool(x, y);
+        return;
+      }
       this.clearTrainGhost();
       this.trainFrom = null;
       this.trainInsertThing = null;
@@ -462,6 +467,16 @@ export class DragController {
   private applyHeldTool(x: number, y: number): void {
     const tool = this.heldTool;
     if (!tool) return;
+    // Inside a robot's thoughts (training): dropping a thing carried from Tooly
+    // onto a hole is a PUT-IN demonstration (robot.htm "put things into a box").
+    if (this.trainer.active) {
+      const bv = this.trainingBoxView();
+      const to = bv && bv.withinBox(x, y) ? bv.holeIndexAt(x, y) : null;
+      const source = tool.thing;
+      this.putDownTool();
+      if (to != null) this.onTrainStep({ kind: 'insert', to, source });
+      return;
+    }
     const target = this.world.topAt({ x, y }, (thing, p) => {
       if (thing.id === tool.thing.id) return false;
       const view = this.views.get(thing.id);
