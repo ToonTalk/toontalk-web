@@ -372,6 +372,19 @@ export class DragController {
     return this.trainer.active ? { x: 0, y: 0 } : HELD_OFFSET;
   }
 
+  /** Where to draw a held thing relative to the active point (cursor/reticle).
+   * A TOOL is offset so its business end — Dusty's nose, the wand's tip
+   * (`ThingView.activeOffset`) — lands exactly on the active point, so aiming
+   * the tip is what gets clicked (floor and bubble alike). A carried element
+   * keeps the plain hand offset. */
+  private heldVec(view: ThingView): { x: number; y: number } {
+    if (this.isTool(view.thing)) {
+      const o = view.activeOffset();
+      return { x: -o.x * view.container.scale.x, y: -o.y * view.container.scale.y };
+    }
+    return this.heldOffset();
+  }
+
   /** Cursor → world: the floor view is panned by the floor camera, so a screen
    * point maps to a world point by adding the camera offset. All placement and
    * hit-testing here works in WORLD coords. */
@@ -483,7 +496,7 @@ export class DragController {
     if (this.isTool(picked)) {
       this.heldTool = view;
       view.container.zIndex = 1000;
-      const o = this.heldOffset();
+      const o = this.heldVec(view);
       this.world.moveThing(picked.id, { x: x + o.x, y: y + o.y });
       this.onGrab(picked);
       return;
@@ -515,7 +528,7 @@ export class DragController {
     this.justGrabbedTool = true; // ignore this same click's apply/drop on the stage
     view.container.zIndex = 1000;
     if (this.pointer.x >= 0) {
-      const o = this.heldOffset();
+      const o = this.heldVec(view);
       this.world.moveThing(thing.id, { x: this.pointer.x + o.x, y: this.pointer.y + o.y });
     }
     this.onGrab(thing);
@@ -677,7 +690,7 @@ export class DragController {
     this.updateHoverTarget();
     // A held tool follows the cursor (it's in hand), even with no button down.
     if (this.heldTool) {
-      const o = this.heldOffset();
+      const o = this.heldVec(this.heldTool);
       this.world.moveThing(this.heldTool.thing.id, {
         x: w.x + o.x,
         y: w.y + o.y,

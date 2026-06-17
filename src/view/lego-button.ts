@@ -23,6 +23,27 @@ export const MODE_BUTTON_FRAC: Record<string, [number, number]> = {
   pumpy: [0.5, 0.62], // a little below centre, on the barrel
 };
 
+/** A tool's BUSINESS END as a fraction of its sprite — the point that should sit
+ * under the cursor / on the action reticle when the tool is held, so aiming the
+ * tip is what gets clicked: Dusty's nose, the wand's star, Pumpy's centre. */
+export const TOOL_TIP_FRAC: Record<string, [number, number]> = {
+  dusty: [0.531, 0.18], // the nose (same red blob the mode plate marks)
+  wand: [0.82, 0.45], // the star at the wand's far end
+  pumpy: [0.5, 0.5], // centred (no distinct nozzle in the art)
+};
+
+/** The tool's business end in its held view's LOCAL space (relative to the
+ * container origin = the centre-anchored sprite's centre). Derived from the
+ * texture's natural size (deterministic — unlike getLocalBounds, which also
+ * counts the drop shadow and the mode-letter text) and TOOL_TIP_FRAC. The tool
+ * `kind` is also its texture key (dusty/wand/pumpy). */
+export function toolTipOffset(textures: Map<string, PIXI.Texture>, kind: string): { x: number; y: number } {
+  const tex = textures.get(kind);
+  const [fx, fy] = TOOL_TIP_FRAC[kind] ?? [0.5, 0.5];
+  if (!tex || tex === PIXI.Texture.WHITE) return { x: 0, y: 0 };
+  return { x: (fx - 0.5) * tex.width, y: (fy - 0.5) * tex.height };
+}
+
 const BUTTON_PX = 30; // on-screen size of the mode plate
 
 /** The mode letter, drawn to read on any plate colour (white + dark outline). */

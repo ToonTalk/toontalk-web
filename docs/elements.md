@@ -174,13 +174,15 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
     generalise), **suck (S)** removes it (`Trainer.removeHole`, hole → empty); the
     wand/Dusty/Pumpy chips stay available. A carried element/tool applies on the
     **drop (release)**, so dragging straight out of Tooly onto a hole works (not
-    only a separate click). In the bubble a held tool is drawn **on the active
-    point** (`DragController.heldOffset` → 0 while training, vs the floor's
-    `HELD_OFFSET`), so aiming the nozzle at a hole is what gets clicked — and the
-    **mode keys (E/S/R) stay live during training** (`onKeyDown` no longer bails
-    on `trainer.active`), so you can switch Dusty to erase, not only suck. Guards:
-    `tools/verify/bubble-dusty.mjs`. (Both were broken before: the tool sat
-    ~`HELD_OFFSET` below the active point so `holeIndexAt` missed, and the keys
+    only a separate click). A held tool's **business end is the active point** —
+    `DragController.heldVec` places it so `ThingView.activeOffset` (Dusty's nose,
+    the wand's star, from `TOOL_TIP_FRAC` × texture size) lands on the cursor/
+    reticle, on the floor and in the bubble alike, so aiming the tip is what gets
+    clicked (guard: `tools/verify/tool-tip.mjs`). The **mode keys (E/S/R) stay
+    live during training** (`onKeyDown` no longer bails on `trainer.active`), so
+    you can switch Dusty to erase, not only suck (guard: `bubble-dusty.mjs`).
+    (Both were broken before: the tool sat ~`HELD_OFFSET` below the active point
+    so `holeIndexAt` missed — its nose was nowhere near the cursor — and the keys
     were dead, so Dusty could only ever suck.)
   - ✅ **"enter his thoughts"** (robot.cpp/prgrmmr.cpp: dropping a box on the
     robot runs `Programmer …ABOUT_TO_ENTER_THOUGHT_BUBBLE → enter_thought_bubble`

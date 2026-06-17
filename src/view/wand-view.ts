@@ -5,7 +5,7 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Wand } from '../model/wand';
-import { addModeButton } from './lego-button';
+import { addModeButton, toolTipOffset } from './lego-button';
 
 export class WandView extends ThingView {
   protected build(): void {
@@ -26,5 +26,10 @@ export class WandView extends ThingView {
 
     // Mode shown as a 1×1 Lego plate at the wand's tip.
     addModeButton(this.container, wand.mode, this.theme, 'wand', sprite.width, sprite.height, this.textures);
+  }
+
+  /** Held cursor hot point = the star at the wand's tip (where it copies). */
+  activeOffset(): { x: number; y: number } {
+    return toolTipOffset(this.textures, 'wand');
   }
 }

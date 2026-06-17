@@ -63,6 +63,14 @@ export abstract class ThingView {
     this.container.position.set(this.thing.x, this.thing.y);
   }
 
+  /** The point on this view (in its LOCAL space, relative to the container
+   * origin) that acts as the cursor hot point when the thing is HELD — the
+   * centre by default. Tools override it to their business end (Dusty's nose,
+   * the wand's tip) so aiming the tip is exactly what gets clicked. */
+  activeOffset(): { x: number; y: number } {
+    return { x: 0, y: 0 };
+  }
+
   /** Hit test in world coordinates against the container's bounds. */
   containsPoint(x: number, y: number): boolean {
     // (x, y) are WORLD coords; getBounds is screen (thingLayer is panned by the

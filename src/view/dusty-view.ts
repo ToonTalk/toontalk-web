@@ -6,7 +6,7 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Dusty, type VacuumMode } from '../model/dusty';
-import { addModeButton } from './lego-button';
+import { addModeButton, toolTipOffset } from './lego-button';
 
 const MODE_LABEL: Record<VacuumMode, string> = { erase: 'E', suck: 'S', reverse: 'R' };
 
@@ -41,5 +41,10 @@ export class DustyView extends ThingView {
       count.position.set(sprite.width / 2 - 4, -sprite.height / 2 + 6);
       this.container.addChild(count);
     }
+  }
+
+  /** Held cursor hot point = Dusty's nose, so its nose is what sucks/erases. */
+  activeOffset(): { x: number; y: number } {
+    return toolTipOffset(this.textures, 'dusty');
   }
 }
