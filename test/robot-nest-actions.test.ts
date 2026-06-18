@@ -26,7 +26,8 @@ describe('nest-transparent actions', () => {
   it('a robot accumulates successive nest deliveries (bird-driven loop)', () => {
     const w = new World();
     const nest = new Nest();
-    const box = w.add(new Box({ holes: [nest, new NumberThing({ value: 0 })] }));
+    const box = new Box({ holes: [nest, new NumberThing({ value: 0 })] });
+    w.add(box);
     // condition [number, number] (the nest's top is a number); add the delivery to hole 1.
     const robot = new Robot({ condition: ['number', 'number'], actions: [{ type: 'combine', from: 0, to: 1 }] });
     nest.receive(new NumberThing({ value: 3 }));

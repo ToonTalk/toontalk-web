@@ -270,15 +270,15 @@ robot runs (the manual's "front robot… if it doesn't match, pass it along"). �
 **copy** — the wand copies the lead robot (C/O) or the whole team (S), matching
 "a copy of himself and his teammates". ✅ **module recursion** — `fromModule`
 drops a copy of a house-module page into a hole.
-⚠ **matching is non-recursive**: a `box`/`number` hole matches by kind (+ exact
-value), but a nested box isn't matched recursively against an inner thought-
-bubble shape; comparison guards (`<`/`>`) come only via a `Scale` in the box, not
-a general per-hole comparator. ▢ **waiting**: the original *suspends* a robot on
-an unfilled nest and resumes it when a bird delivers (`suspend`:1969 /
-`no_longer_suspended`:2128 — the manual's "he'll wait around"); we run
-synchronously and just decline if nothing matches. ▢ negation via a team +
-marker. ▢ wand-'S' *self-copy during a run* (recursion by copying the running
-robot+team, vs. our module-page recursion).
+✅ **recursive matching**: a nested-box hole is matched **recursively** (robot.cpp
+`same_type_match`) — same shape, each inner hole matched (value / wildcard via an
+erased inner pad / deeper nesting), **suspending** on an incomplete inner box
+(`guardMatch` in robot.ts; tests `robot-recursive-match.test.ts`). Comparison
+guards (`<`/`>`) come via a `Scale` in the box (no general per-hole comparator —
+faithful). ✅ **waiting**: a robot on an unfilled hole / empty nest *suspends*
+and resumes when filled (see the three-way match above). ▢ negation via a team +
+marker (declined). ▢ wand-'S' *self-copy during a run* (recursion by copying the
+running robot+team, vs. our module-page recursion) — next.
 
 ## Scale (`scale.htm`)
 

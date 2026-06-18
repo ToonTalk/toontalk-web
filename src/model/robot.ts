@@ -13,7 +13,7 @@
  * come in later phases. Pure logic — no rendering.
  */
 import { Thing, type ThingKind, type ThingSnapshot } from './thing';
-import type { Box } from './box';
+import { Box } from './box';
 import type { World } from './world';
 import type { Notebook } from './notebook';
 import { NumberThing, type NumberOp } from './number';
@@ -96,6 +96,50 @@ export interface RobotSnapshot extends ThingSnapshot {
   team?: RobotSnapshot[];
 }
 
+/**
+ * Recursively decide whether `actual` satisfies a captured `guard` thing
+ * (robot.cpp `same_type_match` — matching is recursive):
+ *  - an *erased* guard is a wildcard → 'match' (any value of its kind);
+ *  - a BOX guard recurses hole-by-hole (same size; each inner hole is an
+ *    empty-requirement, a wildcard, a value, or another nested box), seeing
+ *    through nests and **suspending ('wait')** on an empty hole / empty nest,
+ *    exactly like the top level — so a nested box generalises the same way;
+ *  - any other guard is an exact value comparison.
+ */
+function guardMatch(actual: Thing, guard: Thing): 'match' | 'mismatch' | 'wait' {
+  if (guard.erased) return 'match';
+  if (guard instanceof Box) {
+    if (!(actual instanceof Box) || actual.size !== guard.size) return 'mismatch';
+    let waiting = false;
+    for (let j = 0; j < guard.size; j++) {
+      const g = guard.contentsAt(j);
+      let a = actual.contentsAt(j);
+      if (a instanceof Nest) {
+        const top = a.front();
+        if (top === null) {
+          if (g !== null && !g.erased) waiting = true; // empty nest where content is needed
+          continue;
+        }
+        a = top;
+      }
+      if (g === null) {
+        if (a !== null) return 'mismatch'; // this inner hole must be empty
+        continue;
+      }
+      if (a === null) {
+        waiting = true; // inner thing not here yet
+        continue;
+      }
+      if (a.kind !== g.kind) return 'mismatch';
+      const s = guardMatch(a, g); // recurse
+      if (s === 'mismatch') return 'mismatch';
+      if (s === 'wait') waiting = true;
+    }
+    return waiting ? 'wait' : 'match';
+  }
+  return actual.equals(guard) ? 'match' : 'mismatch';
+}
+
 export class Robot extends Thing {
   readonly kind = 'robot' as const;
   condition: ConditionHole[];
@@ -174,7 +218,11 @@ export class Robot extends Thing {
       }
       if (occ.kind !== c) return 'mismatch';
       const guard = this.exactValues[i];
-      if (guard != null && !occ.equals(guard)) return 'mismatch';
+      if (guard != null) {
+        const s = guardMatch(occ, guard); // recurses for a nested-box guard
+        if (s === 'mismatch') return 'mismatch';
+        if (s === 'wait') waiting = true;
+      }
     }
     return waiting ? 'wait' : 'match';
   }
