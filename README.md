@@ -9,26 +9,28 @@ DirectX C++ — see `../TOONTALK_WEB_PLAN.md` for the rationale and roadmap.
 ## Status: A library of example robots in the notebook 📒 ✅
 
 The main notebook ("claude 1") now comes pre-stocked with a variety of trained
-robots — pull a page out (drag the robot off it) and drop a matching box on it to
-watch it run. Teams come out as a lined-up row that takes turns on the box. Pages,
-in order after **Pictures** (page 1):
+robots — flip past **Pictures** (page 1) and the **Examples** divider (page 2) to
+the library, pull a page out (drag the robot off it), and drop a matching box on it
+to watch it run. Teams come out as a lined-up row that takes turns on the box:
 
 | # | Robot | Try dropping… |
 |---|---|---|
-| 2 | **Add** | a 2-number box `[3,5]` → `8` |
-| 3 | **Multiply** | a 2-number box `[3,5]` → `15` |
-| 4 | **Count up** | a 1-number box `[0]` → climbs `1,2,3…` (grab it to stop) |
-| 5 | **Double** | a 1-number box `[5]` → `10,20,40…` |
-| 6 | **Join words** | a 2-text box `["snow","man"]` → `"snowman"` |
-| 7 | **Swap** | a 2-number box → swaps them (oscillates — grab to stop) |
-| 8 | **Sort pair** | `[number, scale, number]` → puts the bigger first, then stops |
-| 9 | **Greet** | a 1-text box that's exactly `"hi"` → `"hi there"` (exact-value guard) |
-| 10 | **Add-or-join** (team ×2) | a number pair → adds · a text pair → joins |
-| 11 | **By size** (team ×2) | a lone number → doubles · a pair → adds |
-| 12 | **All-rounder** (team ×3) | number pair → add · text pair → join · lone number → count up |
+| 3 | **Add** | a 2-number box `[3,5]` → `8` |
+| 4 | **Multiply** | a 2-number box `[3,5]` → `15` |
+| 5 | **Count up** | a 1-number box `[0]` → climbs `1,2,3…` (grab it to stop) |
+| 6 | **Double** | a 1-number box `[5]` → `10,20,40…` |
+| 7 | **Join words** | a 2-text box `["snow","man"]` → `"snowman"` |
+| 8 | **Swap** | a 2-number box → swaps them (oscillates — grab to stop) |
+| 9 | **Sort pair** | `[number, scale, number]` → puts the bigger first, then stops |
+| 10 | **Greet** | a 1-text box that's exactly `"hi"` → `"hi there"` (exact-value guard) |
+| 11 | **Add-or-join** (team ×2) | a number pair → adds · a text pair → joins |
+| 12 | **By size** (team ×2) | a lone number → doubles · a pair → adds |
+| 13 | **All-rounder** (team ×3) | number pair → add · text pair → join · lone number → count up |
 
-(An existing saved notebook keeps your filed pages and gets the library added once;
-**Reset** re-seeds a fresh notebook with it.)
+The library is detected by its **Examples** divider page, so any notebook lacking
+it gets the library added on load — an existing notebook keeps your filed pages and
+gains the library after them. (Pages shift accordingly; the numbers above are for a
+fresh notebook. **Reset** re-seeds a clean one.)
 
 ## Status: Robot teams — a line of robots that work together 🤝 ✅
 

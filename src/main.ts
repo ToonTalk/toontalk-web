@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18b (teams: separate lined-up robots · pull a teammate off · wand-S copies the team · file/unfile a whole team)';
+const BUILD = 'build 2026-06-18c (notebook: pre-stocked "Examples" library of trained robots + teams · bubble tools · team turn-taking)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -1021,25 +1021,31 @@ async function start(): Promise<void> {
     return [adder, multiplier, counter, doubler, joiner, swapper, sorter, greeter, addOrJoin, bySize, allRounder];
   }
 
+  // The example library is fronted by a labelled "Examples" divider page; we
+  // detect it BY CONTENT (not a flag) so the check self-heals: any notebook
+  // lacking the divider gets the library appended on load, however it got that
+  // way (a pre-library save, a save that didn't persist, a stale flag, …).
+  const EXAMPLES_HEADER = 'Examples';
+  function exampleLibrary(): Thing[] {
+    return [new TextThing({ value: EXAMPLES_HEADER }), ...exampleRobots()];
+  }
+  function hasExampleLibrary(nb: Notebook): boolean {
+    return nb.pages.some((p) => p instanceof TextThing && p.value === EXAMPLES_HEADER);
+  }
   function seedMainNotebook(): Notebook {
     const nb = new Notebook({ x: 500, y: 600, isMain: true, name: 'claude 1' }); // the original's notebook name
     nb.store(new TextThing({ value: 'Pictures' })); // the original opens to its "Pictures" page
-    for (const r of exampleRobots()) nb.store(r); // …followed by the example-robot library
+    for (const p of exampleLibrary()) nb.store(p); // …then the example-robot library
     nb.goTo(1); // open to the "Pictures" page, as the original does
     return nb;
   }
-  // Bumped when the example library changes — drops the new set into an EXISTING
-  // saved notebook once (keeping the user's own filed pages).
-  const EXAMPLES_FLAG = 'toontalk-examples-v1';
   function installMainNotebook(): Notebook {
-    const saved = loadMainNotebook();
-    const nb = saved ?? seedMainNotebook();
-    if (saved && !localStorage.getItem(EXAMPLES_FLAG)) {
-      for (const r of exampleRobots()) nb.store(r); // add the library to a pre-existing notebook, once
+    const nb = loadMainNotebook() ?? seedMainNotebook();
+    if (!hasExampleLibrary(nb)) {
+      for (const p of exampleLibrary()) nb.store(p); // add the library to a pre-existing / library-less notebook
       nb.goTo(1);
-      saveMainNotebook(nb);
+      saveMainNotebook(nb); // persist so it sticks (re-added next load if this ever fails)
     }
-    localStorage.setItem(EXAMPLES_FLAG, '1');
     nb.moveTo({ x: FLOOR_W / 2, y: FLOOR_H / 2 + 200 }); // near the floor centre, below the tools
     world.add(nb);
     return nb;
@@ -1079,8 +1085,7 @@ async function start(): Promise<void> {
     loadInput.value = '';
   });
   document.getElementById('reset-btn')?.addEventListener('click', () => {
-    clearMainNotebook();
-    localStorage.removeItem(EXAMPLES_FLAG); // a fresh notebook re-seeds the example library
+    clearMainNotebook(); // a fresh notebook re-seeds with the example library
     world.clear();
     if (demoMode) seedDemo();
     else seedFloor();

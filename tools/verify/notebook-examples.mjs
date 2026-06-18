@@ -1,18 +1,16 @@
-// Guard: the main notebook is seeded with the example-robot library (solo + teams)
-// and each example actually works. A fresh Playwright context has empty
-// localStorage, so the notebook seeds fresh.
+// Guard: the main notebook carries the example-robot library (an "Examples"
+// divider + solo robots + teams), each example works, and a library-less notebook
+// SELF-HEALS (the library is detected by content and re-added on load).
 //   node tools/verify/notebook-examples.mjs   (needs `npm run dev` on :3000)
 import { chromium } from 'playwright';
 const browser = await chromium.launch({ args: ['--enable-unsafe-swiftshader'] });
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-await ctx.clearCookies();
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }); // fresh context = empty localStorage
 const page = await ctx.newPage();
-await page.addInitScript(() => { try { localStorage.clear(); } catch {} });
 await page.goto('http://localhost:3000/', { waitUntil: 'load' });
 await page.waitForFunction(() => window.__ttReady === true, { timeout: 30000 });
-await page.waitForTimeout(800);
+await page.waitForTimeout(700);
 
-const out = await page.evaluate(async () => {
+const fresh = await page.evaluate(async () => {
   const { Notebook } = await import('/src/model/notebook.ts');
   const { Robot, runRobot, expandTeam } = await import('/src/model/robot.ts');
   const { Box } = await import('/src/model/box.ts');
@@ -23,45 +21,58 @@ const out = await page.evaluate(async () => {
   const pages = nb.pages;
   const robots = pages.filter((p) => p instanceof Robot);
   const teams = robots.filter((r) => r.team.length > 0);
-
   const numBox = (...vs) => new Box({ holes: vs.map((v) => new NumberThing({ value: v })) });
   const textBox = (...vs) => new Box({ holes: vs.map((v) => new TextThing({ value: v })) });
   const run = (robot, box) => { const r = robot.copy(); runRobot(w, r, box); return box; };
-
-  // pages: [0]=Pictures, then the 11 example robots in known order.
-  const adder = pages[1], multiplier = pages[2], joiner = pages[5], addOrJoin = pages[9], allRounder = pages[11];
-  const addRes = run(adder, numBox(3, 5)).contentsAt(0)?.value?.toString?.();
-  const mulRes = run(multiplier, numBox(3, 5)).contentsAt(0)?.value?.toString?.();
-  const joinRes = run(joiner, textBox('snow', 'man')).contentsAt(0)?.value;
-  // the team adds a number pair AND (via its teammate) joins a text pair:
-  const teamNum = run(addOrJoin, numBox(10, 7)).contentsAt(0)?.value?.toString?.();
-  const teamTxt = run(addOrJoin, textBox('a', 'b')).contentsAt(0)?.value;
-
-  // a filed team expands into separate linked floor robots
-  const teamCopy = allRounder.copy();
-  w.add(teamCopy);
-  expandTeam(w, teamCopy);
-  const expanded = teamCopy.team.every((m) => w.get(m.id) === m && m.leader === teamCopy);
-
+  // pages: [0]=Pictures, [1]="Examples", then the 11 robots.
+  const teamCopy = pages[12].copy(); w.add(teamCopy); expandTeam(w, teamCopy);
   return {
     pageCount: pages.length,
-    page0: pages[0] instanceof TextThing ? pages[0].value : pages[0]?.kind,
+    page0: pages[0] instanceof TextThing ? pages[0].value : '?',
+    page1: pages[1] instanceof TextThing ? pages[1].value : '?',
     robotCount: robots.length,
-    teamCount: teams.length,
-    teamSizes: teams.map((t) => t.team.length),
-    addRes, mulRes, joinRes, teamNum, teamTxt,
-    expandedMembers: teamCopy.team.length,
-    expanded,
+    teamSizes: teams.map((t) => t.team.length).join(','),
+    addRes: run(pages[2], numBox(3, 5)).contentsAt(0)?.value?.toString?.(),
+    mulRes: run(pages[3], numBox(3, 5)).contentsAt(0)?.value?.toString?.(),
+    joinRes: run(pages[6], textBox('snow', 'man')).contentsAt(0)?.value,
+    teamNum: run(pages[10], numBox(10, 7)).contentsAt(0)?.value?.toString?.(),
+    teamTxt: run(pages[10], textBox('a', 'b')).contentsAt(0)?.value,
+    expanded: teamCopy.team.length === 2 && teamCopy.team.every((m) => w.get(m.id) === m && m.leader === teamCopy),
+  };
+});
+
+// Self-heal: plant a library-LESS notebook (a pre-library save) and reload.
+await page.evaluate(async () => {
+  const { Notebook } = await import('/src/model/notebook.ts');
+  const { Robot } = await import('/src/model/robot.ts');
+  const { TextThing } = await import('/src/model/text.ts');
+  const { thingToJson } = await import('/src/model/persistence.ts');
+  const old = new Notebook({ isMain: true, name: 'claude 1' });
+  old.store(new TextThing({ value: 'Pictures' }));
+  old.store(new Robot({ condition: ['number'], actions: [{ type: 'copy', from: 0, to: 0 }] }));
+  localStorage.setItem('toontalk-main-notebook-v1', thingToJson(old));
+});
+await page.reload({ waitUntil: 'load' });
+await page.waitForFunction(() => window.__ttReady === true, { timeout: 30000 });
+await page.waitForTimeout(600);
+const healed = await page.evaluate(async () => {
+  const { Notebook } = await import('/src/model/notebook.ts');
+  const { TextThing } = await import('/src/model/text.ts');
+  const nb = window.__ttWorld.all().find((t) => t instanceof Notebook && t.isMain);
+  return {
+    pages: nb.pages.length, // 2 user pages + Examples divider + 11 robots = 14
+    hasHeader: nb.pages.some((p) => p instanceof TextThing && p.value === 'Examples'),
+    persisted: (() => { try { return JSON.parse(localStorage.getItem('toontalk-main-notebook-v1')).pages.length; } catch { return -1; } })(),
   };
 });
 await browser.close();
 
 const ok =
-  out.pageCount === 12 && out.page0 === 'Pictures' && out.robotCount === 11 &&
-  out.teamCount === 3 && out.teamSizes.join(',') === '1,1,2' &&
-  out.addRes === '8' && out.mulRes === '15' && out.joinRes === 'snowman' &&
-  out.teamNum === '17' && out.teamTxt === 'ab' &&
-  out.expandedMembers === 2 && out.expanded;
-console.log(JSON.stringify(out, null, 1));
-console.log(`${ok ? 'PASS' : 'FAIL'} notebook seeded with a working example-robot library (solo + teams)`);
+  fresh.pageCount === 13 && fresh.page0 === 'Pictures' && fresh.page1 === 'Examples' &&
+  fresh.robotCount === 11 && fresh.teamSizes === '1,1,2' &&
+  fresh.addRes === '8' && fresh.mulRes === '15' && fresh.joinRes === 'snowman' &&
+  fresh.teamNum === '17' && fresh.teamTxt === 'ab' && fresh.expanded &&
+  healed.pages === 14 && healed.hasHeader && healed.persisted === 14;
+console.log(JSON.stringify({ fresh, healed }, null, 1));
+console.log(`${ok ? 'PASS' : 'FAIL'} notebook example library: seeds fresh, runs, and self-heals a library-less notebook`);
 process.exit(ok ? 0 : 1);
