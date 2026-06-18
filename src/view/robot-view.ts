@@ -22,6 +22,18 @@ export class RobotView extends ThingView {
       mate.position.set(i * 14, -i * 9);
       this.container.addChild(mate);
     }
+    // A small badge of the team size, so it reads as "a team of N", not one robot.
+    if (robot.team.length > 0) {
+      const teamBadge = new PIXI.Text(`team ×${robot.team.length + 1}`, {
+        fontFamily: 'Tahoma, system-ui, sans-serif',
+        fontSize: 12,
+        fill: 0x335577,
+        fontWeight: 'bold',
+      });
+      teamBadge.anchor.set(0, 0.5);
+      teamBadge.position.set((robot.team.length + 1) * 14, -(robot.team.length + 1) * 9);
+      this.container.addChild(teamBadge);
+    }
 
     if (this.theme.dropShadow) {
       const shadow = new PIXI.Sprite(tex);
