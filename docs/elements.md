@@ -276,9 +276,13 @@ erased inner pad / deeper nesting), **suspending** on an incomplete inner box
 (`guardMatch` in robot.ts; tests `robot-recursive-match.test.ts`). Comparison
 guards (`<`/`>`) come via a `Scale` in the box (no general per-hole comparator —
 faithful). ✅ **waiting**: a robot on an unfilled hole / empty nest *suspends*
-and resumes when filled (see the three-way match above). ▢ negation via a team +
-marker (declined). ▢ wand-'S' *self-copy during a run* (recursion by copying the
-running robot+team, vs. our module-page recursion) — next.
+and resumes when filled (see the three-way match above). ✅ **wand-'S' self-copy**:
+a recorded `selfCopy` step drops a copy of the **running robot + its team** into
+an empty hole each run (the running team lead is the source, `ActionContext.robot`;
+`Trainer.recordSelfCopy`; train it with the wand in **S** mode clicked on an
+empty hole) — the self-recursion primitive (e.g. for a bird to carry to a nested
+call), alongside module-page recursion. Tests: `robot-selfcopy.test.ts`. ▢
+negation via a team + marker (declined).
 
 ## Scale (`scale.htm`)
 

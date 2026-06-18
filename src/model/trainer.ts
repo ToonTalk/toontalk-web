@@ -127,6 +127,21 @@ export class Trainer {
   }
 
   /**
+   * Demonstrate the wand's **self-copy** (robot.htm "a copy of himself and his
+   * teammates"): drop a copy of the robot being trained into empty hole `to`.
+   * On each run it drops a fresh copy of the *running* robot+team there — the
+   * self-recursion primitive (e.g. for a bird to carry to a nested call).
+   */
+  recordSelfCopy(to: number): boolean {
+    if (!this.session || !this.session.box.isHoleEmpty(to)) return false;
+    const action: RobotAction = { type: 'selfCopy', to };
+    if (!applyAction(this.session.box, action, { robot: this.session.robot })) return false;
+    this.session.actions.push(action);
+    this.world.notifyChanged(this.session.box);
+    return true;
+  }
+
+  /**
    * Generalize a hole with Dusty *inside the thought bubble* (robot.htm "suck
    * things out of the box… to make the robot work when you want"): erase the
    * imagined hole's value and drop its exact-value guard, so the robot matches

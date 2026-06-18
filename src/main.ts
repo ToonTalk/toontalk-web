@@ -549,7 +549,7 @@ async function start(): Promise<void> {
         const apply = (): void => {
           if (applied || loop.cancelled) return; // a grab mid-swing freezes it exactly
           applied = true;
-          applyAction(box, action);
+          applyAction(box, action, { robot }); // robot = self-copy source
           recomputeScales(box);
           world.notifyChanged(box);
         };

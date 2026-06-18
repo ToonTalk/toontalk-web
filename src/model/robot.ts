@@ -24,6 +24,9 @@ import { recomputeScales } from './scale';
 /** Extra context an action may need (the running house's module, for recursion). */
 export interface ActionContext {
   module?: Notebook | null;
+  /** The running team lead — so a `selfCopy` action can drop a copy of it (and
+   * its team) into a hole (the wand-self-copy recursion primitive). */
+  robot?: Robot;
 }
 
 /** A demonstrated action, expressed in terms of hole positions so it generalizes. */
@@ -77,6 +80,13 @@ export type RobotAction =
       from: number;
       /** …a fresh copy dropped into this hole (fills it, or combines if full).
        * `to === from` doubles the value. The wand "creates a copy" (robot.htm). */
+      to: number;
+    }
+  | {
+      type: 'selfCopy';
+      /** Drop a COPY OF THE RUNNING ROBOT (and its team) into this empty hole —
+       * the wand's "a copy of himself and his teammates" (robot.htm), the
+       * self-recursion primitive. Source is the running team lead (ctx.robot). */
       to: number;
     };
 
@@ -326,6 +336,14 @@ export function applyAction(box: Box, action: RobotAction, ctx?: ActionContext):
     return placeOrCombine(box, action.to, src.copy());
   }
 
+  if (action.type === 'selfCopy') {
+    // Drop a copy of the running robot (and its team) into an empty hole — the
+    // self-recursion primitive (e.g. for a bird to carry to a nested call).
+    if (!ctx?.robot || !box.isHoleEmpty(action.to)) return false;
+    box.put(action.to, ctx.robot.copy());
+    return true;
+  }
+
   if (action.type === 'fromModule') {
     // Module use / recursion: drop a *copy* of a module page into an empty hole.
     const module = ctx?.module;
@@ -408,8 +426,10 @@ export function runRobot(world: World, robot: Robot, box: Box, ctx?: ActionConte
   recomputeScales(box); // ensure any scale's tilt reflects the input before matching
   const runner = robot.lineup().find((r) => r.actions.length > 0 && r.matches(box));
   if (!runner) return false;
+  // The team lead is the self-copy source (a copy of "himself and his teammates").
+  const runCtx: ActionContext = { ...ctx, robot };
   for (const action of runner.actions) {
-    applyAction(box, action, ctx);
+    applyAction(box, action, runCtx);
   }
   recomputeScales(box);
   world.notifyChanged(box);

@@ -428,9 +428,16 @@ export class DragController {
           this.trainFrom = null;
           this.trainInsertThing = null;
           this.trainWandCopy = false;
+          const wand = this.heldTool.thing;
           const bv = this.trainingBoxView();
           const from = bv && bv.withinBox(x, y) ? bv.holeIndexAt(x, y) : null;
           const src = from != null ? this.trainer.box?.contentsAt(from) ?? null : null;
+          // Wand in SELF-COPY mode (S) on an EMPTY hole → drop a copy of the robot
+          // there (recursion: "a copy of himself and his teammates", robot.htm).
+          if (wand.mode === 'S' && from != null && !src) {
+            if (this.trainer.recordSelfCopy(from)) tlog(`train: wand self-copy → hole ${from} ${this.scr(x, y)}`);
+            return;
+          }
           if (from != null && src) {
             this.trainFrom = from;
             this.trainWandCopy = true;

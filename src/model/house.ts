@@ -78,7 +78,7 @@ export function runHouse(world: World, house: House): boolean {
   recomputeScales(house.box);
   const runner = house.robot.lineup().find((r) => r.actions.length > 0 && r.matches(house.box));
   if (!runner) return false;
-  for (const action of runner.actions) applyAction(house.box, action, { module: house.module });
+  for (const action of runner.actions) applyAction(house.box, action, { module: house.module, robot: house.robot });
   recomputeScales(house.box);
   world.notifyChanged(house);
   return true;
