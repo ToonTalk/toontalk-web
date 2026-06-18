@@ -101,6 +101,16 @@ export class DragController {
     this.enabled = on;
   }
 
+  /** Debug snapshot of what's currently held/dragged + trainer state, for the
+   * verify harness (read via `window.__ttDrag.debug`). */
+  get debug(): { heldTool: string | null; dragging: string | null; trainerActive: boolean } {
+    return {
+      heldTool: this.heldTool?.thing.kind ?? null,
+      dragging: this.dragging?.thing.kind ?? null,
+      trainerActive: this.trainer.active,
+    };
+  }
+
   constructor(
     private readonly world: World,
     private readonly renderer: Renderer,
@@ -816,11 +826,14 @@ export class DragController {
       // A carried element (put-in) or Dusty applies on the drop — on a hole, or
       // on any later click. But the SAME click that just plucked it out of Tooly
       // (justGrabbed, released off a hole) must NOT instantly drop it: keep it in
-      // hand so you can then carry it to a hole.
-      if (this.heldTool) {
+      // hand so you can then carry it to a hole. The WAND is excluded: it acts on
+      // pointer-DOWN (a copy-drag, or an S-mode self-copy click), so applying it
+      // again here would double-fire (e.g. copy the robot a self-copy just placed).
+      if (this.heldTool && !(this.heldTool.thing instanceof Wand)) {
         if (overHole != null || !justGrabbed) this.applyHeldTool(wp.x, wp.y);
         return;
       }
+      if (this.heldTool) return; // a held wand was already handled on pointer-down
       if (this.trainFrom != null) {
         if (overHole != null && overHole !== this.trainFrom) {
           this.onTrainStep({ kind: 'combine', from: this.trainFrom, to: overHole });

@@ -698,12 +698,17 @@ async function start(): Promise<void> {
       robotC.eventMode = 'none';
       robotC.scale.set(0.6);
     }
-    // The imagined box (a copy) sits prominent at left; the robot at bottom-centre.
+    // The imagined box (a copy) sits in the CLEAR TOP STRIP of the bubble. The
+    // thingLayer renders above the toolbox chrome, so a box placed over a spilled
+    // tool (Dusty ~0.44h, Pumpy ~0.56h, the wand ~0.72h) would cover it and steal
+    // its clicks — you'd grab the box instead of the tool. Keeping the box high
+    // (y ≈ 0.22h, above every tool) leaves all of them reachable inside the
+    // thoughts, however wide the box is.
     const bubbleBox = realBox.copy() as Box;
     world.add(bubbleBox);
-    world.moveThing(bubbleBox.id, { x: floorCamera.x + renderer.width * 0.26, y: floorCamera.y + renderer.height * 0.4 });
+    world.moveThing(bubbleBox.id, { x: floorCamera.x + renderer.width * 0.34, y: floorCamera.y + renderer.height * 0.22 });
     const robotOrig = { x: robot.x, y: robot.y };
-    world.moveThing(robot.id, { x: floorCamera.x + renderer.width * 0.5, y: floorCamera.y + renderer.height * 0.8 });
+    world.moveThing(robot.id, { x: floorCamera.x + renderer.width * 0.5, y: floorCamera.y + renderer.height * 0.82 });
     trainer.start(robot, bubbleBox); // record against the imagined copy
     thoughtState = { hidden, realBoxId: realBox.id, bubbleBoxId: bubbleBox.id, robotId: robot.id, robotOrig };
   }
@@ -782,7 +787,7 @@ async function start(): Promise<void> {
     let made: Thing | null = null;
     switch (key) {
       case 'number': made = world.add(new NumberThing({ value: 1, x, y })); break;
-      case 'text': made = world.add(new TextThing({ value: 'a', x, y })); break;
+      case 'text': made = world.add(new TextThing({ value: 'A', x, y })); break; // match the toolbox icon (room.ts sampleThing)
       case 'box': made = world.add(new Box({ size: 1, x, y })); break; // cubby.h: 1 hole by default
       case 'nest': {
         // A fresh nest holds an egg (the nest view draws it). After a beat it
