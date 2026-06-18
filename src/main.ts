@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17v (running robot walks to Tooly, carries a fresh element to the box, walks home)';
+const BUILD = 'build 2026-06-17w (recursive nested-box matching · wand self-copy step · team-size badge)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
