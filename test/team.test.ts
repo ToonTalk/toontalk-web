@@ -11,13 +11,15 @@ const numBox = (a: number, b: number) =>
   new Box({ holes: [new NumberThing({ value: a }), new NumberThing({ value: b })] });
 
 describe('robot teams', () => {
-  it('drop robot-on-robot forms a team behind the target', () => {
+  it('drop robot-on-robot forms a team of separate, lined-up robots', () => {
     const w = new World();
     const lead = w.add(new Robot()) as Robot;
     const mate = w.add(new Robot()) as Robot;
     expect(resolveDrop(w, mate, lead)).toBe('teamed');
     expect(lead.team).toEqual([mate]);
-    expect(w.get(mate.id)).toBeUndefined(); // teammate is no longer a world thing
+    expect(w.get(mate.id)).toBe(mate); // teammate STAYS a separate world robot…
+    expect(mate.leader).toBe(lead); // …linked to its lead
+    expect(mate.x).toBeGreaterThan(lead.x); // …lined up behind it
   });
 
   it('the first matching robot in the team runs', () => {

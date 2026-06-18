@@ -14,27 +14,8 @@ export class RobotView extends ThingView {
     const robot = this.thing as Robot;
     const tex = this.textures.get('robot') ?? PIXI.Texture.WHITE;
 
-    // Teammates peek out behind the lead (front-to-back order).
-    for (let i = robot.team.length; i >= 1; i--) {
-      const mate = new PIXI.Sprite(tex);
-      mate.anchor.set(0.5);
-      mate.scale.set(0.8);
-      mate.position.set(i * 14, -i * 9);
-      this.container.addChild(mate);
-    }
-    // A small badge of the team size, so it reads as "a team of N", not one robot.
-    if (robot.team.length > 0) {
-      const teamBadge = new PIXI.Text(`team ×${robot.team.length + 1}`, {
-        fontFamily: 'Tahoma, system-ui, sans-serif',
-        fontSize: 12,
-        fill: 0x335577,
-        fontWeight: 'bold',
-      });
-      teamBadge.anchor.set(0, 0.5);
-      teamBadge.position.set((robot.team.length + 1) * 14, -(robot.team.length + 1) * 9);
-      this.container.addChild(teamBadge);
-    }
-
+    // A team's members are SEPARATE floor robots lined up behind the lead (each
+    // its own view), so nothing extra is drawn here for teammates.
     if (this.theme.dropShadow) {
       const shadow = new PIXI.Sprite(tex);
       shadow.anchor.set(0.5);

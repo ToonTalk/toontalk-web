@@ -164,9 +164,18 @@ export class Robot extends Thing {
   /**
    * Robots behind this one in a team (front-to-back order). A box given to the
    * team is tried by this robot first, then each teammate; the first whose
-   * condition matches runs. Teammates are not separate world things.
+   * condition matches runs. On the floor the teammates are **separate world
+   * robots** lined up behind the lead (each with `leader` set); they're embedded
+   * here only in a snapshot (filing a team as one notebook page).
    */
   team: Robot[];
+  /**
+   * The lead this robot is following, or null if it's a solo robot / a team lead.
+   * Transient (a runtime link for the floor line — not serialized; rebuilt when a
+   * team is formed or a filed team is taken out). A teammate doesn't run on its
+   * own; a box dropped on it is offered to its lead's whole team.
+   */
+  leader: Robot | null = null;
 
   constructor(opts: {
     id?: string;
@@ -415,6 +424,21 @@ export function teamMatch(robot: Robot, box: Box): { runner: Robot | null; state
     if (s === 'wait') waiting = true;
   }
   return { runner: null, state: waiting ? 'wait' : 'mismatch' };
+}
+
+/** Where each teammate should sit on the floor — lined up behind the lead
+ * (front-to-back), so a team reads as a row of separate robots. Spaced enough
+ * (robots are wide) that each member is individually clickable / pull-off-able. */
+export function teamPositions(lead: Robot): { robot: Robot; x: number; y: number }[] {
+  return lead.team.map((r, i) => ({ robot: r, x: lead.x + (i + 1) * 150, y: lead.y + (i + 1) * 8 }));
+}
+
+/** Detach a robot from its team (pull it off the line) — it becomes solo. */
+export function detachFromTeam(robot: Robot): void {
+  const lead = robot.leader;
+  if (!lead) return;
+  lead.team = lead.team.filter((r) => r !== robot);
+  robot.leader = null;
 }
 
 /**

@@ -18,7 +18,7 @@ import { Wand } from './model/wand';
 import { Dusty } from './model/dusty';
 import { Bomb } from './model/bomb';
 import { Scale, recomputeScales } from './model/scale';
-import { Robot, applyAction, teamMatch } from './model/robot';
+import { Robot, applyAction, teamMatch, teamPositions } from './model/robot';
 import { Truck } from './model/truck';
 import { House, runHouse } from './model/house';
 import { Notebook } from './model/notebook';
@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-17w (recursive nested-box matching · wand self-copy step · team-size badge)';
+const BUILD = 'build 2026-06-18a (teams: separate lined-up robots · drag the lead moves the line · grab a teammate pulls it off)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -120,9 +120,17 @@ async function start(): Promise<void> {
         renderer.thingLayer.addChild(view.container);
         break;
       }
-      case 'moved':
+      case 'moved': {
         views.get(event.thing.id)?.syncPosition();
+        // A team lead drags its line of teammates along (they keep formation).
+        const moved = event.thing;
+        if (moved instanceof Robot && moved.team.length > 0) {
+          for (const p of teamPositions(moved)) {
+            if (p.robot.id !== moved.id) world.moveThing(p.robot.id, { x: p.x, y: p.y });
+          }
+        }
         break;
+      }
       case 'changed':
         views.get(event.thing.id)?.refresh();
         break;
@@ -208,13 +216,15 @@ async function start(): Promise<void> {
       // (watch it work), instead of resolveDrop applying the instant outcome.
       const rbt = dragged instanceof Robot ? dragged : target instanceof Robot ? target : null;
       const bx = dragged instanceof Box ? dragged : target instanceof Box ? target : null;
-      if (rbt && bx) {
-        // Start the robot if the box matches OR is merely incomplete (it'll wait
+      // A box given to a teammate runs the whole team (via its lead).
+      const lead = rbt ? rbt.leader ?? rbt : null;
+      if (lead && bx) {
+        // Start the team if the box matches OR is merely incomplete (it'll wait
         // and resume); only a true mismatch falls through to a plain drop.
-        const { state } = teamMatch(rbt, bx);
+        const { state } = teamMatch(lead, bx);
         if (state === 'match' || state === 'wait') {
           tlog(`run: robot starts on ${desc(bx)} (${state})`);
-          animateRun(rbt, bx);
+          animateRun(lead, bx);
           return;
         }
       }

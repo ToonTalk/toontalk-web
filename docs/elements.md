@@ -263,17 +263,20 @@ the delivery and leaving the nest** for the next bird (robot.cpp "if leader is
 nest find topmost one"). So a `[nest, accumulator]` robot adds each bird delivery
 to the accumulator and waits between them. Guards: `robot-matchstate.test.ts` +
 `robot-nest-actions.test.ts` (unit: 0 → +3 → +4 → 7, then waits), `robot-wait.mjs`. ✅ **finish key**: Escape finishes training (Backspace
-cancels as a web-only helper). ✅ **teams**: drop robot on robot → the dragged
-robot (+ its team) lines up behind the target (`Robot.team`, front-to-back); a
-box is offered front-to-back via `runRobot`/`teamMatch`→`lineup()`, first trained
-matching robot runs (the manual's "front robot… if it doesn't match, pass it
-along"). Members **cooperate over the run cycle** — as the box changes, a
-different member matches and runs next; the team **waits** if a member would
-suspend (tests `robot-team.test.ts`: conditional pick + a `1→2→empty` cycle).
-Teammates **peek out behind the lead** with a `team ×N` badge (`RobotView`). ⚠
-teammates are EMBEDDED in the lead (`Robot.team`), not separate floor things —
-so you can't yet pull one off the line or open an individual member's bubble
-(▢, a model refactor: separate, linked robots like `first_in_line`/next). ✅
+cancels as a web-only helper). ✅ **teams** (separate lined-up robots, like
+`first_in_line`/next): drop robot on robot → the dragged robot becomes a SEPARATE
+floor robot lined up **behind** the target (`teamPositions`), each keeping its own
+view + thought bubble; the lead holds the order in `Robot.team` and each member a
+transient `leader` back-ref. Dragging the lead drags the whole line; **grabbing a
+teammate pulls it OFF** (`detachFromTeam`) so it's a solo robot again, and the
+lead re-closes its line (`drag-controller.ts` grab branch; guard
+`tools/verify/team-floor.mjs`). A box is offered front-to-back via
+`runRobot`/`teamMatch`→`lineup()`, first matching robot runs (the manual's "front
+robot… if it doesn't match, pass it along"). Members **cooperate over the run
+cycle** — as the box changes, a different member matches and runs next; the team
+**waits** if a member would suspend (tests `robot-team.test.ts`: conditional pick
++ a `1→2→empty` cycle). Save/load round-trips the team (the lead's snapshot embeds
+its members; `team.test.ts`). ✅
 **copy** — the wand copies the lead robot (C/O) or the whole team (S), matching
 "a copy of himself and his teammates". ✅ **module recursion** — `fromModule`
 drops a copy of a house-module page into a hole.

@@ -18,6 +18,7 @@ import { Nest } from '../model/nest';
 import { hatchFromNest } from '../model/bird';
 import { Notebook } from '../model/notebook';
 import { Wand } from '../model/wand';
+import { Robot, detachFromTeam, teamPositions } from '../model/robot';
 import {
   NumberThing,
   rationalToEditBuffer,
@@ -527,6 +528,15 @@ export class DragController {
       this.world.moveThing(picked.id, { x: x + o.x, y: y + o.y });
       this.onGrab(picked);
       return;
+    }
+
+    // Grabbing a teammate pulls it OFF the team (it becomes a solo robot again);
+    // the lead re-closes its line.
+    if (picked instanceof Robot && picked.leader) {
+      const lead = picked.leader;
+      detachFromTeam(picked);
+      for (const p of teamPositions(lead)) this.world.moveThing(p.robot.id, { x: p.x, y: p.y });
+      this.world.notifyChanged(lead);
     }
 
     this.dragging = view;

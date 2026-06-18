@@ -16,7 +16,7 @@ import { Box } from './box';
 import { Wand } from './wand';
 import { Bird } from './bird';
 import { Nest } from './nest';
-import { Robot, runRobot } from './robot';
+import { Robot, runRobot, teamPositions } from './robot';
 import { Dusty } from './dusty';
 import { Bomb } from './bomb';
 import { Truck } from './truck';
@@ -200,9 +200,17 @@ export function resolveDrop(
   // teammates) line up behind the target, which leads. A box given to the team
   // is offered front-to-back; the first matching robot runs.
   if (dragged instanceof Robot && target instanceof Robot) {
-    target.team.push(dragged, ...dragged.team);
+    // The dragged robot (and its own team) join the target's team as SEPARATE
+    // world robots, lined up behind the lead — not removed/embedded.
+    const members = [dragged, ...dragged.team];
     dragged.team = [];
-    world.remove(dragged.id);
+    for (const m of members) {
+      m.leader = target;
+      m.team = []; // any sub-team flattens into the new lead
+      if (!world.get(m.id)) world.add(m); // a member from a filed (embedded) team becomes a floor thing
+      target.team.push(m);
+    }
+    for (const p of teamPositions(target)) world.moveThing(p.robot.id, { x: p.x, y: p.y });
     world.notifyChanged(target);
     return 'teamed';
   }
@@ -234,9 +242,11 @@ export function resolveDrop(
 
   // A robot (team) meets a box (either direction) → run on the box.
   {
-    const robot = dragged instanceof Robot ? dragged : target instanceof Robot ? target : null;
+    const dropped = dragged instanceof Robot ? dragged : target instanceof Robot ? target : null;
     const box = dragged instanceof Box ? dragged : target instanceof Box ? target : null;
-    if (robot && box) {
+    if (dropped && box) {
+      // A box given to a teammate is offered to the whole team (via its lead).
+      const robot = dropped.leader ?? dropped;
       // A lone untrained robot learns from the box; otherwise the team runs.
       if (robot.actions.length === 0 && robot.team.length === 0) return 'train';
       return runRobot(world, robot, box) ? 'ran' : 'none';
