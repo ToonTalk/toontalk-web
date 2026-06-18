@@ -482,67 +482,47 @@ async function start(): Promise<void> {
   // A trained robot REPLAYS its actions step-by-step on a matching box (you
   // watch it work), rather than the box jumping to the final result. Bammer
   // shows up on each combine, like a live demonstration.
-  function animateRun(robot: Robot, box: Box): void {
+  function animateRun(lead: Robot, box: Box): void {
     cancelRunningLoop(); // never two loops on one box
     const loop: { robotId: string; boxId: string; cancelled: boolean; unsub?: () => void } = {
-      robotId: robot.id,
+      robotId: lead.id,
       boxId: box.id,
       cancelled: false,
     };
     runningLoop = loop;
-    // One iteration: find the matching team member and replay its actions; when
-    // the pass finishes, loop again while the box still matches. A robot is a
-    // guarded rule that keeps firing until its condition no longer holds — so a
-    // generalised "add 1" robot counts forever, and a scale guard (tilts the
-    // other way past a limit) stops it. (Mismatch → stop; "wait on an incomplete
-    // box / empty nest" is a separate, not-yet-built state.)
-    const iterate = (): void => {
-      if (loop.cancelled) return;
-      if (!world.get(box.id) || !world.get(robot.id)) { if (runningLoop === loop) runningLoop = null; return; }
-      const { runner, state } = teamMatch(robot, box);
-      if (state === 'mismatch') {
-        if (runningLoop === loop) runningLoop = null;
-        tlog(`run: stopped — box no longer matches (${desc(box)})`);
-        setHud('✋ The robot stopped — the box no longer matches its rule (e.g. a scale tipped).');
-        return;
-      }
-      if (state === 'wait') {
-        // The box is incomplete (a needed hole is empty, or an empty nest awaits
-        // a bird). Don't stop — suspend, and resume the moment something is added
-        // (the user fills a hole, or a bird delivers → a 'changed'/'added' event).
-        tlog(`run: waiting — box incomplete (${desc(box)})`);
-        setHud('⏳ Waiting — the box is missing something (or an empty nest awaits a bird). Add it and the robot resumes.');
-        loop.unsub = world.subscribe((e) => {
-          if (loop.cancelled) return;
-          if (e.type === 'moved') return; // a mere move doesn't change the contents
-          loop.unsub?.();
-          loop.unsub = undefined;
-          // Re-evaluate on the NEXT tick, not synchronously: re-subscribing here
-          // (when still waiting) would add a listener mid-emit, which the same
-          // emit() would immediately visit → re-subscribe → infinite loop / frozen
-          // tab. Deferring lets this event finish dispatching first.
-          setTimeout(iterate, 0);
-        });
-        return;
-      }
-      // Walk the robot (the actor) to a world point; stops cleanly if the loop is
-      // cancelled (you grabbed it) or the robot is gone.
-      const walk = (to: { x: number; y: number }, ms: number, done: () => void): void => {
-        const from = { x: robot.x, y: robot.y };
-        const t0 = performance.now();
-        const tick = (): void => {
-          if (loop.cancelled || !world.get(robot.id)) { renderer.app.ticker.remove(tick); return; }
-          const t = Math.min(1, (performance.now() - t0) / ms);
-          const e = t * (2 - t); // ease-out
-          world.moveThing(robot.id, { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e });
-          if (t >= 1) {
-            renderer.app.ticker.remove(tick);
-            done();
-          }
-        };
-        renderer.app.ticker.add(tick);
+    const lineup = lead.lineup();
+    // Each member's resting (lined-up) position, so they can return after a pass.
+    const home = new Map(lineup.map((r) => [r.id, { x: r.x, y: r.y }]));
+    let actor: Robot | null = null; // the member currently up at the box, working
+
+    // Walk ANY member to a world point (eased); stops if the loop is cancelled
+    // (you grabbed something) or that robot is gone.
+    const walkRobot = (r: Robot, to: { x: number; y: number }, ms: number, done: () => void): void => {
+      const from = { x: r.x, y: r.y };
+      const t0 = performance.now();
+      const tick = (): void => {
+        if (loop.cancelled || !world.get(r.id)) { renderer.app.ticker.remove(tick); return; }
+        const t = Math.min(1, (performance.now() - t0) / ms);
+        const e = t * (2 - t); // ease-out
+        world.moveThing(r.id, { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e });
+        if (t >= 1) { renderer.app.ticker.remove(tick); done(); }
       };
-      const actions = runner!.actions;
+      renderer.app.ticker.add(tick);
+    };
+
+    // Put the whole team back in its line (after the run stops / suspends).
+    const returnToLine = (): void => {
+      for (const r of lineup) {
+        const h = home.get(r.id);
+        if (h && world.get(r.id)) world.moveThing(r.id, h);
+      }
+    };
+
+    // One pass for the MATCHING member: replay its actions, then loop again while
+    // the box still matches (a robot is a guarded rule that keeps firing). The
+    // self-copy source is the LEAD ("a copy of himself and his teammates").
+    const runActions = (runner: Robot): void => {
+      const actions = runner.actions;
       let i = 0;
       const step = (): void => {
         if (loop.cancelled) return;
@@ -559,20 +539,19 @@ async function start(): Promise<void> {
         const apply = (): void => {
           if (applied || loop.cancelled) return; // a grab mid-swing freezes it exactly
           applied = true;
-          applyAction(box, action, { robot }); // robot = self-copy source
+          applyAction(box, action, { robot: lead }); // lead = self-copy source
           recomputeScales(box);
           world.notifyChanged(box);
         };
-        // An INSERT re-enacts training: the robot WALKS to Tooly, picks up a FRESH
+        // An INSERT re-enacts training: the RUNNER walks to Tooly, picks up a FRESH
         // copy, carries it to the box and drops it (robot.htm — a "new" thing comes
-        // from the toolbox each run). The robot's body walks; the fresh element
-        // flies in its hand; then it walks home.
+        // from the toolbox each run); its body walks, the fresh element flies, then
+        // it walks back.
         if (action.type === 'insert') {
-          const home = { x: robot.x, y: robot.y };
+          const back = { x: runner.x, y: runner.y };
           const src = toolboxSource();
           const target = holeWorld(box, action.to);
-          walk({ x: src.x - 70, y: src.y + 60 }, 380, () => {
-            // at Tooly: grab a fresh copy and carry it to the box
+          walkRobot(runner, { x: src.x - 70, y: src.y + 60 }, 380, () => {
             const fresh = renderThingDisplay(action.thing, textures, theme, 46);
             fresh.position.set(src.x, src.y);
             fresh.zIndex = 6000;
@@ -581,23 +560,74 @@ async function start(): Promise<void> {
               if (merging) bamMouseAt(box, apply); // dropped onto a number → combine
               else apply(); // dropped into an empty hole → just lands
             });
-            walk({ x: target.x + 130, y: target.y - 10 }, 460, () => {
-              // after the drop/combine settles, walk home, then take the next step
-              setTimeout(() => { apply(); walk(home, 380, step); }, merging ? 1350 : 250);
+            walkRobot(runner, { x: target.x + 130, y: target.y - 10 }, 460, () => {
+              setTimeout(() => { apply(); walkRobot(runner, back, 380, step); }, merging ? 1350 : 250);
             });
           });
           return;
         }
         // For a combine, Bammer runs IN and the numbers merge only when the hammer
-        // strikes (~1.2 s) — so you watch the mouse arrive and slam *before* the
-        // result appears, not after. Other actions apply at once. `apply` is
-        // guarded so it still happens exactly once even if the slam is skipped
-        // (e.g. art missing → runMouse fires its callback immediately).
+        // strikes (~1.2 s) — you watch the mouse arrive and slam *before* the result
+        // appears. Other actions apply at once. `apply` is guarded to happen once.
         if (merging) bamMouseAt(box, apply);
         else apply();
         setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, merging ? 1400 : 700);
       };
       step();
+    };
+
+    // One iteration: offer the box to the team front-to-back (`teamMatch`). The
+    // first member that matches RUNS; members AHEAD of it that don't match step
+    // aside to let it through (robot.cpp move_to_side — the team taking turns).
+    // Mismatch → stop; an incomplete box / empty nest → suspend and resume.
+    const iterate = (): void => {
+      if (loop.cancelled) return;
+      if (!world.get(box.id) || !world.get(lead.id)) { if (runningLoop === loop) runningLoop = null; return; }
+      const { runner, state } = teamMatch(lead, box);
+      if (state === 'mismatch') {
+        if (runningLoop === loop) runningLoop = null;
+        returnToLine();
+        tlog(`run: stopped — box no longer matches (${desc(box)})`);
+        setHud('✋ The robot stopped — the box no longer matches its rule (e.g. a scale tipped).');
+        return;
+      }
+      if (state === 'wait') {
+        returnToLine();
+        tlog(`run: waiting — box incomplete (${desc(box)})`);
+        setHud('⏳ Waiting — the box is missing something (or an empty nest awaits a bird). Add it and the robot resumes.');
+        loop.unsub = world.subscribe((e) => {
+          if (loop.cancelled) return;
+          if (e.type === 'moved') return; // a mere move doesn't change the contents
+          loop.unsub?.();
+          loop.unsub = undefined;
+          // Re-evaluate on the NEXT tick, not synchronously: re-subscribing here
+          // would add a listener mid-emit (the same emit re-visits it → frozen tab).
+          setTimeout(iterate, 0);
+        });
+        return;
+      }
+      if (!runner) return; // 'match' always yields a runner, but narrow the type
+      if (actor === runner) { runActions(runner); return; } // same member keeps firing
+      actor = runner;
+      const idx = lineup.indexOf(runner);
+      if (idx <= 0) { runActions(runner); return; } // the front matches — work in place
+      // A teammate matches: the robots ahead step out of the line (one by one),
+      // then the matching member comes forward to the box and works.
+      returnToLine(); // tidy the line before re-arranging
+      const ahead = lineup.slice(0, idx).filter((r) => world.get(r.id));
+      let k = 0;
+      const auditionNext = (): void => {
+        if (loop.cancelled) return;
+        if (k >= ahead.length) {
+          walkRobot(runner, { x: box.x - 170, y: box.y + 80 }, 320, () => runActions(runner));
+          return;
+        }
+        const r = ahead[k++];
+        const h = home.get(r.id)!;
+        tlog(`run: ${desc(r)} doesn't match — steps aside`);
+        walkRobot(r, { x: h.x - 160, y: h.y + 36 }, 280, auditionNext); // peel out of the line
+      };
+      auditionNext();
     };
     iterate();
   }
