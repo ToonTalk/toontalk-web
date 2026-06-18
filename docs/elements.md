@@ -272,10 +272,13 @@ teammate pulls it OFF** (`detachFromTeam`) so it's a solo robot again, and the
 lead re-closes its line (`drag-controller.ts` grab branch; guard
 `tools/verify/team-floor.mjs`). A box is offered front-to-back via
 `runRobot`/`teamMatch`→`lineup()`, first matching robot runs (the manual's "front
-robot… if it doesn't match, pass it along"). Members **cooperate over the run
-cycle** — as the box changes, a different member matches and runs next; the team
-**waits** if a member would suspend (tests `robot-team.test.ts`: conditional pick
-+ a `1→2→empty` cycle). A team moves as ONE unit across the floor↔storage
+robot… if it doesn't match, pass it along"). The run is **visible turn-taking**
+(`animateRun`, robot.cpp `move_to_side`): the matching member is the actor that
+walks/works, and members AHEAD of it that don't match **step aside** one by one to
+let it forward — not just the lead animating (guard `tools/verify/team-run.mjs`).
+Members **cooperate over the run cycle** — as the box changes, a different member
+matches and runs next; the team **waits** if a member would suspend (tests
+`robot-team.test.ts`: conditional pick + a `1→2→empty` cycle). A team moves as ONE unit across the floor↔storage
 boundary (`expandTeam`/`gatherTeam` in robot.ts): **filing** a lead (drop on the
 notebook, load into a truck, pour into a blank box) **gathers** its separate floor
 teammates off the floor — they stay embedded in the lead's snapshot, so the whole
