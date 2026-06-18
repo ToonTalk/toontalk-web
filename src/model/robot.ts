@@ -426,11 +426,24 @@ export function teamMatch(robot: Robot, box: Box): { runner: Robot | null; state
   return { runner: null, state: waiting ? 'wait' : 'mismatch' };
 }
 
+/** A robot body's nominal on-screen size, so the pure model can line a team up
+ * the way the C++ does without importing the view (matches the robot art / the
+ * view bounds: ~200×372). */
+const ROBOT_W = 200;
+const ROBOT_H = 372;
+
 /** Where each teammate should sit on the floor — lined up behind the lead
- * (front-to-back), so a team reads as a row of separate robots. Spaced enough
- * (robots are wide) that each member is individually clickable / pull-off-able. */
+ * (front-to-back). Faithful to robot.cpp `delta_for_robot_behind_me` (each robot
+ * behind steps `width/5` sideways and `height/2` "back") applied cumulatively
+ * like `line_up` (`llx + delta*i`): a diagonal stagger that keeps each member's
+ * head — and thus its thought bubble — clear, so every robot is individually
+ * visible and pull-off-able. The team recedes UP-and-right: the C++ delta_y was
+ * authored (1999) when higher city-y meant higher on screen, so "behind" is
+ * up-screen (the y projection flipped in 2004; we keep the original intent). */
 export function teamPositions(lead: Robot): { robot: Robot; x: number; y: number }[] {
-  return lead.team.map((r, i) => ({ robot: r, x: lead.x + (i + 1) * 150, y: lead.y + (i + 1) * 8 }));
+  const dx = ROBOT_W / 5;
+  const dy = ROBOT_H / 2;
+  return lead.team.map((r, i) => ({ robot: r, x: lead.x + (i + 1) * dx, y: lead.y - (i + 1) * dy }));
 }
 
 /** Detach a robot from its team (pull it off the line) — it becomes solo. */
