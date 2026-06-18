@@ -18,7 +18,7 @@ import { Wand } from './model/wand';
 import { Dusty } from './model/dusty';
 import { Bomb } from './model/bomb';
 import { Scale, recomputeScales } from './model/scale';
-import { Robot, applyAction, teamMatch, teamPositions } from './model/robot';
+import { Robot, applyAction, teamMatch, teamPositions, type ConditionHole, type RobotAction } from './model/robot';
 import { Truck } from './model/truck';
 import { House, runHouse } from './model/house';
 import { Notebook } from './model/notebook';
@@ -980,13 +980,66 @@ async function start(): Promise<void> {
   // floor is transient working space — reseeded fresh each load — while the main
   // notebook (the one in your toolbox) keeps whatever you file onto it. A fresh
   // main notebook starts with a single welcome page.
+  // A library of pre-trained example robots — solo AND teams — filed in the main
+  // notebook so there's a variety to test with out of the box. Pull a page out
+  // (drag the robot off it) and drop a matching box on it to watch it run; a team
+  // comes out as a lined-up row that takes turns on the box. Page order (after the
+  // "Pictures" page) is documented in the README.
+  function exampleRobots(): Robot[] {
+    const n = (value: number) => new NumberThing({ value });
+    const t = (value: string) => new TextThing({ value });
+    const mk = (condition: ConditionHole[], actions: RobotAction[], exactValues?: (Thing | null)[]): Robot =>
+      new Robot({ condition, actions, exactValues });
+
+    // — solo —
+    const adder = mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]); // 3,5 → 8
+    const multiplier = mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0, op: '*' }]); // 3,5 → 15
+    const counter = mk(['number'], [{ type: 'insert', to: 0, thing: n(1) }]); // +1 every run (forever)
+    const doubler = mk(['number'], [{ type: 'copy', from: 0, to: 0 }]); // value + value (forever)
+    const joiner = mk(['text', 'text'], [{ type: 'combine', from: 1, to: 0 }]); // "snow","man" → "snowman"
+    const swapper = mk(['number', 'number'], [{ type: 'swap', a: 0, b: 1 }]); // swaps the two (oscillates — grab to stop)
+    const sorter = mk(
+      ['number', 'scale', 'number'],
+      [{ type: 'swap', a: 0, b: 2 }],
+      [null, new Scale({ tilt: 'right' }), null],
+    ); // only while the scale tips right (first < second): puts the bigger first, then settles & stops
+    const greeter = mk(['text'], [{ type: 'insert', to: 0, thing: t(' there') }], [t('hi')]); // only when the text is exactly "hi"
+
+    // — teams (one notebook page each; pulled out they line up and take turns) —
+    const addOrJoin = mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]);
+    addOrJoin.team = [mk(['text', 'text'], [{ type: 'combine', from: 1, to: 0 }])]; // adds a number pair OR joins a text pair
+
+    const bySize = mk(['number'], [{ type: 'copy', from: 0, to: 0 }]);
+    bySize.team = [mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0 }])]; // doubles a lone number, or adds a pair
+
+    const allRounder = mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]);
+    allRounder.team = [
+      mk(['text', 'text'], [{ type: 'combine', from: 1, to: 0 }]),
+      mk(['number'], [{ type: 'insert', to: 0, thing: n(1) }]),
+    ]; // 3-robot all-rounder: add a number pair / join a text pair / count a lone number up
+
+    return [adder, multiplier, counter, doubler, joiner, swapper, sorter, greeter, addOrJoin, bySize, allRounder];
+  }
+
   function seedMainNotebook(): Notebook {
     const nb = new Notebook({ x: 500, y: 600, isMain: true, name: 'claude 1' }); // the original's notebook name
     nb.store(new TextThing({ value: 'Pictures' })); // the original opens to its "Pictures" page
+    for (const r of exampleRobots()) nb.store(r); // …followed by the example-robot library
+    nb.goTo(1); // open to the "Pictures" page, as the original does
     return nb;
   }
+  // Bumped when the example library changes — drops the new set into an EXISTING
+  // saved notebook once (keeping the user's own filed pages).
+  const EXAMPLES_FLAG = 'toontalk-examples-v1';
   function installMainNotebook(): Notebook {
-    const nb = loadMainNotebook() ?? seedMainNotebook();
+    const saved = loadMainNotebook();
+    const nb = saved ?? seedMainNotebook();
+    if (saved && !localStorage.getItem(EXAMPLES_FLAG)) {
+      for (const r of exampleRobots()) nb.store(r); // add the library to a pre-existing notebook, once
+      nb.goTo(1);
+      saveMainNotebook(nb);
+    }
+    localStorage.setItem(EXAMPLES_FLAG, '1');
     nb.moveTo({ x: FLOOR_W / 2, y: FLOOR_H / 2 + 200 }); // near the floor centre, below the tools
     world.add(nb);
     return nb;
@@ -1027,6 +1080,7 @@ async function start(): Promise<void> {
   });
   document.getElementById('reset-btn')?.addEventListener('click', () => {
     clearMainNotebook();
+    localStorage.removeItem(EXAMPLES_FLAG); // a fresh notebook re-seeds the example library
     world.clear();
     if (demoMode) seedDemo();
     else seedFloor();
