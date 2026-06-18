@@ -10,22 +10,39 @@ import { renderThingDisplay } from './display';
 import { floorCamera } from './floor-camera';
 
 export class NotebookView extends ThingView {
-  private pageNode: PIXI.Container | null = null;
+  // The two open leaves' card rects, each tagged with the page index it shows, so
+  // a click on EITHER leaf grabs that page — the original lets you take the left
+  // OR the right page (pad.cpp Notebook::select → which_side/closer_to_left_page),
+  // not just the current one.
+  private leaves: Array<{ card: PIXI.Graphics; index: number }> = [];
 
-  /** True if a world-space point falls on the shown page (for grabbing a copy). */
-  pressedOnPage(worldX: number, worldY: number): boolean {
-    if (!this.pageNode) return false;
-    const b = this.pageNode.getBounds(); // screen; shift into world (floor camera)
-    return (
-      worldX >= b.x + floorCamera.x &&
-      worldX <= b.x + b.width + floorCamera.x &&
-      worldY >= b.y + floorCamera.y &&
-      worldY <= b.y + b.height + floorCamera.y
-    );
+  /** Screen-space centre of each open leaf's card + the page index it shows — for
+   * tests / hit probes (card.getBounds is global = screen coords). */
+  leafScreenCenters(): Array<{ index: number; x: number; y: number }> {
+    return this.leaves.map(({ card, index }) => {
+      const b = card.getBounds();
+      return { index, x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    });
+  }
+
+  /** Which page index a world-space point falls on (left or right leaf), or null. */
+  pageIndexAt(worldX: number, worldY: number): number | null {
+    for (const { card, index } of this.leaves) {
+      const b = card.getBounds(); // screen; shift into world (floor camera)
+      if (
+        worldX >= b.x + floorCamera.x &&
+        worldX <= b.x + b.width + floorCamera.x &&
+        worldY >= b.y + floorCamera.y &&
+        worldY <= b.y + b.height + floorCamera.y
+      ) {
+        return index;
+      }
+    }
+    return null;
   }
 
   protected build(): void {
-    this.pageNode = null;
+    this.leaves = [];
     const nb = this.thing as Notebook;
     const tex = this.textures.get('notebook') ?? PIXI.Texture.WHITE;
 
@@ -50,25 +67,25 @@ export class NotebookView extends ThingView {
     const cy = -h * 0.04;
     const cardW = w * 0.33;
     const cardH = h * 0.58;
-    const drawCard = (cx: number): void => {
+    const drawCard = (cx: number): PIXI.Graphics => {
       const card = new PIXI.Graphics();
       card.beginFill(0xfdeef6, 1); // near-white pink card
       card.lineStyle(3, 0xe23a93, 1); // hot-pink border, like the original
       card.drawRoundedRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, 6);
       card.endFill();
       this.container.addChild(card);
+      return card;
     };
     const page = nb.current();
     if (page) {
-      drawCard(-w * 0.24);
+      this.leaves.push({ card: drawCard(-w * 0.24), index: nb.index }); // left leaf = current page
       const node = renderThingDisplay(page, this.textures, this.theme, h * 0.46);
       node.position.set(-w * 0.24, cy);
       this.container.addChild(node);
-      this.pageNode = node;
     }
     const next = nb.pages[nb.index + 1] ?? null;
     if (next) {
-      drawCard(w * 0.24);
+      this.leaves.push({ card: drawCard(w * 0.24), index: nb.index + 1 }); // right leaf = next page
       const rnode = renderThingDisplay(next, this.textures, this.theme, h * 0.46);
       rnode.position.set(w * 0.24, cy);
       this.container.addChild(rnode);

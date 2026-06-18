@@ -380,8 +380,11 @@ thing, then click/space".
 A page store + the **real save model**. Drop a thing → filed as a new page;
 drop a **number** → flip to that 1-based page; drop a **text** → flip to the
 first page whose text *starts with* it ("ma"→"mat"), else file; **drag a page
-off → a copy**; **only Dusty removes** the current page. Page-turn arrow cues;
-←/→ (and Backspace→last) turn pages while pointing at it.
+off → a copy** — from **EITHER open leaf** (left = current, right = next), the
+notebook keeping its own (pad.cpp `Notebook::select`→`which_side`; not just the
+current page — `pageIndexAt`/`leafScreenCenters` in `notebook-view.ts`, guard
+`tools/verify/notebook-take.mjs`); **only Dusty removes** the current page.
+Page-turn arrow cues; ←/→ (and Backspace→last) turn pages while pointing at it.
 
 **Look (matched to the original, `notebook-view.ts`):** an OPEN two-page spread
 (spiral down the middle) — the current page on the LEFT leaf, the next page

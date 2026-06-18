@@ -747,20 +747,21 @@ export class DragController {
       const bird = hatchFromNest(this.world, hit, x, y);
       if (bird) return bird;
     } else if (hit instanceof Notebook) {
-      // Pull a copy of the current page off; the notebook keeps its own.
+      // Pull a COPY off whichever open leaf was clicked — left (current) OR right
+      // (next); the notebook keeps its own (pad.cpp grabs a copy of the page on
+      // the clicked side, via which_side).
       const nv = this.views.get(hit.id);
-      if (nv instanceof NotebookView && nv.pressedOnPage(x, y)) {
-        const page = hit.current();
-        if (page) {
-          const copy = page.copy();
-          copy.moveTo({ x, y });
-          this.world.add(copy);
-          // A filed robot TEAM comes out as separate robots lined up behind it.
-          if (copy instanceof Robot && copy.team.length > 0) expandTeam(this.world, copy);
-          const v = this.views.get(copy.id);
-          if (v) tweenScale(v.container, 0.6, 1);
-          return copy;
-        }
+      const idx = nv instanceof NotebookView ? nv.pageIndexAt(x, y) : null;
+      const page = idx != null ? hit.pages[idx] ?? null : null;
+      if (page) {
+        const copy = page.copy();
+        copy.moveTo({ x, y });
+        this.world.add(copy);
+        // A filed robot TEAM comes out as separate robots lined up behind it.
+        if (copy instanceof Robot && copy.team.length > 0) expandTeam(this.world, copy);
+        const v = this.views.get(copy.id);
+        if (v) tweenScale(v.container, 0.6, 1);
+        return copy;
       }
     }
     return null;
