@@ -6,6 +6,25 @@ visual programming environment for children created by Ken Kahn (1992–2007).
 This is a clean rewrite (TypeScript + PixiJS), not a port of the original
 DirectX C++ — see `../TOONTALK_WEB_PLAN.md` for the rationale and roadmap.
 
+## Status: Robot teams — a line of robots that work together 🤝 ✅
+
+- **Build a team.** Drop one robot on another and they form a **team**: the
+  robots **line up**, one behind the other, as **separate robots** on the floor —
+  each keeping its own thought bubble. Drag the front robot and the whole line
+  follows; **grab any teammate to pull it back off** into a solo robot.
+- **They take turns.** Hand the team a box and it goes to the **front robot
+  first**; if that one doesn't match, it's passed down the line until one does —
+  and as the box changes mid-run, a different member can pick up the next pass
+  (the manual's cooperating team).
+- **Copy the whole team.** The magic wand in **"copy self"** mode duplicates a
+  robot *with its teammates* — the copy spreads out as its own separate line.
+- **File a team as one page.** Drop a team lead into the notebook (or load it
+  into a truck, or pour it into a blank box) and the **whole team** goes with it
+  as a single page; take that page back out and the team **comes back out lined
+  up**. Save/load preserves it.
+- Faithful to the C++ `first_in_line`/`next` team model. 210 unit tests green,
+  plus real-interaction guards (`team-floor.mjs`, `team-copy-file.mjs`).
+
 ## Status: Lively animations — the bam-mouse, flying birds & hatching eggs ✅
 
 - **The hammer comes down.** Combining two number/text pads (or joining boxes)

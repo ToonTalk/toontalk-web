@@ -442,6 +442,34 @@ export function detachFromTeam(robot: Robot): void {
 }
 
 /**
+ * Spread a lead's embedded teammates onto the floor as SEPARATE, linked robots
+ * lined up behind it — the inverse of filing a team as one unit. Used when a
+ * team arrives EMBEDDED (a wand "copy self", a robot taken out of the notebook):
+ * each member is added to the world with its `leader` set, a flat team, and a
+ * lined-up position; the lead keeps its ordered `team`. Members already on the
+ * floor are just relinked/repositioned.
+ */
+export function expandTeam(world: World, lead: Robot): void {
+  for (const m of lead.team) {
+    m.leader = lead;
+    m.team = []; // a teammate is flat (no nested teams)
+    if (!world.get(m.id)) world.add(m);
+  }
+  for (const p of teamPositions(lead)) world.moveThing(p.robot.id, { x: p.x, y: p.y });
+}
+
+/**
+ * Gather a lead's separate floor teammates back off the floor (the inverse of
+ * `expandTeam`) when the lead leaves as one unit — filed in the notebook, loaded
+ * into a truck, or poured into a blank box. The members stay EMBEDDED in
+ * `lead.team`, so the lead carries the whole team with it; only their loose floor
+ * copies are removed.
+ */
+export function gatherTeam(world: World, lead: Robot): void {
+  for (const m of lead.team) world.remove(m.id);
+}
+
+/**
  * Run a team on a box: the front robot is offered the box, then each teammate;
  * the first trained robot whose condition matches replays its actions. Returns
  * whether any robot ran (false = nothing matched, the box is left untouched).

@@ -275,10 +275,18 @@ lead re-closes its line (`drag-controller.ts` grab branch; guard
 robot… if it doesn't match, pass it along"). Members **cooperate over the run
 cycle** — as the box changes, a different member matches and runs next; the team
 **waits** if a member would suspend (tests `robot-team.test.ts`: conditional pick
-+ a `1→2→empty` cycle). Save/load round-trips the team (the lead's snapshot embeds
-its members; `team.test.ts`). ✅
-**copy** — the wand copies the lead robot (C/O) or the whole team (S), matching
-"a copy of himself and his teammates". ✅ **module recursion** — `fromModule`
++ a `1→2→empty` cycle). A team moves as ONE unit across the floor↔storage
+boundary (`expandTeam`/`gatherTeam` in robot.ts): **filing** a lead (drop on the
+notebook, load into a truck, pour into a blank box) **gathers** its separate floor
+teammates off the floor — they stay embedded in the lead's snapshot, so the whole
+team files as one page; **unfiling** (pull the page out) or a wand **copy-self**
+**expands** them back into separate, linked, lined-up floor robots (each with its
+own view). Save/load round-trips the team (the lead's snapshot embeds its members).
+Guards: `team.test.ts` (wand-S copy · file gathers · unfile expands), integration
+`tools/verify/team-copy-file.mjs` (world + views). ✅
+**copy** — the wand copies the lead robot (C/O) or, in **S** ("copy self") mode,
+the whole team — "a copy of himself and his teammates" — which spreads onto the
+floor as separate robots. ✅ **module recursion** — `fromModule`
 drops a copy of a house-module page into a hole.
 ✅ **recursive matching**: a nested-box hole is matched **recursively** (robot.cpp
 `same_type_match`) — same shape, each inner hole matched (value / wildcard via an

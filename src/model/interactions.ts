@@ -16,7 +16,7 @@ import { Box } from './box';
 import { Wand } from './wand';
 import { Bird } from './bird';
 import { Nest } from './nest';
-import { Robot, runRobot, teamPositions } from './robot';
+import { Robot, runRobot, teamPositions, expandTeam, gatherTeam } from './robot';
 import { Dusty } from './dusty';
 import { Bomb } from './bomb';
 import { Truck } from './truck';
@@ -72,6 +72,9 @@ export function resolveDrop(
     if (dragged.mode === 'O') copy.erased = target.erased;
     copy.moveTo({ x: target.x + 36, y: target.y + 28 });
     world.add(copy);
+    // A copied TEAM (S-mode) carries its members embedded; spread them onto the
+    // floor as separate robots lined up behind the copy.
+    if (copy instanceof Robot && copy.team.length > 0) expandTeam(world, copy);
     // Copying a nest makes its bird feed the copy too, so both stay in sync.
     if (target instanceof Nest && copy instanceof Nest) {
       for (const t of world.all()) {
@@ -178,6 +181,7 @@ export function resolveDrop(
     if (dragged instanceof Robot) target.robot = dragged;
     else if (dragged instanceof Box) target.box = dragged;
     else target.module = dragged; // a notebook is the house's module
+    if (dragged instanceof Robot) gatherTeam(world, dragged); // the whole team boards
     world.remove(dragged.id);
     if (target.robot && target.box) {
       world.add(
@@ -234,6 +238,7 @@ export function resolveDrop(
     if (holes) {
       target.fill(holes);
       recomputeScales(target);
+      if (dragged instanceof Robot) gatherTeam(world, dragged); // a hole per team member
       world.remove(dragged.id);
       world.notifyChanged(target);
       return 'combined';
@@ -278,6 +283,7 @@ export function resolveDrop(
       world.notifyChanged(target);
       return 'flipped';
     }
+    if (dragged instanceof Robot) gatherTeam(world, dragged); // file the whole team as one page
     target.store(dragged);
     world.remove(dragged.id);
     world.notifyChanged(target);

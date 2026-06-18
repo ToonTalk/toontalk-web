@@ -18,7 +18,7 @@ import { Nest } from '../model/nest';
 import { hatchFromNest } from '../model/bird';
 import { Notebook } from '../model/notebook';
 import { Wand } from '../model/wand';
-import { Robot, detachFromTeam, teamPositions } from '../model/robot';
+import { Robot, detachFromTeam, teamPositions, expandTeam } from '../model/robot';
 import {
   NumberThing,
   rationalToEditBuffer,
@@ -745,6 +745,8 @@ export class DragController {
           const copy = page.copy();
           copy.moveTo({ x, y });
           this.world.add(copy);
+          // A filed robot TEAM comes out as separate robots lined up behind it.
+          if (copy instanceof Robot && copy.team.length > 0) expandTeam(this.world, copy);
           const v = this.views.get(copy.id);
           if (v) tweenScale(v.container, 0.6, 1);
           return copy;
