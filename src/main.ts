@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18e (notebook: ◀ ▶ buttons flip pages · tap no longer duplicates · take a copy off either leaf · Examples library)';
+const BUILD = 'build 2026-06-18f (combine waits for Bammer: robot takes the number across, boxes join, only THEN the hammer strikes · notebook ◀ ▶ flip)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -227,6 +227,27 @@ async function start(): Promise<void> {
           animateRun(lead, bx);
           return;
         }
+      }
+      // Combining/joining two things WAITS for Bammer: they don't merge until the
+      // hammer comes down (the result lands ON the strike, not before — boxes
+      // shouldn't snap together and only then get hammered). Covers number+number,
+      // text+text / number→text, and a box dropped on the SIDE of another box —
+      // all of which always combine/join, so deferring the mutation is safe.
+      if (
+        target &&
+        target.id !== dragged.id &&
+        ((dragged instanceof Box && target instanceof Box && ctx.holeIndex == null) ||
+          (target instanceof NumberThing && dragged instanceof NumberThing) ||
+          (target instanceof TextThing && (dragged instanceof TextThing || dragged instanceof NumberThing)))
+      ) {
+        const dD = desc(dragged);
+        const tD = desc(target);
+        bamMouseAt(target, () => {
+          const r = resolveDrop(world, dragged, target, ctx);
+          tlog(`drop: ${dD} → ${tD} : ${r} (on hammer strike)`);
+          updateHud(r);
+        });
+        return;
       }
       const dDesc = desc(dragged);
       const tDesc = desc(target); // describe BEFORE the drop mutates values
@@ -566,9 +587,32 @@ async function start(): Promise<void> {
           });
           return;
         }
-        // For a combine, Bammer runs IN and the numbers merge only when the hammer
-        // strikes (~1.2 s) — you watch the mouse arrive and slam *before* the result
-        // appears. Other actions apply at once. `apply` is guarded to happen once.
+        // A COMBINE re-enacts the demonstration: the robot TAKES the thing out of
+        // hole `from` and drops it on hole `to` — a ghost of it flies across while
+        // the real `from` content is hidden — and ONLY THEN does Bammer come in and
+        // hammer the two together (robot.htm). The merge (applyAction) lands on the
+        // hammer strike.
+        if (action.type === 'combine') {
+          const bvc = views.get(box.id);
+          const fromNode = bvc instanceof BoxView ? bvc.holeNode(action.from) : null;
+          const c = box.contentsAt(action.from);
+          const src = c instanceof Nest ? c.front() : c; // the thing taken (through a nest)
+          if (src && fromNode) {
+            const ghost = renderThingDisplay(src, textures, theme, 46);
+            ghost.position.set(holeWorld(box, action.from).x, holeWorld(box, action.from).y);
+            ghost.zIndex = 6000;
+            renderer.thingLayer.addChild(ghost);
+            fromNode.node.visible = false; // it's "taken out" — the rebuild on apply replaces it
+            flyThing(ghost, holeWorld(box, action.to), 460, () => bamMouseAt(box, apply));
+            setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 460 + 1400);
+            return;
+          }
+          bamMouseAt(box, apply); // nothing visible to fly → just hammer
+          setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 1400);
+          return;
+        }
+        // Other merging cases (insert-into-filled handled above): Bammer strikes,
+        // the result lands on impact. Non-merging actions apply at once.
         if (merging) bamMouseAt(box, apply);
         else apply();
         setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, merging ? 1400 : 700);

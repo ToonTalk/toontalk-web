@@ -71,7 +71,9 @@ hole → that hole (fill / combine / **nest**, including a box dropped squarely 
 a hole). Falling off an end: **only a box concatenates** (`add_to_side` requires
 `kind_of()==CUBBY` and a non-blank target, side = which end), exactly as the
 original — anything else "must have meant" the nearest end hole and is clamped
-there (-1→0, N→N-1). ✅ **blank box** (`cubby.cpp` `set_to_future_value`,
+there (-1→0, N→N-1). The join (like number/text combining) **waits for Bammer**:
+the boxes don't merge until the hammer strikes — `main.ts` shows Bammer first and
+applies `resolveDrop` in its `onSlam` (guard `join-on-strike.mjs`). ✅ **blank box** (`cubby.cpp` `set_to_future_value`,
 `Box.blank` + `Box.fill`): the toolbox hands out a blank box that sizes/fills
 itself from what you drop on it — a **number → that many empty holes** (clamped
 to `MAX_BOX_HOLES` 100), **text → one single-character pad per letter**
@@ -250,7 +252,11 @@ drops it (combine → Bammer), then **walks home** (`walk` tween + `flyThing` +
 `toolboxSource` in main.ts) — robot.htm's "new" element comes from the toolbox
 each run. Guards: `robot-walk.mjs` (robot swings right to Tooly, left to the box,
 back home; combines 5→6) and `robot-fetch.mjs` (the fresh element is in flight).
-The walk is the "watch it work" pace; a house runs instantly.
+For a `combine` step the robot **takes the thing OUT of hole `from`** (its real
+content hides; a ghost of it flies across) and drops it on hole `to`, and ONLY
+THEN does **Bammer** come in and hammer the two together — the merge (`applyAction`)
+lands on the strike, not before (`team-run.mjs`). The walk is the "watch it work"
+pace; a house runs instantly.
 ✅ **three-way match / wait** (`Robot.matchState` → match | mismatch | wait;
 team-level `teamMatch`): an INCOMPLETE box (a hole the rule needs is empty, or
 holds an *empty nest*) makes the robot **wait, not stop** — the loop suspends
