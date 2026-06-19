@@ -15,26 +15,6 @@ export class NotebookView extends ThingView {
   // OR the right page (pad.cpp Notebook::select → which_side/closer_to_left_page),
   // not just the current one.
   private leaves: Array<{ card: PIXI.Graphics; index: number }> = [];
-  private leftArrow: PIXI.Graphics | null = null;
-  private rightArrow: PIXI.Graphics | null = null;
-
-  /** Which page-turn button a world-space point falls on: -1 (◀ previous), 1 (▶
-   * next), or null. Used so a CLICK on the corner buttons flips the page. */
-  arrowDir(worldX: number, worldY: number): -1 | 1 | null {
-    const on = (g: PIXI.Graphics | null): boolean => {
-      if (!g) return false;
-      const b = g.getBounds(); // screen; shift into world (floor camera)
-      return (
-        worldX >= b.x + floorCamera.x &&
-        worldX <= b.x + b.width + floorCamera.x &&
-        worldY >= b.y + floorCamera.y &&
-        worldY <= b.y + b.height + floorCamera.y
-      );
-    };
-    if (on(this.leftArrow)) return -1;
-    if (on(this.rightArrow)) return 1;
-    return null;
-  }
 
   /** Screen-space centre of each open leaf's card + the page index it shows — for
    * tests / hit probes (card.getBounds is global = screen coords). */
@@ -63,8 +43,6 @@ export class NotebookView extends ThingView {
 
   protected build(): void {
     this.leaves = [];
-    this.leftArrow = null;
-    this.rightArrow = null;
     const nb = this.thing as Notebook;
     const tex = this.textures.get('notebook') ?? PIXI.Texture.WHITE;
 
@@ -148,28 +126,11 @@ export class NotebookView extends ThingView {
       this.container.addChild(pill, nameT);
     }
 
-    // Page-turn BUTTONS (◀ ▶) at the bottom corners — CLICK to flip (or ←/→ while
-    // pointing at it, or drop a number to jump). Dim at the ends. Stored so the
-    // drag-controller can hit-test a click (`arrowDir`).
-    const hw = sprite.width / 2;
-    const ay = sprite.height / 2 - 12;
-    const makeArrow = (x: number, dir: 1 | -1, enabled: boolean): PIXI.Graphics => {
-      const g = new PIXI.Graphics();
-      g.beginFill(0xffffff, enabled ? 0.9 : 0.3); // round button so it reads as clickable
-      g.lineStyle(1.5, 0xe23a93, enabled ? 1 : 0.35);
-      g.drawCircle(x, ay, 11);
-      g.endFill();
-      g.beginFill(enabled ? 0xc0307a : 0xaaaaaa, 1);
-      g.moveTo(x + 4 * dir, ay - 6);
-      g.lineTo(x - 5 * dir, ay);
-      g.lineTo(x + 4 * dir, ay + 6);
-      g.closePath();
-      g.endFill();
-      this.container.addChild(g);
-      return g;
-    };
-    this.leftArrow = makeArrow(-hw + 14, -1, nb.index > 0);
-    this.rightArrow = makeArrow(hw - 14, 1, nb.index < nb.count - 1);
+    // Navigation is by keyboard / right-click while holding or pointing at the
+    // notebook (the original's scheme): SPACE or right-click → next page, RUBOUT
+    // (Backspace) → previous, type a page NUMBER → jump there. No on-screen page
+    // buttons (they were a non-faithful addition); the page numbers above show
+    // where you are.
 
     // The main (toolbox) notebook — the one that persists — gets a star.
     if (nb.isMain) {

@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18f (combine waits for Bammer: robot takes the number across, boxes join, only THEN the hammer strikes · notebook ◀ ▶ flip)';
+const BUILD = 'build 2026-06-18g (notebook flips by SPACE/right-click=next · rubout=prev · type a page number · combine: robot carries the number across, then Bammer)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -603,8 +603,9 @@ async function start(): Promise<void> {
             ghost.zIndex = 6000;
             renderer.thingLayer.addChild(ghost);
             fromNode.node.visible = false; // it's "taken out" — the rebuild on apply replaces it
-            flyThing(ghost, holeWorld(box, action.to), 460, () => bamMouseAt(box, apply));
-            setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 460 + 1400);
+            tweenScale(ghost, 1, 1.3, 650); // lift it as it's carried, so the move reads clearly
+            flyThing(ghost, holeWorld(box, action.to), 650, () => bamMouseAt(box, apply));
+            setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 650 + 1400);
             return;
           }
           bamMouseAt(box, apply); // nothing visible to fly → just hammer

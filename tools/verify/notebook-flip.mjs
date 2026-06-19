@@ -1,6 +1,6 @@
-// Guard: the notebook's corner buttons (◀ ▶) flip pages on a CLICK — forward and
-// back — and a click does NOT duplicate a page (the old bug: tapping a page filed
-// a copy and jumped to the last page).
+// Guard: notebook navigation matches the original — SPACE / right-click → next
+// page, Backspace (rubout) → previous, a typed NUMBER jumps to that page (digits
+// accumulate). No on-screen page buttons. Pages are never duplicated by this.
 //   node tools/verify/notebook-flip.mjs   (needs `npm run dev` on :3000)
 import { chromium } from 'playwright';
 const browser = await chromium.launch({ args: ['--enable-unsafe-swiftshader'] });
@@ -14,43 +14,34 @@ await page.waitForTimeout(2000); // floor camera settles
 
 const start = await page.evaluate(async () => {
   const { Notebook } = await import('/src/model/notebook.ts');
+  const { floorCamera } = await import('/src/view/floor-camera.ts');
   const nb = window.__ttWorld.all().find((t) => t instanceof Notebook && t.isMain);
   nb.goTo(1); window.__ttWorld.notifyChanged(nb);
   await new Promise((r) => setTimeout(r, 150));
-  return { index: nb.index, pages: nb.pages.length, id: nb.id };
+  return { id: nb.id, pages: nb.pages.length, center: [Math.round(nb.x - floorCamera.x), Math.round(nb.y - floorCamera.y)] };
 });
+const idx = () => page.evaluate((id) => window.__ttWorld.get(id).index, start.id);
 
-// Find a fresh screen point on the given arrow (-1 ◀ / 1 ▶) via arrowDir probe.
-const arrowPoint = (dir) => page.evaluate(async (dir) => {
-  const { floorCamera } = await import('/src/view/floor-camera.ts');
-  const { Notebook } = await import('/src/model/notebook.ts');
-  const w = window.__ttWorld, drag = window.__ttDrag;
-  const nb = w.all().find((t) => t instanceof Notebook && t.isMain);
-  const nv = drag.views.get(nb.id);
-  const b = nv.container.getBounds();
-  for (let fx = 0.02; fx <= 0.98; fx += 0.02) {
-    for (let fy = 0.55; fy <= 0.98; fy += 0.02) {
-      const sx = b.x + b.width * fx, sy = b.y + b.height * fy;
-      if (nv.arrowDir(sx + floorCamera.x, sy + floorCamera.y) === dir) return [Math.round(sx), Math.round(sy)];
-    }
-  }
-  return null;
-}, dir);
-const idxNow = () => page.evaluate((id) => window.__ttWorld.get(id).index, start.id);
-const clickAt = async (p) => { await page.mouse.click(p[0], p[1]); await page.waitForTimeout(160); };
+// Point at the notebook so keys target it (hoveredThing), then drive the keys.
+await page.mouse.move(start.center[0], start.center[1]);
+await page.waitForTimeout(100);
 
-// Flipping doesn't move the notebook, so the right button stays put → click the
-// same spot twice (0→1→2), then the left button (2→1).
-const rightP = await arrowPoint(1);
-if (rightP) await clickAt(rightP); const afterNext1 = await idxNow();
-if (rightP) await clickAt(rightP); const afterNext2 = await idxNow();
-const leftP = await arrowPoint(-1);
-if (leftP) await clickAt(leftP); const afterPrev = await idxNow();
-const end = await page.evaluate((id) => ({ pages: window.__ttWorld.get(id).pages.length }), start.id);
+await page.keyboard.press('Space'); await page.waitForTimeout(120); const afterSpace1 = await idx(); // →1
+await page.keyboard.press('Space'); await page.waitForTimeout(120); const afterSpace2 = await idx(); // →2
+await page.mouse.click(start.center[0], start.center[1], { button: 'right' }); await page.waitForTimeout(120);
+const afterRight = await idx(); // →3
+await page.keyboard.press('Backspace'); await page.waitForTimeout(120); const afterBack = await idx(); // →2
+// type "10" → page 10 (index 9), proving digit accumulation
+await page.mouse.move(start.center[0], start.center[1]); await page.waitForTimeout(60);
+await page.keyboard.press('1'); await page.waitForTimeout(80);
+await page.keyboard.press('0'); await page.waitForTimeout(120);
+const afterDigits = await idx(); // →9
+const pagesAfter = await page.evaluate((id) => window.__ttWorld.get(id).pages.length, start.id);
 await browser.close();
 
-const out = { startIndex: start.index, rightP, leftP, afterNext1, afterNext2, afterPrev, pagesBefore: start.pages, pagesAfter: end.pages };
-const ok = rightP && leftP && afterNext1 === 1 && afterNext2 === 2 && afterPrev === 1 && end.pages === start.pages;
+const out = { afterSpace1, afterSpace2, afterRight, afterBack, afterDigits, pagesBefore: start.pages, pagesAfter };
+const ok = afterSpace1 === 1 && afterSpace2 === 2 && afterRight === 3 && afterBack === 2 &&
+  afterDigits === 9 && pagesAfter === start.pages;
 console.log(JSON.stringify(out, null, 1));
-console.log(`${ok ? 'PASS' : 'FAIL'} notebook: corner buttons flip ▶▶◀ (0→1→2→1) and don't duplicate pages`);
+console.log(`${ok ? 'PASS' : 'FAIL'} notebook nav: space/right-click next, rubout back, "10"→page 10; no dup`);
 process.exit(ok ? 0 : 1);

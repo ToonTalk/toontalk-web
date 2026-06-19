@@ -391,9 +391,11 @@ notebook keeping its own (pad.cpp `Notebook::select`→`which_side`; not just th
 current page — `pageIndexAt`/`leafScreenCenters` in `notebook-view.ts`, guard
 `tools/verify/notebook-take.mjs`); **only Dusty removes** the current page. A
 *tap* on a page takes nothing (a page is grabbed only on a real drag — else a tap
-silently duplicated it). **Page-turn buttons** (◀ ▶ at the bottom corners) flip on
-a CLICK (`arrowDir`, guard `notebook-flip.mjs`); ←/→ (and Backspace→last) also
-turn pages while pointing at it; drop a number to jump.
+silently duplicated it). **Navigation matches the original** (pad.cpp
+`respond_to_keyboard`), while holding/pointing at it: **SPACE** (or `+`, or
+right-click) → next page, **rubout/Backspace** (or `-`) → previous, and typing a
+**page number** jumps there (digits accumulate: "1" then "4" → page 14); dropping a
+number also jumps. No on-screen page buttons. Guard `notebook-flip.mjs`.
 
 **Look (matched to the original, `notebook-view.ts`):** an OPEN two-page spread
 (spiral down the middle) — the current page on the LEFT leaf, the next page

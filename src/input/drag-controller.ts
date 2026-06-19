@@ -73,6 +73,9 @@ export class DragController {
   /** A notebook page pressed but not yet grabbed: taking a copy waits for a real
    * drag (a tap must NOT grab+refile a page — that silently duplicated it). */
   private pendingPage: { nbId: string; index: number; sx: number; sy: number } | null = null;
+  /** In-progress notebook page-number entry, so typing consecutive digits jumps to
+   * a multi-digit page (e.g. "1" then "4" → page 14), like the original. */
+  private nbPageEntry: { id: string; n: number } | null = null;
   private trainFrom: number | null = null;
   /** A floor thing grabbed (outside the box) to be put INTO a hole, or null. */
   private trainInsertThing: Thing | null = null;
@@ -133,7 +136,10 @@ export class DragController {
     stage.on('pointermove', this.onPointerMove);
     stage.on('pointerup', this.onPointerUp);
     stage.on('pointerupoutside', this.onPointerUp);
+    stage.on('rightdown', this.onRightDown); // right-click → notebook next page
     window.addEventListener('keydown', this.onKeyDown);
+    // Suppress the browser context menu so right-click is ours (page-turn).
+    this.renderer.view.addEventListener('contextmenu', (e) => e.preventDefault());
     this.renderer.app.ticker.add(this.tickWiggle);
   }
 
@@ -275,20 +281,33 @@ export class DragController {
     }
   };
 
-  /** Notebook keyboard shortcuts: ←/→ turn pages; Backspace on page 1 jumps to
-   * the last non-empty page (the manual's tip). */
+  /**
+   * Notebook keyboard navigation, matching the original (pad.cpp
+   * `respond_to_keyboard`) while holding or pointing at it: SPACE (or `+`, or →)
+   * → next page; RUBOUT/Backspace (or `-`, or ←) → previous page; a DIGIT goes to
+   * that page, **accumulating** across consecutive digits (type "1" then "4" →
+   * page 14), exactly as `go_to_page(current*10 + digit)`. Any other key clears
+   * the digit run.
+   */
   private editNotebook(nb: Notebook, key: string): boolean {
-    switch (key) {
-      case 'ArrowLeft':
-        nb.flip(-1);
-        return true;
-      case 'ArrowRight':
-        nb.flip(1);
-        return true;
-      case 'Backspace':
-        nb.goTo(nb.count); // last page
-        return true;
+    if (key === ' ' || key === '+' || key === 'ArrowRight') {
+      nb.flip(1);
+      this.nbPageEntry = null;
+      return true;
     }
+    if (key === 'Backspace' || key === '-' || key === 'ArrowLeft') {
+      nb.flip(-1);
+      this.nbPageEntry = null;
+      return true;
+    }
+    if (key.length === 1 && key >= '0' && key <= '9') {
+      const digit = key.charCodeAt(0) - 48;
+      const n = this.nbPageEntry?.id === nb.id ? this.nbPageEntry.n * 10 + digit : digit;
+      nb.goTo(n); // 1-based; clamps to the last page
+      this.nbPageEntry = { id: nb.id, n };
+      return true;
+    }
+    this.nbPageEntry = null; // any other key ends the page-number run
     return false;
   }
 
@@ -426,8 +445,26 @@ export class DragController {
     return { x: p.x + floorCamera.x, y: p.y + floorCamera.y };
   }
 
+  /** Right-click flips the notebook to the NEXT page (the original scheme: space /
+   * right-click forward, rubout back). It does nothing else. Separate from
+   * onPointerDown so a right press never starts a drag. */
+  private onRightDown = (e: PIXI.FederatedPointerEvent): void => {
+    if (!this.enabled) return;
+    const { x, y } = this.worldPt(e.global);
+    const hit = this.world.topAt({ x, y }, (thing, p) => {
+      const v = this.views.get(thing.id);
+      return v ? v.containsPoint(p.x, p.y) : false;
+    });
+    if (hit instanceof Notebook) {
+      hit.flip(1);
+      this.world.notifyChanged(hit);
+      tlog(`notebook: right-click → next page ${hit.index + 1}/${hit.count}`);
+    }
+  };
+
   private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
     if (!this.enabled) return;
+    if (e.button !== 0) return; // left button only; right-click is onRightDown
     const { x, y } = this.worldPt(e.global);
 
     // Training: begin a demonstration, lifting a visible ghost of what's grabbed.
@@ -526,20 +563,14 @@ export class DragController {
       return;
     }
 
-    // Notebook: a corner button flips the page; a page is taken only on a real
-    // DRAG (deferred to onPointerMove) so a tap doesn't grab a copy and, dropped
-    // straight back, file a duplicate + jump to the last page. Elsewhere on it →
-    // grab the notebook itself (falls through below).
+    // Notebook: a page is taken only on a real DRAG (deferred to onPointerMove)
+    // so a tap doesn't grab a copy and, dropped straight back, file a duplicate +
+    // jump to the last page. (Page-turning is by keyboard / right-click — see
+    // editNotebook / the contextmenu handler.) Elsewhere on it → grab the
+    // notebook itself (falls through below).
     if (hit instanceof Notebook) {
       const nv = this.views.get(hit.id);
       if (nv instanceof NotebookView) {
-        const dir = nv.arrowDir(x, y);
-        if (dir) {
-          hit.flip(dir);
-          this.world.notifyChanged(hit);
-          tlog(`notebook: flip ${dir > 0 ? '▶' : '◀'} → page ${hit.index + 1}/${hit.count}`);
-          return;
-        }
         const idx = nv.pageIndexAt(x, y);
         if (idx != null && hit.pages[idx]) {
           this.pendingPage = { nbId: hit.id, index: idx, sx: x, sy: y };
