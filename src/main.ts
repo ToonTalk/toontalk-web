@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18d (notebook: take a copy off EITHER open leaf · pre-stocked "Examples" library · bubble tools · team turn-taking)';
+const BUILD = 'build 2026-06-18e (notebook: ◀ ▶ buttons flip pages · tap no longer duplicates · take a copy off either leaf · Examples library)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

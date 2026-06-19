@@ -383,8 +383,11 @@ first page whose text *starts with* it ("ma"→"mat"), else file; **drag a page
 off → a copy** — from **EITHER open leaf** (left = current, right = next), the
 notebook keeping its own (pad.cpp `Notebook::select`→`which_side`; not just the
 current page — `pageIndexAt`/`leafScreenCenters` in `notebook-view.ts`, guard
-`tools/verify/notebook-take.mjs`); **only Dusty removes** the current page.
-Page-turn arrow cues; ←/→ (and Backspace→last) turn pages while pointing at it.
+`tools/verify/notebook-take.mjs`); **only Dusty removes** the current page. A
+*tap* on a page takes nothing (a page is grabbed only on a real drag — else a tap
+silently duplicated it). **Page-turn buttons** (◀ ▶ at the bottom corners) flip on
+a CLICK (`arrowDir`, guard `notebook-flip.mjs`); ←/→ (and Backspace→last) also
+turn pages while pointing at it; drop a number to jump.
 
 **Look (matched to the original, `notebook-view.ts`):** an OPEN two-page spread
 (spiral down the middle) — the current page on the LEFT leaf, the next page

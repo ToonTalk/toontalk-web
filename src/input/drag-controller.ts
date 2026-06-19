@@ -70,6 +70,9 @@ const HELD_OFFSET = { x: -16, y: 42 };
 export class DragController {
   private dragging: ThingView | null = null;
   private grabOffset = { x: 0, y: 0 };
+  /** A notebook page pressed but not yet grabbed: taking a copy waits for a real
+   * drag (a tap must NOT grab+refile a page — that silently duplicated it). */
+  private pendingPage: { nbId: string; index: number; sx: number; sy: number } | null = null;
   private trainFrom: number | null = null;
   /** A floor thing grabbed (outside the box) to be put INTO a hole, or null. */
   private trainInsertThing: Thing | null = null;
@@ -523,6 +526,28 @@ export class DragController {
       return;
     }
 
+    // Notebook: a corner button flips the page; a page is taken only on a real
+    // DRAG (deferred to onPointerMove) so a tap doesn't grab a copy and, dropped
+    // straight back, file a duplicate + jump to the last page. Elsewhere on it →
+    // grab the notebook itself (falls through below).
+    if (hit instanceof Notebook) {
+      const nv = this.views.get(hit.id);
+      if (nv instanceof NotebookView) {
+        const dir = nv.arrowDir(x, y);
+        if (dir) {
+          hit.flip(dir);
+          this.world.notifyChanged(hit);
+          tlog(`notebook: flip ${dir > 0 ? '▶' : '◀'} → page ${hit.index + 1}/${hit.count}`);
+          return;
+        }
+        const idx = nv.pageIndexAt(x, y);
+        if (idx != null && hit.pages[idx]) {
+          this.pendingPage = { nbId: hit.id, index: idx, sx: x, sy: y };
+          return; // wait for a drag before taking a copy
+        }
+      }
+    }
+
     // If the press lands on a thing inside a box hole or on a nest, pull it out
     // and drag *that* instead of the container.
     const picked = this.tryExtract(hit, x, y) ?? hit;
@@ -746,25 +771,32 @@ export class DragController {
       // bird (which then feeds this nest).
       const bird = hatchFromNest(this.world, hit, x, y);
       if (bird) return bird;
-    } else if (hit instanceof Notebook) {
-      // Pull a COPY off whichever open leaf was clicked — left (current) OR right
-      // (next); the notebook keeps its own (pad.cpp grabs a copy of the page on
-      // the clicked side, via which_side).
-      const nv = this.views.get(hit.id);
-      const idx = nv instanceof NotebookView ? nv.pageIndexAt(x, y) : null;
-      const page = idx != null ? hit.pages[idx] ?? null : null;
-      if (page) {
-        const copy = page.copy();
-        copy.moveTo({ x, y });
-        this.world.add(copy);
-        // A filed robot TEAM comes out as separate robots lined up behind it.
-        if (copy instanceof Robot && copy.team.length > 0) expandTeam(this.world, copy);
-        const v = this.views.get(copy.id);
-        if (v) tweenScale(v.container, 0.6, 1);
-        return copy;
-      }
     }
     return null;
+  }
+
+  /** Take a COPY off the notebook's clicked leaf and begin dragging it (the
+   * notebook keeps its own — pad.cpp grabs a copy of the page on the clicked
+   * side). Called once a press over a page turns into a real drag. */
+  private startPageDrag(nbId: string, index: number, x: number, y: number): void {
+    const nb = this.world.get(nbId);
+    if (!(nb instanceof Notebook)) return;
+    const page = nb.pages[index];
+    if (!page) return;
+    const copy = page.copy();
+    copy.moveTo({ x, y });
+    this.world.add(copy);
+    // A filed robot TEAM comes out as separate robots lined up behind it.
+    if (copy instanceof Robot && copy.team.length > 0) expandTeam(this.world, copy);
+    const v = this.views.get(copy.id);
+    if (!v) return;
+    tweenScale(v.container, 0.6, 1);
+    this.dragging = v;
+    this.grabOffset = { x: copy.x - x, y: copy.y - y };
+    v.container.zIndex = 1000;
+    v.setDragging(true);
+    this.onGrab(copy);
+    tlog(`notebook: took a copy of page ${index + 1} (${desc(copy)})`);
   }
 
   private onPointerMove = (e: PIXI.FederatedPointerEvent): void => {
@@ -792,6 +824,15 @@ export class DragController {
       if (this.trainGhost) this.trainGhost.position.set(w.x, w.y);
       return;
     }
+    // A pressed notebook page becomes a grabbed copy once the drag moves enough.
+    if (this.pendingPage) {
+      const pp = this.pendingPage;
+      if (Math.hypot(w.x - pp.sx, w.y - pp.sy) > 7) {
+        this.pendingPage = null;
+        this.startPageDrag(pp.nbId, pp.index, w.x, w.y);
+      }
+      return;
+    }
     if (!this.dragging) return;
     this.world.moveThing(this.dragging.thing.id, {
       x: w.x + this.grabOffset.x,
@@ -811,6 +852,13 @@ export class DragController {
     const justGrabbed = this.justGrabbedTool; // was this the click that picked a tool/element up?
     this.justGrabbedTool = false; // the pickup gesture is over; future clicks apply/drop
     this.numEdit = null; // a drop may change a pad's value — end any number edit
+    // A notebook page pressed but never dragged is a tap — take nothing (so it
+    // doesn't duplicate the page); flip with the corner buttons instead.
+    if (this.pendingPage) {
+      this.pendingPage = null;
+      tlog('notebook: tap (no page taken — drag a page off, or use ◀ ▶ to flip)');
+      return;
+    }
     // Training: complete a demonstration — hole→hole combine, take-out, or put-in.
     if (this.trainer.active) {
       this.clearTrainGhost();
