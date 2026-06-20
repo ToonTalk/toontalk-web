@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18v (box-join forgives near misses; box contents fill the holes fuller)';
+const BUILD = 'build 2026-06-18w (sit down → Tooly opens clay→Lego and the tools rise out of it, morphing into place)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -455,6 +455,7 @@ async function start(): Promise<void> {
     room.setVisible(true);
     renderer.thingLayer.visible = true;
     dragController.setEnabled(true);
+    room.playSitDown(); // Tooly pops open and the tools rise out of it into place
     updateHud('none');
   }
   /** Stand up from the floor and walk the street again (clear of the door). */

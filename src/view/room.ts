@@ -63,6 +63,18 @@ export type PickHandler = (key: string, x: number, y: number) => void;
 
 const ARM_COLOR = 0xbb5d64; // sampled from the hand texture's wrist stub
 
+/** Blend two 0xRRGGBB colours (t: 0→a, 1→b) — used to tint a tool from clay to
+ * its Lego look as it rises during the sit-down sequence. */
+function lerpColor(a: number, b: number, t: number): number {
+  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+  return (
+    (Math.round(ar + (br - ar) * t) << 16) |
+    (Math.round(ag + (bg - ag) * t) << 8) |
+    Math.round(ab + (bb - ab) * t)
+  );
+}
+
 /**
  * Per-pose cursor calibration. Each hand frame has its hotspot (anchor) and a
  * red wrist stub the sleeve must continue — stub centre offset (`cx`, fraction
@@ -105,6 +117,10 @@ export class Room {
   /** The Tooly compartment/chip icon under the pointer — it wiggles to show it's
    * ready to be picked up (like a selected thing on the floor). */
   private toolHover: { node: PIXI.Container; x: number; y: number } | null = null;
+  /** The open Tooly tray + the spilled tool chips, captured during layout so the
+   * sit-down sequence can pop Tooly open and rise the tools out of it. */
+  private toolboxContainer: PIXI.Container | null = null;
+  private toolChips: Array<{ node: PIXI.Container; tx: number; ty: number; tilt: number }> = [];
 
   constructor(
     private readonly renderer: Renderer,
@@ -296,6 +312,8 @@ export class Room {
     const toolbox = this.makeToolbox();
     toolbox.position.set(W - 270, 255); // bigger Tooly — keep it clear of the screen edge
     this.chrome.addChild(toolbox);
+    this.toolboxContainer = toolbox;
+    this.toolChips = [];
 
     // Opening Tooly SPILLS the hand tools out onto the floor below it (the wand,
     // Dusty the vacuum, Pumpy the pump), as in the original — each is its own
@@ -313,6 +331,7 @@ export class Room {
       chip.position.set(x, y);
       this.wireToolHover(chip, chip, x, y); // a spilled tool wiggles when hovered too
       this.chrome.addChild(chip);
+      this.toolChips.push({ node: chip, tx: x, ty: y, tilt });
     }
     // The `claude 1` main notebook is the real interactive World object (filed
     // pages persist), so it's not chrome.
@@ -330,6 +349,74 @@ export class Room {
   relayout(): void {
     this.chrome.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.layoutChrome();
+  }
+
+  /** The sit-down sequence (called on entering the floor): Tooly pops open and
+   * the tools rise out of it, growing into place and tinting from clay to their
+   * Lego colour. */
+  playSitDown(): void {
+    if (!this.toolboxOpen || !this.toolboxContainer) return;
+    const ox = this.toolboxContainer.position.x;
+    const oy = this.toolboxContainer.position.y;
+    this.popOpen(this.toolboxContainer, 380);
+    // Tooly morphs clay → Lego: its closed clay form briefly overlays the open
+    // tray and fades, revealing the Lego tray growing underneath.
+    const clay = this.makeToolyClosed();
+    clay.position.set(ox, oy);
+    const trayW = this.toolboxContainer.width || 200;
+    if (clay.width > 0) clay.scale.set((trayW * 0.95) / clay.width);
+    this.chrome.addChild(clay);
+    this.fadeOutAndRemove(clay, 440);
+    this.toolChips.forEach((c, i) => this.riseTool(c, ox, oy, i * 150));
+  }
+
+  /** Fade a node to transparent over `ms`, then remove it. */
+  private fadeOutAndRemove(node: PIXI.Container, ms: number): void {
+    const t0 = performance.now();
+    const tick = (): void => {
+      if (node.destroyed) { this.renderer.app.ticker.remove(tick); return; }
+      const t = Math.min(1, (performance.now() - t0) / ms);
+      node.alpha = 1 - t;
+      if (t >= 1) { this.renderer.app.ticker.remove(tick); node.destroy({ children: true }); }
+    };
+    this.renderer.app.ticker.add(tick);
+  }
+
+  /** Tooly "opens": a quick ease-out scale pop from small to full. */
+  private popOpen(node: PIXI.Container, ms: number): void {
+    const t0 = performance.now();
+    node.scale.set(0.55);
+    const tick = (): void => {
+      if (node.destroyed) { this.renderer.app.ticker.remove(tick); return; }
+      const t = Math.min(1, (performance.now() - t0) / ms);
+      node.scale.set(0.55 + 0.45 * (1 - Math.pow(1 - t, 3)));
+      if (t >= 1) this.renderer.app.ticker.remove(tick);
+    };
+    this.renderer.app.ticker.add(tick);
+  }
+
+  /** A tool rises out of Tooly (from ox,oy), grows into place, and tints from a
+   * warm clay colour to none (its Lego look) as it settles. */
+  private riseTool(c: { node: PIXI.Container; tx: number; ty: number; tilt: number }, ox: number, oy: number, delay: number): void {
+    const { node, tx, ty, tilt } = c;
+    const body = node.children[0] as PIXI.Sprite | undefined;
+    const ms = 480;
+    const start = performance.now() + delay;
+    node.visible = false; // stays hidden inside Tooly until its turn
+    const tick = (): void => {
+      if (node.destroyed) { this.renderer.app.ticker.remove(tick); return; }
+      const now = performance.now();
+      if (now < start) return;
+      node.visible = true;
+      const t = Math.min(1, (now - start) / ms);
+      const e = 1 - Math.pow(1 - t, 3); // ease-out
+      node.position.set(ox + (tx - ox) * e, oy + (ty - oy) * e);
+      node.scale.set(0.2 + 0.8 * e);
+      node.rotation = tilt * e;
+      if (body && body.tint !== undefined) body.tint = e >= 1 ? 0xffffff : lerpColor(0xd79a6a, 0xffffff, e);
+      if (t >= 1) this.renderer.app.ticker.remove(tick);
+    };
+    this.renderer.app.ticker.add(tick);
   }
 
   /** Closed Tooly — the real claymation toolbox (toolbox.png from M22): a
