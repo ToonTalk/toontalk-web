@@ -38,8 +38,8 @@ const cell = (i) => page.evaluate((i) => {
 }, i);
 
 await run(['number'], [{ type: 'copy', from: 0, to: 0 }], [5]);
-await page.waitForTimeout(350); const copyEarly = await cell(0);
-await page.waitForTimeout(2500); const copyLate = await cell(0);
+await page.waitForTimeout(350); const copyEarly = await cell(0); // walking to the wand — still 5
+await page.waitForTimeout(4500); const copyLate = await cell(0); // after the full wand gesture — 10
 
 await run(['number', null], [{ type: 'move', from: 0, to: 1 }], [7, null]);
 await page.waitForTimeout(350); const moveEarly = await cell(1);

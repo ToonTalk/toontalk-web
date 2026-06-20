@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18i (robot re-enacts EVERY step: combine/copy/move/remove/swap/self-copy all carry the thing across, effect lands on arrival/Bammer)';
+const BUILD = 'build 2026-06-18j (copy step re-enacts the WAND gesture: robot fetches the wand, holds it over the number, copies, carries the copy over, drops — then Bammer)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -517,8 +517,15 @@ async function start(): Promise<void> {
     let actor: Robot | null = null; // the member currently up at the box, working
 
     // Walk ANY member to a world point (eased); stops if the loop is cancelled
-    // (you grabbed something) or that robot is gone.
-    const walkRobot = (r: Robot, to: { x: number; y: number }, ms: number, done: () => void): void => {
+    // (you grabbed something) or that robot is gone. `onStep` runs each frame
+    // (after the move) so anything held — a tool, a carried copy — can track it.
+    const walkRobot = (
+      r: Robot,
+      to: { x: number; y: number },
+      ms: number,
+      done: () => void,
+      onStep?: () => void,
+    ): void => {
       const from = { x: r.x, y: r.y };
       const t0 = performance.now();
       const tick = (): void => {
@@ -526,6 +533,7 @@ async function start(): Promise<void> {
         const t = Math.min(1, (performance.now() - t0) / ms);
         const e = t * (2 - t); // ease-out
         world.moveThing(r.id, { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e });
+        onStep?.();
         if (t >= 1) { renderer.app.ticker.remove(tick); done(); }
       };
       renderer.app.ticker.add(tick);
@@ -612,7 +620,66 @@ async function start(): Promise<void> {
         };
         if (action.type === 'combine') return flyHole(action.from, action.to, true, true);
         if (action.type === 'move') return flyHole(action.from, action.to, true, false);
-        if (action.type === 'copy') return flyHole(action.from, action.to, false, !box.isHoleEmpty(action.to));
+
+        // COPY re-enacts the WAND gesture, step by step (robot.cpp: the robot holds
+        // the copier and moves it over the subject): walk to Tooly and pick up the
+        // wand, carry it over hole `from`, the wand makes a COPY there (the original
+        // stays), carry the copy to hole `to`, drop it — Bammer hammers it in if the
+        // hole is full — then put the wand down and walk home before the next pass.
+        if (action.type === 'copy') {
+          const c0 = box.contentsAt(action.from);
+          const csrc = c0 instanceof Nest ? c0.front() : c0;
+          if (!csrc) { apply(); setTimeout(() => { if (!loop.cancelled) step(); }, 250); return; }
+          const back = { x: runner.x, y: runner.y };
+          const toFilled = !box.isHoleEmpty(action.to);
+          const wand = renderThingDisplay(new Wand(), textures, theme, 64);
+          wand.zIndex = 6500;
+          wand.visible = false;
+          renderer.thingLayer.addChild(wand);
+          let copyNode: ReturnType<typeof renderThingDisplay> | null = null;
+          const handWand = (): void => { if (!wand.destroyed) wand.position.set(runner.x + 8, runner.y - 48); };
+          const handCopy = (): void => { if (copyNode && !copyNode.destroyed) copyNode.position.set(runner.x + 8, runner.y - 24); };
+          const cleanup = (): void => { if (!wand.destroyed) wand.destroy(); if (copyNode && !copyNode.destroyed) copyNode.destroy(); };
+          // If the robot is grabbed / the box or robot goes away mid-gesture, drop
+          // the wand and copy too (no orphaned sprites).
+          const watch = (): void => {
+            if (loop.cancelled || !world.get(runner.id) || !world.get(box.id)) {
+              renderer.app.ticker.remove(watch);
+              cleanup();
+            }
+          };
+          renderer.app.ticker.add(watch);
+          const tooly = toolboxSource();
+          walkRobot(runner, { x: tooly.x - 30, y: tooly.y + 80 }, 460, () => { // 1) go to the wand
+            wand.visible = true;
+            handWand();
+            const fromPos = holeWorld(box, action.from);
+            walkRobot(runner, { x: fromPos.x, y: fromPos.y + 70 }, 540, () => { // 2) wand over the number
+              copyNode = renderThingDisplay(csrc, textures, theme, 46); // 3) the wand makes a copy
+              copyNode.position.set(fromPos.x, fromPos.y);
+              copyNode.zIndex = 6000;
+              renderer.thingLayer.addChild(copyNode);
+              tweenScale(copyNode, 0.3, 1, 240); // pops out under the wand
+              setTimeout(() => {
+                if (loop.cancelled) return;
+                const toPos = holeWorld(box, action.to);
+                walkRobot(runner, { x: toPos.x, y: toPos.y + 70 }, 540, () => { // 4) carry the copy over
+                  if (copyNode && !copyNode.destroyed) copyNode.destroy();
+                  copyNode = null;
+                  if (toFilled) bamMouseAt(box, apply); else apply(); // 5) drop it (Bammer if full)
+                  setTimeout(() => {
+                    renderer.app.ticker.remove(watch);
+                    if (!wand.destroyed) wand.destroy(); // 6) put the wand down
+                    if (loop.cancelled) return;
+                    apply();
+                    walkRobot(runner, back, 440, step); // walk home, then wait + repeat
+                  }, toFilled ? 1400 : 260);
+                }, () => { handWand(); handCopy(); });
+              }, 320);
+            }, handWand);
+          });
+          return;
+        }
 
         // REMOVE: the robot TAKES the thing out and tosses it away — a ghost lifts
         // from the hole and flies off, shrinking, as the hole empties.
