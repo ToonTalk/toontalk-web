@@ -100,7 +100,11 @@ the city itself (`city.cpp`):
   CAMERA_IN_FRONT branch). Water fills beyond the city edge (city.cpp).
 - **`src/city/city-sprites.ts`** — baked frame sets + `DirectionalSprite`
   (8 headings; animates only while moving). Bake adds: `tooly/<dir>/NN.png`,
-  `house-{a,b,c}-side.png`, `heli-parked.png` (tools/bake-city.py).
+  `house-{a,b,c}-side.png`, `heli-parked.png` (tools/bake-city.py). The parked copter is baked from
+  **HELIHLM1** (canopy down, **no pilot**) so it reads as EMPTY once you've
+  climbed out and walked off. (HELIOLND cycle 3 HELICOPTER_EMPTY nominally points
+  at HLM7, but that BMP still shows the pilot mid-exit, so HLM1 is the faithful
+  "empty parked copter".)
 - **Integration & sitting**: `main.ts` boots into the city. **Entering a house
   or sitting on the grass drops you onto the working floor (the room/World
   view)** — `onEnter` → `enterRoom()`; the dev **backquote (`` ` ``)** flips

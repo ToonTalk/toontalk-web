@@ -277,7 +277,16 @@ def main():
     bake_static("HSA18.BMP", os.path.join(out, "house-a-side.png"), m25, m22)
     bake_static("HSB20.BMP", os.path.join(out, "house-b-side.png"), m25, m22)
     bake_static("HSC20.BMP", os.path.join(out, "house-c-side.png"), m25, m22)
-    bake_static("HELIHLM7.BMP", os.path.join(out, "heli-parked.png"), m25, m22)
+    # The parked copter must be EMPTY (you've climbed out and walked off). The
+    # HELIOLND cycles are: 0 LANDING (HLM1-3, canopy down, no one visible),
+    # 1 PERSON_LEAVING (HLM4-7, pilot climbing out — pilot VISIBLE), 3 EMPTY
+    # (HLM7). HLM7's BMP still shows the pilot mid-exit, so for the parked-and-
+    # left copter we use HLM1 (no visible pilot). M22-only, so upscale 2x to the
+    # M25 bake space.
+    _hlm1 = os.path.join(m22, "HELIHLM1.BMP")
+    _im = key_black(Image.open(_hlm1))
+    _im = _im.resize((_im.width * 2, _im.height * 2), Image.NEAREST)
+    _im.save(os.path.join(out, "heli-parked.png"))
 
     # Room interior (you stand here after entering a house, before sitting):
     # the floor baseplate per house style, a back-wall strip, and the door.
