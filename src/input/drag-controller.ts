@@ -244,22 +244,33 @@ export class DragController {
       return;
     }
 
-    // Holding a tool: space applies it (like a click); Escape puts it down;
-    // letters set its mode.
+    // Holding something: Escape puts it down. A held number/text PAD is EDITED
+    // by typing (digits/characters), as in the original — take a pad out and
+    // type its value, then click to drop it. A held TOOL instead applies on
+    // space and retunes its mode on its letter keys.
     if (this.heldTool) {
       if (e.key === 'Escape') {
         e.preventDefault();
         this.putDownTool();
         return;
       }
+      const held = this.heldTool.thing;
+      if (held instanceof NumberThing || held instanceof TextThing) {
+        const ok = held instanceof NumberThing ? this.editNumber(held, e.key) : this.editText(held, e.key);
+        if (ok) {
+          e.preventDefault();
+          this.world.notifyChanged(held);
+        }
+        return; // a held pad is for editing, not "apply" — drop it with a click
+      }
       if (e.key === ' ') {
         e.preventDefault();
         this.applyHeldTool(this.pointer.x, this.pointer.y);
         return;
       }
-      if (this.setToolMode(this.heldTool.thing, e.key)) {
+      if (this.setToolMode(held, e.key)) {
         e.preventDefault();
-        this.world.notifyChanged(this.heldTool.thing);
+        this.world.notifyChanged(held);
       }
       return;
     }

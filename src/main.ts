@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18q (Dusty & Pumpy morph to their clay form when picked up; box hole-contents always draw above the box walls in reenactments)';
+const BUILD = 'build 2026-06-18r (hold a number/text pad and type to set its value; Dusty/Pumpy morph to clay when held; box contents draw above the walls)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
