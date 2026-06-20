@@ -137,13 +137,13 @@ export class RobotView extends ThingView {
         node.position.set(cx, by);
         this.container.addChild(node);
       } else {
-        // Generalised: show an ERASED (faded) thing of that kind — not the word
-        // "any" (the robot was erased here after training, or was a wildcard).
+        // Generalised: show the real ERASED IMAGE of that kind — a blank number
+        // plate (NUMPLAT), a blank text plate (TEXTPLAT) or an empty box panel
+        // (CUBBYB) — at full strength (the BLANKNESS says "any", not the word).
         const sample = erasedSample(kind);
         if (sample) {
-          const node = renderThingDisplay(sample, this.textures, this.theme, cell - 4, { scaleUp: true });
+          const node = renderThingDisplay(sample, this.textures, this.theme, cell - 2, { scaleUp: true, stretch: true, maxHeight: cell - 2 });
           node.position.set(cx, by);
-          node.alpha = 0.6;
           this.container.addChild(node);
         }
       }

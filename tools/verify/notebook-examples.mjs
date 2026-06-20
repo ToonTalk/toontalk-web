@@ -66,6 +66,34 @@ const healed = await page.evaluate(async () => {
     persisted: (() => { try { return JSON.parse(localStorage.getItem('toontalk-main-notebook-v1')).pages.length; } catch { return -1; } })(),
   };
 });
+
+// Migrate: plant an OLD library (Examples divider + UNNAMED robots), reload, and
+// the block is replaced in place with the current NAMED set — no duplicate divider.
+await page.evaluate(async () => {
+  const { Notebook } = await import('/src/model/notebook.ts');
+  const { Robot } = await import('/src/model/robot.ts');
+  const { TextThing } = await import('/src/model/text.ts');
+  const { thingToJson } = await import('/src/model/persistence.ts');
+  const old = new Notebook({ isMain: true, name: 'claude 1' });
+  old.store(new TextThing({ value: 'Pictures' }));
+  old.store(new TextThing({ value: 'Examples' }));
+  for (let i = 0; i < 11; i++) old.store(new Robot({ condition: ['number'], actions: [{ type: 'remove', hole: 0 }] })); // unnamed
+  localStorage.setItem('toontalk-main-notebook-v1', thingToJson(old));
+});
+await page.reload({ waitUntil: 'load' });
+await page.waitForFunction(() => window.__ttReady === true, { timeout: 30000 });
+await page.waitForTimeout(600);
+const migrated = await page.evaluate(async () => {
+  const { Notebook } = await import('/src/model/notebook.ts');
+  const { Robot } = await import('/src/model/robot.ts');
+  const { TextThing } = await import('/src/model/text.ts');
+  const nb = window.__ttWorld.all().find((t) => t instanceof Notebook && t.isMain);
+  return {
+    pages: nb.pages.length, // Pictures + Examples + 11 named = 13 (no duplicate)
+    dividers: nb.pages.filter((p) => p instanceof TextThing && p.value === 'Examples').length,
+    firstName: nb.pages.filter((p) => p instanceof Robot)[0]?.name ?? '',
+  };
+});
 await browser.close();
 
 const ok =
@@ -74,7 +102,8 @@ const ok =
   fresh.names === 'Add|Multiply|Count up|Double|Join|Swap|Sort|Greet|Add or join|By size|All-rounder' &&
   fresh.addRes === '8' && fresh.mulRes === '15' && fresh.joinRes === 'snowman' &&
   fresh.teamNum === '17' && fresh.teamTxt === 'ab' && fresh.expanded &&
-  healed.pages === 14 && healed.hasHeader && healed.persisted === 14;
-console.log(JSON.stringify({ fresh, healed }, null, 1));
-console.log(`${ok ? 'PASS' : 'FAIL'} notebook example library: seeds fresh, runs, and self-heals a library-less notebook`);
+  healed.pages === 14 && healed.hasHeader && healed.persisted === 14 &&
+  migrated.pages === 13 && migrated.dividers === 1 && migrated.firstName === 'Add';
+console.log(JSON.stringify({ fresh, healed, migrated }, null, 1));
+console.log(`${ok ? 'PASS' : 'FAIL'} notebook library: seeds fresh, self-heals, and migrates an old unnamed library to named`);
 process.exit(ok ? 0 : 1);

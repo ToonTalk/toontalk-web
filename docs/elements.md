@@ -223,11 +223,15 @@ untrained robot HUD-prompts the whole loop; the in-session HUD names demonstrate
 ✅ **fussy matching** — `Robot.matches`: same hole count, each hole empty/of the
 right kind, plus an optional per-hole exact-value guard. The **thought bubble**
 shows each condition hole as the **exact value** it needs (a guard) or, if
-generalised, a faded **erased thing of that kind** — a blank number/text pad, an
-empty box (a box-in-box wildcard) — *not* the word "any". A robot can also carry a
-**name**, shown on a pill below it (type while holding/pointing at it to set one),
-so what it does is clear — the example library robots are named Add, Multiply,
-Double, By size, … (`Robot.name`, `robot-view.ts`). ✅ **generalize with
+generalised, the real **erased image** of that kind — a blank number plate
+(NUMPLAT), a blank text plate (TEXTPLAT) or an empty box panel (CUBBYB, a
+box-in-box wildcard) — *not* the word "any" (matches `number.cpp`'s blank
+`display_plate`). A robot can also carry a **name**, shown on a pill below it
+(type while holding/pointing at it to set one), so what it does is clear — the
+example library robots are named Add, Multiply, Double, By size, … (`Robot.name`,
+`robot-view.ts`); existing saved notebooks **auto-migrate** their old (unnamed)
+example block to the named set on load (no Reset; `installMainNotebook`).
+✅ **generalize with
 Dusty** — erasing a hole **inside the bubble, while training** clears that hole's
 value guard, so the trained robot then matches a box holding *any* number of that
 kind (the manual's "suck things out of the thought bubble"). This is a

@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18l (robots have NAMES shown on a pill; thought bubbles show an erased number/text/box per hole, not "any"; example robots named)';
+const BUILD = 'build 2026-06-18m (names show on example robots — existing notebooks auto-migrate; bubbles show the real blank number/text plate & empty box images per hole)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -1208,9 +1208,6 @@ async function start(): Promise<void> {
   function exampleLibrary(): Thing[] {
     return [new TextThing({ value: EXAMPLES_HEADER }), ...exampleRobots()];
   }
-  function hasExampleLibrary(nb: Notebook): boolean {
-    return nb.pages.some((p) => p instanceof TextThing && p.value === EXAMPLES_HEADER);
-  }
   function seedMainNotebook(): Notebook {
     const nb = new Notebook({ x: 500, y: 600, isMain: true, name: 'claude 1' }); // the original's notebook name
     nb.store(new TextThing({ value: 'Pictures' })); // the original opens to its "Pictures" page
@@ -1220,10 +1217,24 @@ async function start(): Promise<void> {
   }
   function installMainNotebook(): Notebook {
     const nb = loadMainNotebook() ?? seedMainNotebook();
-    if (!hasExampleLibrary(nb)) {
-      for (const p of exampleLibrary()) nb.store(p); // add the library to a pre-existing / library-less notebook
+    const dividerIdx = nb.pages.findIndex((p) => p instanceof TextThing && p.value === EXAMPLES_HEADER);
+    if (dividerIdx < 0) {
+      for (const p of exampleLibrary()) nb.store(p); // library missing → append it
       nb.goTo(1);
       saveMainNotebook(nb); // persist so it sticks (re-added next load if this ever fails)
+    } else {
+      // The library is present. If it's an OLDER version — the first example robot
+      // has no name — replace that block (divider + its robots) IN PLACE with the
+      // current named set, so existing notebooks pick up new examples without a
+      // manual Reset and without duplicating. Pages filed AFTER the block (at
+      // higher indices) are preserved.
+      const firstEx = nb.pages[dividerIdx + 1];
+      if (firstEx instanceof Robot && !firstEx.name) {
+        nb.pages.splice(dividerIdx, 1 + exampleRobots().length); // remove divider + its 11 robots
+        for (const p of exampleLibrary()) nb.store(p); // re-add the current, NAMED library
+        nb.goTo(1);
+        saveMainNotebook(nb);
+      }
     }
     nb.moveTo({ x: FLOOR_W / 2, y: FLOOR_H / 2 + 200 }); // near the floor centre, below the tools
     world.add(nb);
