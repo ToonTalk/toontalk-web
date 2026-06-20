@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18z (the standing room is now the real cohesive ROOM_A/B/C image — walls+floor+door — not drawn bricks; avatar faces away, larger)';
+const BUILD = 'build 2026-06-20a (the notebook rises from Tooly to bottom-centre by the sit spot, where the original keeps it)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -456,9 +456,15 @@ async function start(): Promise<void> {
     renderer.thingLayer.visible = true;
     dragController.setEnabled(true);
     room.playSitDown(); // Tooly pops open and the tools rise out of it into place
-    // The notebook lives in Tooly too — it rises out after the three tools.
+    // The notebook lives in Tooly too — it rises out after the three tools and
+    // settles bottom-centre by the sit spot, where the original keeps it
+    // (set_sit_corner: the toolbox + notebook follow you when you sit down).
     const nbv = views.get(mainNotebook.id);
-    if (nbv) riseFromTooly(nbv, 300 + 3 * 340);
+    if (nbv) {
+      mainNotebook.x = sitFx * FLOOR_W;
+      mainNotebook.y = sitFy * FLOOR_H + renderer.height * 0.28;
+      riseFromTooly(nbv, 300 + 3 * 340);
+    }
     updateHud('none');
   }
   /** Animate a real floor thing (the notebook) rising out of Tooly (top-right,
