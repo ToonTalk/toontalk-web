@@ -8,3 +8,6 @@ __pycache__/
 
 # dev-server logs from verify scripts
 tools/verify/*.log
+
+# verify scratch (reference frames, comparison sheets, temp pre-scripts)
+tools/verify/_*
