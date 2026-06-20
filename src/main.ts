@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18x (sit-down sequence is slower; Esc on the floor stands you up, Esc in the room asks to exit/minimize)';
+const BUILD = 'build 2026-06-18y (the notebook rises out of Tooly with the tools when you sit down)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -456,7 +456,36 @@ async function start(): Promise<void> {
     renderer.thingLayer.visible = true;
     dragController.setEnabled(true);
     room.playSitDown(); // Tooly pops open and the tools rise out of it into place
+    // The notebook lives in Tooly too — it rises out after the three tools.
+    const nbv = views.get(mainNotebook.id);
+    if (nbv) riseFromTooly(nbv, 300 + 3 * 340);
     updateHud('none');
+  }
+  /** Animate a real floor thing (the notebook) rising out of Tooly (top-right,
+   * screen-fixed → world coords) and growing into its place — matching the tools. */
+  function riseFromTooly(view: ThingView, delay: number): void {
+    const tx = view.thing.x;
+    const ty = view.thing.y;
+    const ox = renderer.width - 270 + floorCamera.x; // Tooly's tray, in world coords
+    const oy = 255 + floorCamera.y;
+    const sX = view.thing.scaleX;
+    const sY = view.thing.scaleY;
+    const ms = 820;
+    const start = performance.now() + delay;
+    const c = view.container;
+    c.visible = false;
+    const tick = (): void => {
+      if (c.destroyed) { renderer.app.ticker.remove(tick); return; }
+      const now = performance.now();
+      if (now < start) return;
+      c.visible = true;
+      const t = Math.min(1, (now - start) / ms);
+      const e = 1 - Math.pow(1 - t, 3); // ease-out
+      c.position.set(ox + (tx - ox) * e, oy + (ty - oy) * e);
+      c.scale.set(sX * (0.2 + 0.8 * e), sY * (0.2 + 0.8 * e));
+      if (t >= 1) { renderer.app.ticker.remove(tick); c.position.set(tx, ty); c.scale.set(sX, sY); }
+    };
+    renderer.app.ticker.add(tick);
   }
   /** Stand up from the floor and walk the street again (clear of the door). */
   function returnToStreet(): void {
