@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18u (a box given to a robot it does not fit shows the non-matching holes in red; scale/fill/tool-chip/combine fixes from 18t)';
+const BUILD = 'build 2026-06-18v (box-join forgives near misses; box contents fill the holes fuller)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

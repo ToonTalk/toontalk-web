@@ -985,6 +985,31 @@ export class DragController {
     }
     if (bestArea <= 0) target = undefined;
 
+    // Forgiving box-join: a box dropped just SHY of another box (no actual
+    // overlap) should still join — grow the dragged box's bounds by a margin and
+    // snap to the nearest box it nearly touches (the original's add_to_side is
+    // lenient about the gap). Only when nothing overlapped, and only box→box.
+    if (!target && dragged.thing instanceof Box) {
+      const M = 46;
+      const grown = {
+        x: draggedBounds.x - M,
+        y: draggedBounds.y - M,
+        width: draggedBounds.width + 2 * M,
+        height: draggedBounds.height + 2 * M,
+      };
+      const dcx = draggedBounds.x + draggedBounds.width / 2;
+      let bestD = Infinity;
+      for (const thing of this.world.all()) {
+        if (thing.id === dragged.thing.id || !(thing instanceof Box)) continue;
+        const v = this.views.get(thing.id);
+        if (!v) continue;
+        const b = v.container.getBounds();
+        if (overlapArea(grown, b) <= 0) continue; // not even near
+        const d = Math.abs(b.x + b.width / 2 - dcx);
+        if (d < bestD) { bestD = d; target = thing; }
+      }
+    }
+
     this.resolve(dragged.thing, target, target ? this.contextFor(target, cx, cy, dragged.thing) : {});
     this.onGrab(null);
   };
