@@ -112,6 +112,9 @@ export class Room {
     private readonly tools: Map<string, PIXI.Texture>,
     private readonly theme: RenderTheme,
     private readonly onPick: PickHandler,
+    /** True if a real tool of this kind is already OUT in the world — then its
+     * spilled chip is hidden, so there's never a chip AND a held/floor copy. */
+    private readonly toolExists?: (kind: string) => boolean,
   ) {
     this.floor = new PIXI.TilingSprite(
       room.get('floor') ?? PIXI.Texture.WHITE,
@@ -305,6 +308,7 @@ export class Room {
       ['wand', 'C', W * 0.24, H * 0.72, -0.15],
     ];
     for (const [pick, badge, x, y, tilt] of spill) {
+      if (this.toolExists?.(pick)) continue; // that tool is already out — no chip copy
       const chip = this.makeToolChip(pick, badge, tilt);
       chip.position.set(x, y);
       this.wireToolHover(chip, chip, x, y); // a spilled tool wiggles when hovered too
@@ -317,6 +321,13 @@ export class Room {
   /** Open/close Tooly (rebuild the chrome). */
   private toggleToolbox(): void {
     this.toolboxOpen = !this.toolboxOpen;
+    this.chrome.removeChildren().forEach((c) => c.destroy({ children: true }));
+    this.layoutChrome();
+  }
+
+  /** Rebuild the chrome in place (keeps open/closed state) — call when a tool is
+   * taken out or removed so its spilled chip disappears/reappears. */
+  relayout(): void {
     this.chrome.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.layoutChrome();
   }

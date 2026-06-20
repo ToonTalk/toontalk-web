@@ -309,6 +309,10 @@ export function runMouse(
   const step = (): void => {
     if (sprite.destroyed) {
       PIXI.Ticker.shared.remove(step);
+      // The combine/join result must still land even if the swing was cut short
+      // (the sprite was removed before the strike) — otherwise the box looks
+      // "smashed" but the numbers never combined.
+      if (!bammed) { bammed = true; onBam(); }
       return;
     }
     const now = performance.now() - start;

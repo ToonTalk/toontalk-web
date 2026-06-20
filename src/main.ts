@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18s (Tooly has ONE wand/Dusty/Pumpy — picking one up no longer spawns a copy; swap re-enacts by walking, and grabbing the robot stops it without emptying the box)';
+const BUILD = 'build 2026-06-18t (scale tilts toward the bigger number; pads fill box holes; picking up a tool leaves no chip copy on the floor; combine result lands even if the Bammer swing is cut short)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -78,6 +78,11 @@ async function start(): Promise<void> {
   // The ToonTalk room: tan floor, toolbox, notebook, tools, and the hand cursor.
   // Clicking a toolbox/tool icon pulls a fresh element onto the floor.
   const roomTextures = await loadRoomTextures(theme);
+  // The model registry is created BEFORE the room so the room's toolExists check
+  // (which hides a tool's Tooly chip once it's out) can read it during its first
+  // chrome layout.
+  const world = new World();
+  (window as unknown as { __ttWorld?: unknown }).__ttWorld = world;
   // Picking a tool out of Tooly puts it straight into the hand (like the
   // original); picking an element drops it on the floor to drag.
   const room = new Room(renderer, roomTextures, textures, theme, (key, x, y) => {
@@ -102,7 +107,7 @@ async function start(): Promise<void> {
     // want. (No bam-mouse here; that's only for *combining* things.)
     if (v) tweenScale(v.container, 0.2, 1, 280);
     dragController.holdTool(made);
-  });
+  }, (kind) => world.all().some((t) => t.kind === kind));
   (window as unknown as { __ttRoom?: unknown }).__ttRoom = room;
   window.addEventListener('resize', () => room.resize());
 
@@ -119,11 +124,12 @@ async function start(): Promise<void> {
   // (otherwise continuously animating) canvas. Harmless in production.
   (window as unknown as { __ttApp?: unknown }).__ttApp = renderer.app;
 
-  // Model <-> view bookkeeping.
-  const world = new World();
-  (window as unknown as { __ttWorld?: unknown }).__ttWorld = world;
+  // Model <-> view bookkeeping. (`world` is created above, before the room.)
   const views = new Map<string, ThingView>();
 
+  // Tools are single floor instances; when one is out (or removed) the Tooly chip
+  // for it is hidden (or restored) — so there's never a chip plus a floor copy.
+  const isToolKind = (k: string): boolean => k === 'wand' || k === 'dusty' || k === 'pumpy';
   world.subscribe((event) => {
     switch (event.type) {
       case 'added': {
@@ -131,6 +137,7 @@ async function start(): Promise<void> {
         view.container.name = event.thing.kind; // debug aid (identify layer children)
         views.set(event.thing.id, view);
         renderer.thingLayer.addChild(view.container);
+        if (isToolKind(event.thing.kind)) room.relayout(); // a tool is out → hide its Tooly chip
         break;
       }
       case 'moved': {
@@ -150,8 +157,10 @@ async function start(): Promise<void> {
       case 'removed': {
         const view = views.get(event.id);
         if (view) {
+          const kind = view.thing.kind;
           view.destroy();
           views.delete(event.id);
+          if (isToolKind(kind)) room.relayout(); // the tool's gone → its Tooly chip returns
         }
         break;
       }

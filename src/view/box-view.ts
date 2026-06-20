@@ -131,9 +131,9 @@ export class BoxView extends ThingView {
       // Contents are RESHAPED to fill the hole opening (w and h independently),
       // like the original (cubby.cpp set_size_and_location); taken out, they
       // return to natural size (the extracted thing gets its own view).
-      const node = renderThingDisplay(occupant, this.textures, this.theme, pieceW * (i === 0 ? 0.6 : 0.66), {
+      const node = renderThingDisplay(occupant, this.textures, this.theme, pieceW * (i === 0 ? 0.72 : 0.74), {
         stretch: true,
-        maxHeight: H * 0.78,
+        maxHeight: H * 0.86,
       });
       node.position.set(cx, 0);
       this.container.addChild(node);

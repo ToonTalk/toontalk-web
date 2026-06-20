@@ -8,9 +8,14 @@ import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Scale, type Tilt } from '../model/scale';
 
+// The baked tilt sprites are named OPPOSITE to what they show: scale-left.png
+// actually has the RIGHT pan down, and scale-right.png the LEFT pan down (the
+// original SCALE02/SCALE04 were baked under swapped names). Map by what each one
+// DISPLAYS: 'left' (left bigger → left pan down) → scale-right; 'right' (right
+// bigger → right pan down) → scale-left.
 const TILT_TEX: Record<Tilt, string> = {
-  left: 'scale-left',
-  right: 'scale-right',
+  left: 'scale-right',
+  right: 'scale-left',
   balanced: 'scale-level',
   tottering: 'scale-level',
 };
