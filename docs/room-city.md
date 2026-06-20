@@ -46,13 +46,16 @@ the city itself (`city.cpp`):
   Trees are a web extra — **off by default** (`CityModel({trees})`).
 - **Room standing view** (`mode 'inside'`, `renderInterior`) — the missing
   middle step, faithful to **`source/room.cpp` + `Programmer_Room_Walking`** and
-  matched against `docs/ref/original-room.jpg`: after entering a house you
-  **stand in the room** before sitting at the floor. Rendered as a **perspective
-  brick box**: a white lego-brick back wall (`WALL.BMP`) + two receding
-  side-wall `SimpleMesh` quads, a **blue lego floor** as a perspective trapezoid
-  (`SimpleMesh`, studs larger at the front) by house style (`floor-{a,b,c}` =
-  FLOORC/B/D; `create_floor` maps style→FLOOR background), and the **red door on
-  the LEFT** (`ROOMDOOR`). You walk the room
+  matched against the `sitting and standing.mp4` reference: after entering a house
+  you **stand in the room** before sitting at the floor. As in `room.cpp:114`
+  (`display_region` blits `ROOM_A/B/C_BACKGROUND`), it is **one cohesive
+  perspective picture per house style** — `room-{a,b,c}.png` (baked from
+  `ROOMA/B/C.BMP`: white brick walls + a receding lego floor — yellow/blue/cream —
+  + the red door on the left), stretched to fill. *(This replaced the earlier
+  drawn brick box — back/side-wall `SimpleMesh` quads + a floor trapezoid — which
+  read as a "collage of perspectives".)* The avatar stands on it facing **NORTH**
+  (back to camera, `Direction` enum 6), ~0.52 H tall and depth-scaled; Tooly does
+  **not** appear inside (it trails only in the street). You walk the room
   in normalised coords (`ix`/`iy`, slight depth perspective); `walkInside`
   returns **`'leave'`** at a side wall (→ back to the street just south of the
   house door, `leaveRoom`) or **`'sit'`** at the front of the floor (→ `onEnter`

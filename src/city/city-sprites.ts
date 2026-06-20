@@ -46,6 +46,9 @@ export interface CityAssets {
   /** White lego-brick wall texture (WALL.BMP) for the room interior. */
   wall: PIXI.Texture;
   roomdoor: PIXI.Texture;
+  /** Cohesive room-interior backgrounds (ROOM_A/B/C_BACKGROUND): brick walls +
+   * perspective lego floor + red door, blitted as one picture (room.cpp:114). */
+  rooms: Record<string, PIXI.Texture>;
 }
 
 export interface DirSpec {
@@ -135,6 +138,11 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
   const backwall = (await loadTex('/assets/city/backwall.png', scaleMode)) ?? white;
   const wall = (await loadTex('/assets/city/wall.png', scaleMode)) ?? white;
   const roomdoor = (await loadTex('/assets/city/roomdoor.png', scaleMode)) ?? white;
+  const rooms: Record<string, PIXI.Texture> = {
+    a: (await loadTex('/assets/city/room-a.png', scaleMode)) ?? white,
+    b: (await loadTex('/assets/city/room-b.png', scaleMode)) ?? white,
+    c: (await loadTex('/assets/city/room-c.png', scaleMode)) ?? white,
+  };
 
   return {
     brushes,
@@ -142,6 +150,7 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
     backwall,
     wall,
     roomdoor,
+    rooms,
     heliFly,
     heliLand,
     person,

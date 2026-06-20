@@ -81,13 +81,9 @@ export class CityScene {
   private readonly sideWorld: PIXI.Container;
   private readonly sideHouses: { h: House; s: PIXI.Sprite }[] = [];
 
-  // room interior (standing before sitting) — a perspective brick box
+  // room interior (standing before sitting) — the cohesive ROOM_A/B/C image
   private readonly interior: PIXI.Container;
-  private readonly backWall: PIXI.TilingSprite;
-  private readonly leftWall: PIXI.SimpleMesh;
-  private readonly rightWall: PIXI.SimpleMesh;
-  private readonly floorMesh: PIXI.SimpleMesh;
-  private readonly doorSprite: PIXI.Sprite;
+  private readonly roomBg: PIXI.Sprite; // ROOM_A/B/C_BACKGROUND: walls + perspective floor + door, one picture
   private readonly floorMiniLayer: PIXI.Container; // the floor's things, shown small in the room
   private floorMinis: { fx: number; fy: number; node: PIXI.Container }[] = [];
   private wasInside = false;
@@ -183,38 +179,18 @@ export class CityScene {
     this.container.addChild(this.sideWorld);
     this.buildSideWorld();
 
-    // room interior — a perspective box: white-brick back + side walls, a blue
-    // lego floor in perspective, and the red door on the LEFT (original-room.jpg).
+    // room interior — the original blits ONE cohesive perspective image per house
+    // style (ROOM_A/B/C_BACKGROUND, room.cpp:114): brick walls + a lego floor in
+    // perspective + the red door on the left. We blit that instead of drawing it.
     this.interior = new PIXI.Container();
     this.interior.visible = false;
     this.container.addChild(this.interior);
-    const brick = assets.wall;
-    brick.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
-    for (const f of Object.values(assets.floors)) f.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
-    this.backWall = new PIXI.TilingSprite(brick, 64, 64);
-    this.backWall.tileScale.set(2.0); // big, clear brick courses (match original)
-    const wallUV = (): Float32Array => new Float32Array([0, 0, 1.3, 0, 1.3, 1.4, 0, 1.4]);
-    const floorUV = new Float32Array([0, 0, 4.5, 0, 4.5, 3.5, 0, 3.5]); // big lego studs
-    const idx = (): Uint16Array => new Uint16Array([0, 1, 2, 0, 2, 3]);
-    const mesh = (tex: PIXI.Texture, uv: Float32Array): PIXI.SimpleMesh =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      new PIXI.SimpleMesh(tex, new Float32Array(8) as any, uv as any, idx() as any);
-    this.leftWall = mesh(brick, wallUV());
-    this.rightWall = mesh(brick, wallUV());
-    this.leftWall.tint = 0xcfcfcf; // side walls a touch darker for depth
-    this.rightWall.tint = 0xcfcfcf;
-    this.floorMesh = mesh(assets.floors['b'] ?? PIXI.Texture.WHITE, floorUV);
-    this.doorSprite = new PIXI.Sprite(assets.roomdoor);
-    this.doorSprite.anchor.set(0.5, 1);
+    this.roomBg = new PIXI.Sprite(assets.rooms['a'] ?? PIXI.Texture.WHITE);
     this.floorMiniLayer = new PIXI.Container();
     this.floorMiniLayer.sortableChildren = true;
     this.interior.addChild(
-      this.backWall,
-      this.leftWall,
-      this.rightWall,
-      this.floorMesh,
-      this.doorSprite,
-      this.floorMiniLayer, // the floor's things, on top of the floor mesh
+      this.roomBg, // the cohesive room picture, behind everything
+      this.floorMiniLayer, // the floor's things, on top of the floor
     );
 
     // avatar
@@ -480,7 +456,7 @@ export class CityScene {
     this.heliLand.sprite.visible = m === 'landing';
     this.heliParked.visible = false; // renderStreet re-enables it (depth-culled) for walking
     this.person.sprite.visible = m === 'walking' || inside;
-    this.tooly.sprite.visible = m === 'walking' || inside;
+    this.tooly.sprite.visible = m === 'walking'; // Tooly trails outside; in the room you just stand
     // Build the floor's miniatures once on entering the room; clear on leaving.
     if (inside && !this.wasInside) this.buildFloorMinis();
     else if (!inside && this.wasInside) this.clearFloorMinis();
@@ -672,33 +648,25 @@ export class CityScene {
     }
   }
 
-  /** The room you stand in after entering a house, before sitting at the floor —
-   * a perspective brick box with a blue lego floor and the red door on the left
-   * (matches docs/ref/original-room.jpg). */
+  /** The room you stand in after entering a house, before sitting at the floor.
+   * The original blits one cohesive perspective image (ROOM_A/B/C_BACKGROUND):
+   * brick walls + a lego floor in perspective + the red door on the left. */
   private renderInterior(W: number, H: number): void {
     const m = this.model;
-    const horizon = H * 0.56; // floor meets the back wall
-    const bwL = W * 0.12; // back wall extent (side walls show, gently receding)
-    const bwR = W * 0.88;
-
-    // back wall (brick rectangle)
-    this.backWall.position.set(bwL, 0);
-    this.backWall.width = bwR - bwL;
-    this.backWall.height = horizon;
-    // side walls (brick quads receding to the screen edges)
-    setVerts(this.leftWall, [0, 0, bwL, 0, bwL, horizon, 0, H]);
-    setVerts(this.rightWall, [bwR, 0, W, 0, W, H, bwR, horizon]);
-    // floor trapezoid: narrow at the back (horizon), full width at the front
     const style = m.insideHouse?.style ?? 'a';
-    this.floorMesh.texture = this.assets.floors[style] ?? this.assets.floors['a']!;
-    setVerts(this.floorMesh, [bwL, horizon, bwR, horizon, W, H, 0, H]);
 
-    // door on the LEFT wall, upright
-    this.doorSprite.scale.set((H * 0.4) / this.doorSprite.texture.height);
-    this.doorSprite.position.set(W * 0.1, horizon + (H - horizon) * 0.16);
+    // the room picture, stretched to fill the window (as the original did)
+    this.roomBg.texture = this.assets.rooms[style] ?? this.assets.rooms['a']!;
+    this.roomBg.position.set(0, 0);
+    this.roomBg.width = W;
+    this.roomBg.height = H;
 
-    // map interior coords (ix 0..1 left→right, iy 0..1 back→front) into the
-    // floor trapezoid, scaling the figures by depth for perspective.
+    // The image's floor meets the back wall at ~0.58 H and widens to the front;
+    // map interior coords (ix 0..1 left→right, iy 0..1 back→front) onto it so the
+    // avatar and the floor's things sit on the real floor, scaled by depth.
+    const horizon = H * 0.58;
+    const bwL = W * 0.1; // floor's back edge is inset by the side walls
+    const bwR = W * 0.9;
     const fx = (ix: number, iy: number): number => {
       const left = bwL + (0 - bwL) * iy;
       const right = bwR + (W - bwR) * iy;
@@ -716,7 +684,8 @@ export class CityScene {
     }
 
     this.avatar.position.set(0, 0);
-    fitHeight(this.person.sprite, H * 0.34 * depthScale(m.iy));
+    this.person.setDirection(6); // NORTH (constant.h Direction enum) — back to camera, facing into the room
+    fitHeight(this.person.sprite, H * 0.52 * depthScale(m.iy)); // close to camera, like the original
     this.person.sprite.position.set(fx(m.ix, m.iy), fy(m.iy));
     fitHeight(this.tooly.sprite, H * 0.22 * depthScale(this.toolyIY));
     this.tooly.sprite.position.set(fx(this.toolyIX, this.toolyIY), fy(this.toolyIY));
@@ -743,13 +712,6 @@ function place(
   t.width = Math.max(0, w);
   t.height = Math.max(0, h);
   t.tilePosition.set(ox - x, oy - y);
-}
-
-/** Update a SimpleMesh's vertex positions (PIXI's typed-array getters need a cast). */
-function setVerts(mesh: PIXI.SimpleMesh, xy: number[]): void {
-  const buf = mesh.geometry.getBuffer('aVertexPosition');
-  (buf.data as unknown as Float32Array).set(xy);
-  buf.update();
 }
 
 function clampAbs(v: number, max: number): number {
