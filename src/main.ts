@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18g (notebook flips by SPACE/right-click=next · rubout=prev · type a page number · combine: robot carries the number across, then Bammer)';
+const BUILD = 'build 2026-06-18h (robot re-enacts COPY/MOVE too: carries the thing across — the doubler lifts a copy of the number, then Bammer; combine/join on the strike)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -587,36 +587,35 @@ async function start(): Promise<void> {
           });
           return;
         }
-        // A COMBINE re-enacts the demonstration: the robot TAKES the thing out of
-        // hole `from` and drops it on hole `to` — a ghost of it flies across while
-        // the real `from` content is hidden — and ONLY THEN does Bammer come in and
-        // hammer the two together (robot.htm). The merge (applyAction) lands on the
-        // hammer strike.
-        if (action.type === 'combine') {
+        // combine / copy / move all CARRY a thing from one hole to another — the
+        // robot re-enacting its training. A ghost of the thing lifts and flies
+        // across; for combine/move it's TAKEN out (the source empties), for copy a
+        // DUPLICATE is made (the source stays — the magic wand). Bammer hammers
+        // when it lands on a FILLED hole, and the model change (applyAction) lands
+        // on that strike; landing on an empty hole just drops in.
+        const flyHole = (from: number, to: number, take: boolean, merge: boolean): void => {
+          const c = box.contentsAt(from);
+          const src = c instanceof Nest ? c.front() : c; // the carried thing (through a nest)
+          if (!src) { apply(); setTimeout(() => { if (!loop.cancelled) step(); }, 250); return; }
           const bvc = views.get(box.id);
-          const fromNode = bvc instanceof BoxView ? bvc.holeNode(action.from) : null;
-          const c = box.contentsAt(action.from);
-          const src = c instanceof Nest ? c.front() : c; // the thing taken (through a nest)
-          if (src && fromNode) {
-            const ghost = renderThingDisplay(src, textures, theme, 46);
-            ghost.position.set(holeWorld(box, action.from).x, holeWorld(box, action.from).y);
-            ghost.zIndex = 6000;
-            renderer.thingLayer.addChild(ghost);
-            fromNode.node.visible = false; // it's "taken out" — the rebuild on apply replaces it
-            tweenScale(ghost, 1, 1.3, 650); // lift it as it's carried, so the move reads clearly
-            flyThing(ghost, holeWorld(box, action.to), 650, () => bamMouseAt(box, apply));
-            setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 650 + 1400);
-            return;
-          }
-          bamMouseAt(box, apply); // nothing visible to fly → just hammer
-          setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 1400);
-          return;
-        }
-        // Other merging cases (insert-into-filled handled above): Bammer strikes,
-        // the result lands on impact. Non-merging actions apply at once.
-        if (merging) bamMouseAt(box, apply);
-        else apply();
-        setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, merging ? 1400 : 700);
+          const fromNode = take && bvc instanceof BoxView ? bvc.holeNode(from) : null;
+          const ghost = renderThingDisplay(src, textures, theme, 46);
+          ghost.position.set(holeWorld(box, from).x, holeWorld(box, from).y);
+          ghost.zIndex = 6000;
+          renderer.thingLayer.addChild(ghost);
+          if (fromNode) fromNode.node.visible = false; // taken out — the rebuild on apply replaces it
+          tweenScale(ghost, 1, 1.3, 650); // lift it as it's carried, so the move reads clearly
+          const toPos = holeWorld(box, to);
+          const dest = from === to ? { x: toPos.x, y: toPos.y - 64 } : toPos; // copy-onto-self: lift so it shows
+          flyThing(ghost, dest, 650, () => { if (merge) bamMouseAt(box, apply); else apply(); });
+          setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 650 + (merge ? 1400 : 240));
+        };
+        if (action.type === 'combine') return flyHole(action.from, action.to, true, true);
+        if (action.type === 'move') return flyHole(action.from, action.to, true, false);
+        if (action.type === 'copy') return flyHole(action.from, action.to, false, !box.isHoleEmpty(action.to));
+        // Remaining actions (remove / swap / selfCopy / fromModule) apply at once.
+        apply();
+        setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 700);
       };
       step();
     };

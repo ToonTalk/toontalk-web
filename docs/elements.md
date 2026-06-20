@@ -252,11 +252,14 @@ drops it (combine → Bammer), then **walks home** (`walk` tween + `flyThing` +
 `toolboxSource` in main.ts) — robot.htm's "new" element comes from the toolbox
 each run. Guards: `robot-walk.mjs` (robot swings right to Tooly, left to the box,
 back home; combines 5→6) and `robot-fetch.mjs` (the fresh element is in flight).
-For a `combine` step the robot **takes the thing OUT of hole `from`** (its real
-content hides; a ghost of it flies across) and drops it on hole `to`, and ONLY
-THEN does **Bammer** come in and hammer the two together — the merge (`applyAction`)
-lands on the strike, not before (`team-run.mjs`). The walk is the "watch it work"
-pace; a house runs instantly.
+A `combine`, `copy` or `move` step is re-enacted by **carrying the thing across**:
+a ghost of hole `from`'s content lifts and flies to hole `to` — for combine/move
+it's **taken out** (the source empties), for `copy` a **duplicate** is made (the
+source stays — the magic wand), so the **doubler** (`copy 0→0`) lifts a copy of
+the number above its hole. **Bammer** hammers when it lands on a FILLED hole and
+the model change (`applyAction`) lands on that strike, not before (guards
+`team-run.mjs`, `robot-carry-anim.mjs`: copy 5→10 and move 0→1 land on the
+strike). The walk is the "watch it work" pace; a house runs instantly.
 ✅ **three-way match / wait** (`Robot.matchState` → match | mismatch | wait;
 team-level `teamMatch`): an INCOMPLETE box (a hole the rule needs is empty, or
 holds an *empty nest*) makes the robot **wait, not stop** — the loop suspends
