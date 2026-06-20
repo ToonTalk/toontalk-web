@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18r (hold a number/text pad and type to set its value; Dusty/Pumpy morph to clay when held; box contents draw above the walls)';
+const BUILD = 'build 2026-06-18s (Tooly has ONE wand/Dusty/Pumpy — picking one up no longer spawns a copy; swap re-enacts by walking, and grabbing the robot stops it without emptying the box)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -81,6 +81,18 @@ async function start(): Promise<void> {
   // Picking a tool out of Tooly puts it straight into the hand (like the
   // original); picking an element drops it on the floor to drag.
   const room = new Room(renderer, roomTextures, textures, theme, (key, x, y) => {
+    // Tools (wand/Dusty/Pumpy) are SINGLE instances — Tooly has one of each, not
+    // an infinite stack like number/text/box. So picking one up grabs the one
+    // that's already out instead of spawning a copy (which would pile up and let
+    // a held wand copy a stray one).
+    if (key === 'wand' || key === 'dusty' || key === 'pumpy') {
+      const existing = world.all().find((t) => t.kind === key);
+      if (existing) {
+        tlog(`toolbox pick: ${key} → held the existing ${desc(existing)}`);
+        dragController.holdTool(existing);
+        return;
+      }
+    }
     const made = spawnTool(key, x, y);
     tlog(`toolbox pick: ${key}${made ? ' → ' + desc(made) : ' (failed)'}`);
     if (!made) return;
@@ -165,7 +177,12 @@ async function start(): Promise<void> {
     if (runningLoop) {
       runningLoop.cancelled = true;
       runningLoop.unsub?.(); // drop any wait-for-change subscription
+      const box = world.get(runningLoop.boxId);
       runningLoop = null;
+      // Re-render the box so any hole node hidden mid-gesture (a thing shown
+      // flying as a ghost) is restored — otherwise interrupting a swap/move by
+      // grabbing the robot leaves the box looking empty.
+      if (box) world.notifyChanged(box);
     }
   }
   const onGrab = (thing: Thing | null): void => {
@@ -689,31 +706,38 @@ async function start(): Promise<void> {
           return;
         }
 
-        // SWAP: the two things trade places — a ghost of each flies to the other's
-        // hole (crossing over); the exchange (applyAction) lands when they arrive.
+        // SWAP: the robot steps up to the box, the two things trade places (a ghost
+        // of each flies to the other's hole, crossing over), the exchange
+        // (applyAction) lands when they arrive, then the robot walks home and
+        // repeats — so it visibly re-enacts, like combine/move.
         if (action.type === 'swap') {
           const bvc = views.get(box.id);
           const ca = box.contentsAt(action.a);
           const cb = box.contentsAt(action.b);
           const sa = ca instanceof Nest ? ca.front() : ca;
           const sb = cb instanceof Nest ? cb.front() : cb;
-          let pending = (sa ? 1 : 0) + (sb ? 1 : 0);
-          if (pending === 0) { apply(); setTimeout(() => { if (!loop.cancelled) step(); }, 240); return; }
-          const onLand = (): void => {
-            if (--pending === 0 && !loop.cancelled) { apply(); setTimeout(() => { if (!loop.cancelled) step(); }, 120); }
-          };
-          const fly = (src: Thing, from: number, to: number): void => {
-            const node = bvc instanceof BoxView ? bvc.holeNode(from) : null;
-            const p = holeWorld(box, from);
-            const g = renderThingDisplay(src, textures, theme, 46);
-            g.position.set(p.x, p.y);
-            g.zIndex = 6000;
-            renderer.thingLayer.addChild(g);
-            if (node) node.node.visible = false;
-            flyThing(g, holeWorld(box, to), 600, onLand);
-          };
-          if (sa) fly(sa, action.a, action.b);
-          if (sb) fly(sb, action.b, action.a);
+          const back = { x: runner.x, y: runner.y };
+          const mid = { x: (holeWorld(box, action.a).x + holeWorld(box, action.b).x) / 2, y: holeWorld(box, action.a).y + 64 };
+          const home = (): void => walkRobot(runner, back, 380, () => { setTimeout(() => { if (!loop.cancelled) step(); }, 140); });
+          walkRobot(runner, mid, 460, () => {
+            let pending = (sa ? 1 : 0) + (sb ? 1 : 0);
+            if (pending === 0) { apply(); home(); return; }
+            const onLand = (): void => {
+              if (--pending === 0 && !loop.cancelled) { apply(); home(); }
+            };
+            const fly = (src: Thing, from: number, to: number): void => {
+              const node = bvc instanceof BoxView ? bvc.holeNode(from) : null;
+              const p = holeWorld(box, from);
+              const g = renderThingDisplay(src, textures, theme, 46);
+              g.position.set(p.x, p.y);
+              g.zIndex = 6000;
+              renderer.thingLayer.addChild(g);
+              if (node) node.node.visible = false;
+              flyThing(g, holeWorld(box, to), 600, onLand);
+            };
+            if (sa) fly(sa, action.a, action.b);
+            if (sb) fly(sb, action.b, action.a);
+          });
           return;
         }
 
