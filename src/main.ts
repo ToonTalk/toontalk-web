@@ -116,6 +116,7 @@ async function start(): Promise<void> {
     switch (event.type) {
       case 'added': {
         const view = createThingView(event.thing, textures, theme);
+        view.container.name = event.thing.kind; // debug aid (identify layer children)
         views.set(event.thing.id, view);
         renderer.thingLayer.addChild(view.container);
         break;

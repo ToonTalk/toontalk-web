@@ -93,7 +93,10 @@ export class BoxView extends ThingView {
       return;
     }
 
+    // Two passes so a wide hole's contents are NEVER covered by the NEXT piece:
+    // draw ALL the lego pieces first, then ALL the hole contents on top of them.
     let x = left;
+    const slots: { i: number; cx: number; pieceW: number }[] = [];
     for (let i = 0; i < n; i++) {
       const spec = i === 0 ? ONE : REST;
       const pieceW = i === 0 ? w1 : wr;
@@ -118,21 +121,23 @@ export class BoxView extends ThingView {
 
       const cx = x + pieceW * spec.holeCx;
       this.holeCenters[i] = cx;
-
-      const occupant = blank ? null : box.contentsAt(i);
-      if (occupant) {
-        // Contents are RESHAPED to fill the hole opening (w and h independently),
-        // like the original (cubby.cpp set_size_and_location); taken out, they
-        // return to natural size (the extracted thing gets its own view).
-        const node = renderThingDisplay(occupant, this.textures, this.theme, pieceW * (i === 0 ? 0.6 : 0.66), {
-          stretch: true,
-          maxHeight: H * 0.78,
-        });
-        node.position.set(cx, 0);
-        this.container.addChild(node);
-        this.holeNodes[i] = { node, x: cx, y: 0 };
-      }
+      slots.push({ i, cx, pieceW });
       x += pieceW;
+    }
+
+    for (const { i, cx, pieceW } of slots) {
+      const occupant = blank ? null : box.contentsAt(i);
+      if (!occupant) continue;
+      // Contents are RESHAPED to fill the hole opening (w and h independently),
+      // like the original (cubby.cpp set_size_and_location); taken out, they
+      // return to natural size (the extracted thing gets its own view).
+      const node = renderThingDisplay(occupant, this.textures, this.theme, pieceW * (i === 0 ? 0.6 : 0.66), {
+        stretch: true,
+        maxHeight: H * 0.78,
+      });
+      node.position.set(cx, 0);
+      this.container.addChild(node);
+      this.holeNodes[i] = { node, x: cx, y: 0 };
     }
     this.container.alpha = blank ? 0.6 : 1; // a blank box reads as "not sized yet"
   }
