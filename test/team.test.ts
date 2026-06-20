@@ -124,4 +124,15 @@ describe('robot teams', () => {
     expect(loaded.team.length).toBe(1);
     expect(loaded.team[0]!.condition).toEqual(['text']);
   });
+
+  it('a robot keeps its name through copy and save/load', () => {
+    const w = new World();
+    const r = new Robot({ name: 'Add', condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] });
+    expect(r.copy().name).toBe('Add');
+    w.add(r);
+    const w2 = new World();
+    loadWorld(w2, serialize(w));
+    const loaded = w2.all().find((t) => t instanceof Robot) as Robot;
+    expect(loaded.name).toBe('Add');
+  });
 });

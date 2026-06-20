@@ -126,6 +126,7 @@ function buildByKind(s: ThingSnapshot): Thing {
         ),
         exactValues: (r.exactValues ?? []).map((v) => (v ? buildThing(v) : null)),
         team: (r.team ?? []).map((ts) => buildThing(ts) as Robot),
+        name: r.name,
       });
     }
     default:

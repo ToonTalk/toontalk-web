@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18k (robot WALKS over and physically picks up/carries each thing; copy fetches the wand from wherever it sits on the floor, not Tooly)';
+const BUILD = 'build 2026-06-18l (robots have NAMES shown on a pill; thought bubbles show an erased number/text/box per hole, not "any"; example robots named)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -1165,35 +1165,37 @@ async function start(): Promise<void> {
   function exampleRobots(): Robot[] {
     const n = (value: number) => new NumberThing({ value });
     const t = (value: string) => new TextThing({ value });
-    const mk = (condition: ConditionHole[], actions: RobotAction[], exactValues?: (Thing | null)[]): Robot =>
-      new Robot({ condition, actions, exactValues });
+    const mk = (name: string, condition: ConditionHole[], actions: RobotAction[], exactValues?: (Thing | null)[]): Robot =>
+      new Robot({ name, condition, actions, exactValues });
 
-    // — solo —
-    const adder = mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]); // 3,5 → 8
-    const multiplier = mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0, op: '*' }]); // 3,5 → 15
-    const counter = mk(['number'], [{ type: 'insert', to: 0, thing: n(1) }]); // +1 every run (forever)
-    const doubler = mk(['number'], [{ type: 'copy', from: 0, to: 0 }]); // value + value (forever)
-    const joiner = mk(['text', 'text'], [{ type: 'combine', from: 1, to: 0 }]); // "snow","man" → "snowman"
-    const swapper = mk(['number', 'number'], [{ type: 'swap', a: 0, b: 1 }]); // swaps the two (oscillates — grab to stop)
+    // — solo (each NAMED so it's clear what it does) —
+    const adder = mk('Add', ['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]); // 3,5 → 8
+    const multiplier = mk('Multiply', ['number', 'number'], [{ type: 'combine', from: 1, to: 0, op: '*' }]); // 3,5 → 15
+    const counter = mk('Count up', ['number'], [{ type: 'insert', to: 0, thing: n(1) }]); // +1 every run (forever)
+    const doubler = mk('Double', ['number'], [{ type: 'copy', from: 0, to: 0 }]); // value + value (forever)
+    const joiner = mk('Join', ['text', 'text'], [{ type: 'combine', from: 1, to: 0 }]); // "snow","man" → "snowman"
+    const swapper = mk('Swap', ['number', 'number'], [{ type: 'swap', a: 0, b: 1 }]); // swaps the two (oscillates — grab to stop)
     const sorter = mk(
-      ['number', 'scale', 'number'],
+      'Sort', ['number', 'scale', 'number'],
       [{ type: 'swap', a: 0, b: 2 }],
       [null, new Scale({ tilt: 'right' }), null],
     ); // only while the scale tips right (first < second): puts the bigger first, then settles & stops
-    const greeter = mk(['text'], [{ type: 'insert', to: 0, thing: t(' there') }], [t('hi')]); // only when the text is exactly "hi"
+    const greeter = mk('Greet', ['text'], [{ type: 'insert', to: 0, thing: t(' there') }], [t('hi')]); // only when the text is exactly "hi"
 
-    // — teams (one notebook page each; pulled out they line up and take turns) —
-    const addOrJoin = mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]);
-    addOrJoin.team = [mk(['text', 'text'], [{ type: 'combine', from: 1, to: 0 }])]; // adds a number pair OR joins a text pair
+    // — teams (one notebook page each; pulled out they line up and take turns).
+    //   The lead carries the team name; each teammate its own so they're clear if
+    //   pulled apart. NUMBER-only teams (By size) don't accept text — by design. —
+    const addOrJoin = mk('Add or join', ['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]);
+    addOrJoin.team = [mk('Join', ['text', 'text'], [{ type: 'combine', from: 1, to: 0 }])]; // number pair → add · text pair → join
 
-    const bySize = mk(['number'], [{ type: 'copy', from: 0, to: 0 }]);
-    bySize.team = [mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0 }])]; // doubles a lone number, or adds a pair
+    const bySize = mk('By size', ['number'], [{ type: 'copy', from: 0, to: 0 }]);
+    bySize.team = [mk('Add', ['number', 'number'], [{ type: 'combine', from: 1, to: 0 }])]; // lone number → double · pair → add
 
-    const allRounder = mk(['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]);
+    const allRounder = mk('All-rounder', ['number', 'number'], [{ type: 'combine', from: 1, to: 0 }]);
     allRounder.team = [
-      mk(['text', 'text'], [{ type: 'combine', from: 1, to: 0 }]),
-      mk(['number'], [{ type: 'insert', to: 0, thing: n(1) }]),
-    ]; // 3-robot all-rounder: add a number pair / join a text pair / count a lone number up
+      mk('Join', ['text', 'text'], [{ type: 'combine', from: 1, to: 0 }]),
+      mk('Count up', ['number'], [{ type: 'insert', to: 0, thing: n(1) }]),
+    ]; // add a number pair / join a text pair / count a lone number up
 
     return [adder, multiplier, counter, doubler, joiner, swapper, sorter, greeter, addOrJoin, bySize, allRounder];
   }

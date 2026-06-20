@@ -31,6 +31,7 @@ const fresh = await page.evaluate(async () => {
     page0: pages[0] instanceof TextThing ? pages[0].value : '?',
     page1: pages[1] instanceof TextThing ? pages[1].value : '?',
     robotCount: robots.length,
+    names: robots.map((r) => r.name).join('|'),
     teamSizes: teams.map((t) => t.team.length).join(','),
     addRes: run(pages[2], numBox(3, 5)).contentsAt(0)?.value?.toString?.(),
     mulRes: run(pages[3], numBox(3, 5)).contentsAt(0)?.value?.toString?.(),
@@ -70,6 +71,7 @@ await browser.close();
 const ok =
   fresh.pageCount === 13 && fresh.page0 === 'Pictures' && fresh.page1 === 'Examples' &&
   fresh.robotCount === 11 && fresh.teamSizes === '1,1,2' &&
+  fresh.names === 'Add|Multiply|Count up|Double|Join|Swap|Sort|Greet|Add or join|By size|All-rounder' &&
   fresh.addRes === '8' && fresh.mulRes === '15' && fresh.joinRes === 'snowman' &&
   fresh.teamNum === '17' && fresh.teamTxt === 'ab' && fresh.expanded &&
   healed.pages === 14 && healed.hasHeader && healed.persisted === 14;

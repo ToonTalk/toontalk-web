@@ -274,7 +274,9 @@ export class DragController {
           ? this.editText(thing, e.key)
           : thing instanceof Notebook
             ? this.editNotebook(thing, e.key)
-            : this.setToolMode(thing, e.key);
+            : thing instanceof Robot
+              ? this.editRobotName(thing, e.key)
+              : this.setToolMode(thing, e.key);
     if (handled) {
       e.preventDefault();
       this.world.notifyChanged(thing);
@@ -390,6 +392,20 @@ export class DragController {
     }
     if (key.length === 1) {
       t.value += key;
+      return true;
+    }
+    return false;
+  }
+
+  /** Type a NAME onto a robot you're holding/pointing at (so what it does is
+   * clear) — characters append, Backspace deletes (robot.htm: robots are named). */
+  private editRobotName(robot: Robot, key: string): boolean {
+    if (key === 'Backspace') {
+      robot.name = robot.name.slice(0, -1);
+      return true;
+    }
+    if (key.length === 1 && key >= ' ') {
+      robot.name += key;
       return true;
     }
     return false;

@@ -1,13 +1,34 @@
 /**
- * Draws a robot sprite, a small badge of how many actions it knows, and — once
- * trained — a thought bubble showing its condition as a little box: each hole
- * shows the exact value it requires (a guard), or a faded "any" if erased.
+ * Draws a robot sprite, its given NAME (so what it does is clear), a small badge
+ * of how many actions it knows, and — once trained — a thought bubble showing its
+ * condition as a little box: each hole shows the exact value it requires (a
+ * guard), or an ERASED (faded) thing of that kind if it was generalised.
  */
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Robot } from '../model/robot';
+import type { Thing, ThingKind } from '../model/thing';
+import { NumberThing } from '../model/number';
+import { TextThing } from '../model/text';
+import { Box } from '../model/box';
+import { Scale } from '../model/scale';
 import { renderThingDisplay } from './display';
 import { makeIdleSprite } from './animation';
+
+/** A faded, value-less thing of `kind` — the "erased" wildcard shown in a thought
+ * bubble for a generalised hole (a blank number/text pad, an empty box). */
+function erasedSample(kind: ThingKind): Thing | null {
+  let t: Thing | null;
+  switch (kind) {
+    case 'number': t = new NumberThing({ value: 0 }); break;
+    case 'text': t = new TextThing({ value: '' }); break;
+    case 'box': t = new Box({ size: 1 }); break; // a box-in-box wildcard
+    case 'scale': return new Scale(); // a scale shows its tilt, not an "erased" form
+    default: return null;
+  }
+  t.erased = true;
+  return t;
+}
 
 export class RobotView extends ThingView {
   protected build(): void {
@@ -33,6 +54,26 @@ export class RobotView extends ThingView {
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
+    // The name (if any) on a pill below the robot, then the action-count badge.
+    let infoY = sprite.height / 2 + 10;
+    if (robot.name) {
+      const nameT = new PIXI.Text(robot.name, {
+        fontFamily: 'Tahoma, system-ui, sans-serif',
+        fontSize: 13,
+        fill: 0x1c3a4a,
+        fontWeight: 'bold',
+      });
+      nameT.anchor.set(0.5);
+      nameT.position.set(0, infoY);
+      const pill = new PIXI.Graphics();
+      pill.beginFill(0xffffff, 0.92);
+      pill.lineStyle(1.5, 0x2e6e8e, 1);
+      pill.drawRoundedRect(-nameT.width / 2 - 7, infoY - nameT.height / 2 - 2, nameT.width + 14, nameT.height + 4, 6);
+      pill.endFill();
+      this.container.addChild(pill, nameT);
+      infoY += nameT.height + 8;
+    }
+
     if (robot.actions.length > 0) {
       const badge = new PIXI.Text(`${robot.actions.length}⚙`, {
         fontFamily: 'Tahoma, system-ui, sans-serif',
@@ -41,7 +82,7 @@ export class RobotView extends ThingView {
         fontWeight: 'bold',
       });
       badge.anchor.set(0.5);
-      badge.position.set(0, sprite.height / 2 + 8);
+      badge.position.set(0, infoY);
       this.container.addChild(badge);
     }
 
@@ -88,21 +129,23 @@ export class RobotView extends ThingView {
       hole.endFill();
       this.container.addChild(hole);
 
-      if (kind === null) continue;
+      if (kind === null) continue; // an empty-required hole stays an empty cell
       const exact = robot.exactValues[i];
       if (exact) {
+        // A value guard: show the EXACT thing it must equal (kept after training).
         const node = renderThingDisplay(exact, this.textures, this.theme, cell - 4);
         node.position.set(cx, by);
         this.container.addChild(node);
       } else {
-        const label = new PIXI.Text('any', {
-          fontFamily: 'Tahoma, system-ui, sans-serif',
-          fontSize: 11,
-          fill: 0x4477aa,
-        });
-        label.anchor.set(0.5);
-        label.position.set(cx, by);
-        this.container.addChild(label);
+        // Generalised: show an ERASED (faded) thing of that kind — not the word
+        // "any" (the robot was erased here after training, or was a wildcard).
+        const sample = erasedSample(kind);
+        if (sample) {
+          const node = renderThingDisplay(sample, this.textures, this.theme, cell - 4, { scaleUp: true });
+          node.position.set(cx, by);
+          node.alpha = 0.6;
+          this.container.addChild(node);
+        }
       }
     }
   }

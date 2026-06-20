@@ -104,6 +104,7 @@ export interface RobotSnapshot extends ThingSnapshot {
   actions: RobotActionSnapshot[];
   exactValues?: (ThingSnapshot | null)[];
   team?: RobotSnapshot[];
+  name?: string;
 }
 
 /**
@@ -176,6 +177,9 @@ export class Robot extends Thing {
    * own; a box dropped on it is offered to its lead's whole team.
    */
   leader: Robot | null = null;
+  /** An optional given name shown on the robot, so what it does is clear at a
+   * glance (robot.cpp robots carry a name). Purely descriptive; not matched on. */
+  name: string;
 
   constructor(opts: {
     id?: string;
@@ -185,12 +189,14 @@ export class Robot extends Thing {
     actions?: RobotAction[];
     exactValues?: (Thing | null)[];
     team?: Robot[];
+    name?: string;
   } = {}) {
     super(opts);
     this.condition = opts.condition ?? [];
     this.actions = opts.actions ?? [];
     this.exactValues = opts.exactValues ?? [];
     this.team = opts.team ?? [];
+    this.name = opts.name ?? '';
   }
 
   /** This robot followed by its teammates, in the order a box is offered to them. */
@@ -259,6 +265,7 @@ export class Robot extends Thing {
       actions: this.actions.map((a) => (a.type === 'insert' ? { ...a, thing: a.thing.copy() } : { ...a })),
       exactValues: this.exactValues.map((v) => (v ? v.copy() : null)),
       team: this.team.map((r) => r.copy()),
+      name: this.name,
     });
   }
 
@@ -267,7 +274,7 @@ export class Robot extends Thing {
   }
 
   describe(): string {
-    return `robot(${this.actions.length})`;
+    return this.name ? `robot "${this.name}"` : `robot(${this.actions.length})`;
   }
 
   override snapshot(): RobotSnapshot {
@@ -279,6 +286,7 @@ export class Robot extends Thing {
       ),
       exactValues: this.exactValues.map((v) => (v ? v.snapshot() : null)),
       team: this.team.map((r) => r.snapshot()),
+      name: this.name || undefined,
     };
   }
 }
