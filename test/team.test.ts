@@ -125,6 +125,20 @@ describe('robot teams', () => {
     expect(loaded.team[0]!.condition).toEqual(['text']);
   });
 
+  it('holeStates flags exactly the holes that do not match (reddish feedback)', () => {
+    const r = new Robot({
+      condition: ['number', 'number'],
+      exactValues: [new NumberThing({ value: 3 }), new NumberThing({ value: 5 })],
+      actions: [{ type: 'combine', from: 1, to: 0 }],
+    });
+    expect(r.holeStates(numBox(3, 5))).toEqual(['match', 'match']);
+    expect(r.holeStates(numBox(3, 9))).toEqual(['match', 'mismatch']); // 9 ≠ 5
+    const wrongKind = new Box({ holes: [new NumberThing({ value: 3 }), new TextThing({ value: 'x' })] });
+    expect(r.holeStates(wrongKind)).toEqual(['match', 'mismatch']);
+    // a wrong-size box has nothing lined up → every hole is a mismatch
+    expect(r.holeStates(new Box({ holes: [new NumberThing({ value: 3 })] }))).toEqual(['mismatch']);
+  });
+
   it('a robot keeps its name through copy and save/load', () => {
     const w = new World();
     const r = new Robot({ name: 'Add', condition: ['number', 'number'], actions: [{ type: 'combine', from: 1, to: 0 }] });

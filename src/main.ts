@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18t (scale tilts toward the bigger number; pads fill box holes; picking up a tool leaves no chip copy on the floor; combine result lands even if the Bammer swing is cut short)';
+const BUILD = 'build 2026-06-18u (a box given to a robot it does not fit shows the non-matching holes in red; scale/fill/tool-chip/combine fixes from 18t)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -253,6 +253,17 @@ async function start(): Promise<void> {
           tlog(`run: robot starts on ${desc(bx)} (${state})`);
           animateRun(lead, bx);
           return;
+        }
+        // A TRAINED robot the box doesn't fit: redden the holes that don't match
+        // its rule (the rest keep their colour). An UNTRAINED robot has no rule,
+        // so it falls through to start a training session instead.
+        const trained = lead.lineup().find((r) => r.actions.length > 0);
+        if (trained) {
+          const bvm = views.get(bx.id);
+          if (bvm instanceof BoxView) bvm.tintMismatch(trained.holeStates(bx));
+          tlog(`run: box doesn't match ${desc(trained)} — reddening the holes that don't fit`);
+          setHud("✋ That box doesn't match the robot's rule — the reddish holes are the parts that don't fit.");
+          return; // the box stays where it was dropped, showing the red feedback
         }
       }
       // Combining/joining two things WAITS for Bammer: they don't merge until the

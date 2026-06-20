@@ -268,6 +268,31 @@ export class Robot extends Thing {
     return this.matchState(box) === 'match';
   }
 
+  /**
+   * Per-hole verdict against this condition, for visual feedback: 'mismatch' (the
+   * hole holds the wrong thing / the wrong value, or should be empty and isn't —
+   * the bits that turn reddish), 'wait' (needed but not there yet), 'match'. A
+   * wrong-SIZE box has nothing lined up, so every hole reads 'mismatch'.
+   */
+  holeStates(box: Box): ('match' | 'mismatch' | 'wait')[] {
+    if (box.size !== this.condition.length) {
+      return Array.from({ length: box.size }, () => 'mismatch' as const);
+    }
+    return this.condition.map((c, i) => {
+      let occ = box.contentsAt(i);
+      if (occ instanceof Nest) {
+        const top = occ.front();
+        if (top === null) return c !== null ? 'wait' : 'match';
+        occ = top;
+      }
+      if (c === null) return occ !== null ? 'mismatch' : 'match';
+      if (occ === null) return 'wait';
+      if (occ.kind !== c) return 'mismatch';
+      const guard = this.exactValues[i];
+      return guard != null ? guardMatch(occ, guard) : 'match';
+    });
+  }
+
   copy(): Robot {
     return new Robot({
       x: this.x,

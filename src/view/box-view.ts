@@ -49,6 +49,9 @@ export class BoxView extends ThingView {
   private holeCenters: number[] = [];
   /** Per-hole content node + base position, for selection wiggle. */
   private holeNodes: Array<{ node: PIXI.Container; x: number; y: number } | null> = [];
+  /** Per-hole lego piece (sprite/graphics), so a hole can be tinted reddish when
+   * it doesn't match a robot's rule. */
+  private holePieces: Array<PIXI.Sprite | PIXI.Graphics> = [];
   /** Local-space left edge and total width of the row of pieces (cubby.cpp llx/width). */
   private spanLeft = 0;
   private spanW = 0;
@@ -61,6 +64,7 @@ export class BoxView extends ThingView {
     const n = blank ? 1 : box.size;
     this.holeCenters = new Array(n).fill(0);
     this.holeNodes = new Array(n).fill(null);
+    this.holePieces = [];
 
     const cubby1 = this.textures.get(ONE.key);
     const cubbyr = this.textures.get(REST.key);
@@ -107,6 +111,7 @@ export class BoxView extends ThingView {
         sprite.height = H;
         sprite.position.set(x, -H / 2);
         this.container.addChild(sprite);
+        this.holePieces[i] = sprite;
       } else {
         const cell = new PIXI.Graphics();
         cell.lineStyle(2, 0x2e6e8e, 1);
@@ -117,6 +122,7 @@ export class BoxView extends ThingView {
         cell.drawRect(x + pieceW * (spec.holeCx - 0.28), -H * 0.3, pieceW * 0.56, H * 0.6);
         cell.endFill();
         this.container.addChild(cell);
+        this.holePieces[i] = cell;
       }
 
       const cx = x + pieceW * spec.holeCx;
@@ -244,5 +250,25 @@ export class BoxView extends ThingView {
     if (!hn) return;
     const fit = hn.node.scale.x;
     tweenScale(hn.node, fit * 1.9, fit); // ≈ full size → fit
+  }
+
+  /** Flag which holes DON'T match a robot's rule (a box given to a robot it
+   * doesn't fit): those pieces go reddish, the matching ones keep their colour.
+   * Reverts after a couple of seconds. */
+  tintMismatch(states: ('match' | 'mismatch' | 'wait')[]): void {
+    let any = false;
+    for (let i = 0; i < this.holePieces.length; i++) {
+      const piece = this.holePieces[i];
+      if (!piece || states[i] !== 'mismatch') continue;
+      any = true;
+      // A translucent red wash over the whole hole (a multiply tint wouldn't show
+      // on the cyan lego — cyan has no red channel). Drawn last → on top.
+      const wash = new PIXI.Graphics();
+      wash.beginFill(0xe01818, 0.42);
+      wash.drawRoundedRect(piece.position.x, -H / 2, piece.width, H, 6);
+      wash.endFill();
+      this.container.addChild(wash);
+    }
+    if (any) window.setTimeout(() => { if (!this.container.destroyed) this.refresh(); }, 2600);
   }
 }
