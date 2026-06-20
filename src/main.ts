@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18m (names show on example robots — existing notebooks auto-migrate; bubbles show the real blank number/text plate & empty box images per hole)';
+const BUILD = 'build 2026-06-18n (robots are the blue Lego figure with their NAME on the chest, no badge; copy uses the wand in-hand, no trek; matches Video Project 11)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -595,21 +595,12 @@ async function start(): Promise<void> {
           });
           return;
         }
-        // combine / move / copy are re-enacted by the robot WALKING to the source
-        // hole, PICKING UP the thing (its hand for combine/move; the magic WAND —
-        // fetched from wherever it actually sits — for copy), CARRYING it to the
-        // target hole and DROPPING it. Bammer hammers it in if that hole is full,
-        // and the model change (applyAction) lands on the strike (robot.cpp: the
-        // robot holds the tool and moves it over the subject).
+        // combine / move / copy are re-enacted by the robot WALKING over the source
+        // hole, PICKING UP the thing (its hand for combine/move; its own magic WAND,
+        // held in hand, for copy), CARRYING it to the target hole and DROPPING it.
+        // Bammer hammers it in if that hole is full, and the model change
+        // (applyAction) lands on the strike.
         const overHole = (i: number): { x: number; y: number } => ({ x: holeWorld(box, i).x, y: holeWorld(box, i).y + 64 });
-        const nearestWand = (near: { x: number; y: number }): Wand | null => {
-          let best: Wand | null = null;
-          let bestD = Infinity;
-          for (const t of world.all()) {
-            if (t instanceof Wand) { const d = Math.hypot(t.x - near.x, t.y - near.y); if (d < bestD) { bestD = d; best = t; } }
-          }
-          return best;
-        };
         const carryGesture = (from: number, to: number, take: boolean, merge: boolean, useWand: boolean): void => {
           const c = box.contentsAt(from);
           const src = c instanceof Nest ? c.front() : c; // the carried thing (through a nest)
@@ -617,25 +608,21 @@ async function start(): Promise<void> {
           const back = { x: runner.x, y: runner.y };
           const bvc = views.get(box.id);
           const fromNode = take && bvc instanceof BoxView ? bvc.holeNode(from) : null;
-          const wandThing = useWand ? nearestWand(overHole(from)) : null;
-          const wandView = wandThing ? views.get(wandThing.id) : null;
           let wand: ReturnType<typeof renderThingDisplay> | null = null;
           let carried: ReturnType<typeof renderThingDisplay> | null = null;
           const handWand = (): void => { if (wand && !wand.destroyed) wand.position.set(runner.x + 14, runner.y - 52); };
           const handCarried = (): void => { if (carried && !carried.destroyed) carried.position.set(runner.x - 2, runner.y - 30); };
-          const restoreWand = (): void => { if (wandView && !wandView.container.destroyed) wandView.container.visible = true; };
           const cleanup = (): void => {
             if (wand && !wand.destroyed) wand.destroy();
             if (carried && !carried.destroyed) carried.destroy();
-            restoreWand();
           };
           // If the robot is grabbed / the box or robot goes away mid-gesture, drop
-          // everything held (no orphaned sprites) and un-hide the real wand.
+          // everything held (no orphaned sprites).
           const watch = (): void => {
             if (loop.cancelled || !world.get(runner.id) || !world.get(box.id)) { renderer.app.ticker.remove(watch); cleanup(); }
           };
           renderer.app.ticker.add(watch);
-          const finish = (): void => { renderer.app.ticker.remove(watch); if (wand && !wand.destroyed) wand.destroy(); restoreWand(); };
+          const finish = (): void => { renderer.app.ticker.remove(watch); if (wand && !wand.destroyed) wand.destroy(); };
 
           const carryAcross = (): void => {
             walkRobot(runner, overHole(from), 520, () => {
@@ -663,20 +650,15 @@ async function start(): Promise<void> {
           };
 
           if (useWand) {
-            const wp = wandThing ? { x: wandThing.x, y: wandThing.y } : toolboxSource(); // the actual wand, or Tooly if none
+            // The robot already holds its own wand (its copier) — it appears in
+            // hand; no trek to a wand on the floor (robot.cpp: a robot keeps its
+            // initial_tool). It just copies in place at the box.
             wand = renderThingDisplay(new Wand(), textures, theme, 64);
             wand.zIndex = 6500;
-            wand.visible = false;
             renderer.thingLayer.addChild(wand);
-            walkRobot(runner, { x: wp.x, y: wp.y + 30 }, 460, () => {
-              if (wandView && !wandView.container.destroyed) wandView.container.visible = false; // picked it up
-              if (wand) wand.visible = true;
-              handWand();
-              carryAcross();
-            });
-          } else {
-            carryAcross();
+            handWand();
           }
+          carryAcross();
         };
         if (action.type === 'combine') return carryGesture(action.from, action.to, true, true, false);
         if (action.type === 'move') return carryGesture(action.from, action.to, true, false, false);

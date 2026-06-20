@@ -226,8 +226,10 @@ shows each condition hole as the **exact value** it needs (a guard) or, if
 generalised, the real **erased image** of that kind — a blank number plate
 (NUMPLAT), a blank text plate (TEXTPLAT) or an empty box panel (CUBBYB, a
 box-in-box wildcard) — *not* the word "any" (matches `number.cpp`'s blank
-`display_plate`). A robot can also carry a **name**, shown on a pill below it
-(type while holding/pointing at it to set one), so what it does is clear — the
+`display_plate`). A robot is the blue **Lego robot** (RB00) on the floor and in
+Tooly (the original look; the clay "alive" fidget is for when it's actually
+running), with its **name printed on its chest** (type while holding/pointing at
+it to set one) and **no action-count badge** — so what it does is clear. The
 example library robots are named Add, Multiply, Double, By size, … (`Robot.name`,
 `robot-view.ts`); existing saved notebooks **auto-migrate** their old (unnamed)
 example block to the named set on load (no Reset; `installMainNotebook`).
@@ -266,13 +268,11 @@ EVERY action step is re-enacted by the robot **physically WALKING to the source
 hole and carrying the thing across** (`carryGesture` in main.ts), the effect
 landing on arrival / the Bammer strike (never instantly): for **combine/move** the
 robot walks over hole `from`, **picks the thing up with its hand** (the source
-empties), carries it to hole `to` and drops it; for **copy** it re-enacts the full
-**wand gesture** (robot.cpp: the robot holds the copier and moves it over the
-subject) — it **walks to the wand wherever it actually sits on the floor** (the
-nearest `Wand`, or Tooly if there is none — *not* always Tooly), picks it up,
-carries it over hole `from`, the wand **makes a copy** (the original stays), carries
-the copy to hole `to` and drops it, then puts the wand back and walks home before
-the next pass (guard `robot-wand-source.mjs`); **remove** tosses the thing out of the
+empties), carries it to hole `to` and drops it; for **copy** the robot's own
+**wand appears in its hand** (it keeps its copier — robot.cpp `initial_tool`; no
+trek to a floor wand), it carries a **copy** of hole `from`'s thing (the original
+stays) over to hole `to` and drops it, then puts the wand away before the next
+pass; **remove** tosses the thing out of the
 box (it shrinks away as the hole empties); **swap** flies a ghost of each thing to
 the other's hole (crossing over); **self-copy** flies a copy of the robot itself
 into the empty hole. **Bammer** hammers when something lands on a FILLED hole.

@@ -13,7 +13,6 @@ import { TextThing } from '../model/text';
 import { Box } from '../model/box';
 import { Scale } from '../model/scale';
 import { renderThingDisplay } from './display';
-import { makeIdleSprite } from './animation';
 
 /** A faded, value-less thing of `kind` — the "erased" wildcard shown in a thought
  * bubble for a generalised hole (a blank number/text pad, an empty box). */
@@ -46,44 +45,27 @@ export class RobotView extends ThingView {
       this.container.addChild(shadow);
     }
 
-    // Resting in Tooly (static): the still Lego robot (RB00). On the floor it's
-    // the clay "alive" fidget (robot-wait), morphing to Lego only at rest.
-    const sprite = this.staticDisplay
-      ? new PIXI.Sprite(tex)
-      : (makeIdleSprite('robot-wait') ?? new PIXI.Sprite(tex));
+    // The blue Lego robot (RB00), as in the original — the same at rest in Tooly
+    // and on the floor. (The clay "alive" fidget is for when it's actually
+    // running, not while it sits waiting.)
+    const sprite = new PIXI.Sprite(tex);
     sprite.anchor.set(0.5);
     this.container.addChild(sprite);
 
-    // The name (if any) on a pill below the robot, then the action-count badge.
-    let infoY = sprite.height / 2 + 10;
+    // The robot's NAME printed on its chest (the original shows it there, e.g.
+    // "Doubler") — not a pill below, and there's NO action-count badge.
     if (robot.name) {
       const nameT = new PIXI.Text(robot.name, {
         fontFamily: 'Tahoma, system-ui, sans-serif',
-        fontSize: 13,
-        fill: 0x1c3a4a,
+        fontSize: 11,
+        fill: 0xffffff,
         fontWeight: 'bold',
+        stroke: 0x10243a,
+        strokeThickness: 3,
       });
       nameT.anchor.set(0.5);
-      nameT.position.set(0, infoY);
-      const pill = new PIXI.Graphics();
-      pill.beginFill(0xffffff, 0.92);
-      pill.lineStyle(1.5, 0x2e6e8e, 1);
-      pill.drawRoundedRect(-nameT.width / 2 - 7, infoY - nameT.height / 2 - 2, nameT.width + 14, nameT.height + 4, 6);
-      pill.endFill();
-      this.container.addChild(pill, nameT);
-      infoY += nameT.height + 8;
-    }
-
-    if (robot.actions.length > 0) {
-      const badge = new PIXI.Text(`${robot.actions.length}⚙`, {
-        fontFamily: 'Tahoma, system-ui, sans-serif',
-        fontSize: 13,
-        fill: 0x224466,
-        fontWeight: 'bold',
-      });
-      badge.anchor.set(0.5);
-      badge.position.set(0, infoY);
-      this.container.addChild(badge);
+      nameT.position.set(0, sprite.height * 0.07); // across the torso
+      this.container.addChild(nameT);
     }
 
     if (robot.condition.length > 0) {
