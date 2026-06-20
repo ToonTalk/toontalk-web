@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18o (robots: blue Lego, NAME on chest, no badge; copy wand in-hand, no trek; the parked helicopter is now EMPTY after you walk off)';
+const BUILD = 'build 2026-06-18p (wand O = restore: on a robot it hands back a concrete test box — drop it back to run it; C is now an exact copy that keeps wildcards)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

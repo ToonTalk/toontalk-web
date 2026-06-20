@@ -367,12 +367,18 @@ mode, not a toggle. **Suck (remove, restorable) is distinct from the Bomb
 
 **Held tool** (see *Tools are held* below); copies via the **tip**, not
 consumed, with **three modes** (press C/O/S to set, Tab cycles; `WandView`
-shows the badge): **C** copy + restore (un-erased — default); **O**
-"original" copies preserving the erased/wildcard state (per `picture.cpp`:
-original mode doesn't restore); **S** copy-self copies a robot *with its
-team* (C/O copy just the lead). Mode persists. ✅ **Audited 2026-06-15**: the
-default **C** matches `tools.cpp` Copier ctor `state = COPIER_NORMAL`:3057, button
-`'C'`:3063 (`CopierState {COPIER_NORMAL, COPIER_ORIGINAL, …}`).
+shows the badge): **C** copy = an **exact** copy that *preserves* the
+erased/wildcard state (the default); **O** "original" = **restore** to the
+concrete original (un-erases) — and on a **robot** it hands back its
+thought-bubble condition as a concrete, ready-to-test **box** (drop it back on
+the robot to run it: `Robot.conditionBox`, restoring each generalized hole's
+remembered `originalValues`); **S** copy-self copies a robot *with its team*
+(C/O copy just the lead). Mode persists. ✅ **Re-audited 2026-06-20**
+(corrects an earlier inversion): `tools.cpp` `Copier::used` sets `if (state ==
+COPIER_ORIGINAL) modified = TRUE;`:3329 then `tt_copy_restores_pre_blank =
+modified`:3369 — so **O restores, C preserves** (default `state = COPIER_NORMAL`
+→ `modified = FALSE`). The `picture.cpp:687` "original mode doesn't restore" note
+is about *flipped followers* (backs of pictures), a separate concern.
 
 ## Pumpy (`pumpy.ts`) ✅
 

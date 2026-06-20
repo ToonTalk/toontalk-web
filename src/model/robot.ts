@@ -103,6 +103,7 @@ export interface RobotSnapshot extends ThingSnapshot {
   condition: ConditionHole[];
   actions: RobotActionSnapshot[];
   exactValues?: (ThingSnapshot | null)[];
+  originalValues?: (ThingSnapshot | null)[];
   team?: RobotSnapshot[];
   name?: string;
 }
@@ -163,6 +164,14 @@ export class Robot extends Thing {
    */
   exactValues: (Thing | null)[];
   /**
+   * Per-hole PRE-ERASE value: what each hole held when trained, kept even after
+   * the hole is generalized (erased). It's *not* used for matching — it's what the
+   * magic wand's **O** mode restores so you get a concrete, ready-to-test box back
+   * (and the groundwork for re-opening a robot to edit). Parallel to `condition`;
+   * null where the hole was empty (or for synthetic robots with nothing recorded).
+   */
+  originalValues: (Thing | null)[];
+  /**
    * Robots behind this one in a team (front-to-back order). A box given to the
    * team is tried by this robot first, then each teammate; the first whose
    * condition matches runs. On the floor the teammates are **separate world
@@ -188,6 +197,7 @@ export class Robot extends Thing {
     condition?: ConditionHole[];
     actions?: RobotAction[];
     exactValues?: (Thing | null)[];
+    originalValues?: (Thing | null)[];
     team?: Robot[];
     name?: string;
   } = {}) {
@@ -195,6 +205,7 @@ export class Robot extends Thing {
     this.condition = opts.condition ?? [];
     this.actions = opts.actions ?? [];
     this.exactValues = opts.exactValues ?? [];
+    this.originalValues = opts.originalValues ?? [];
     this.team = opts.team ?? [];
     this.name = opts.name ?? '';
   }
@@ -264,9 +275,30 @@ export class Robot extends Thing {
       condition: [...this.condition],
       actions: this.actions.map((a) => (a.type === 'insert' ? { ...a, thing: a.thing.copy() } : { ...a })),
       exactValues: this.exactValues.map((v) => (v ? v.copy() : null)),
+      originalValues: this.originalValues.map((v) => (v ? v.copy() : null)),
       team: this.team.map((r) => r.copy()),
       name: this.name,
     });
+  }
+
+  /**
+   * The robot's condition as a CONCRETE, ready-to-test box: each required hole is
+   * filled with the value it must equal (a value guard), or — for a generalized
+   * (erased) hole — its remembered pre-erase original, un-erased. Holes with no
+   * remembered value fall back to a sample of the right kind. Empty-required holes
+   * stay empty. The magic wand's **O** mode hands this back so you can drop it
+   * straight onto the robot to watch it run (robot.cpp `tt_copy_restores_pre_blank`).
+   */
+  conditionBox(): Box {
+    const holes = this.condition.map((c, i) => {
+      if (c === null) return null; // this hole must be empty
+      const exact = this.exactValues[i];
+      if (exact) return exact.copy(); // a value guard → exactly that
+      const orig = this.originalValues[i];
+      if (orig) return orig.copy(); // restore the pre-erase original (copy un-erases)
+      return sampleForKind(c); // nothing remembered → a concrete sample of the kind
+    });
+    return new Box({ holes });
   }
 
   equals(other: Thing): boolean {
@@ -285,9 +317,21 @@ export class Robot extends Thing {
         a.type === 'insert' ? { type: 'insert', to: a.to, thing: a.thing.snapshot() } : { ...a },
       ),
       exactValues: this.exactValues.map((v) => (v ? v.snapshot() : null)),
+      originalValues: this.originalValues.some((v) => v) ? this.originalValues.map((v) => (v ? v.snapshot() : null)) : undefined,
       team: this.team.map((r) => r.snapshot()),
       name: this.name || undefined,
     };
+  }
+}
+
+/** A concrete sample thing of a given kind — the fallback when a generalized hole
+ * has no remembered pre-erase value to restore (e.g. a synthetic example robot). */
+function sampleForKind(kind: ThingKind): Thing | null {
+  switch (kind) {
+    case 'number': return new NumberThing({ value: 1 });
+    case 'text': return new TextThing({ value: 'abc' });
+    case 'box': return new Box({ holes: [new NumberThing({ value: 1 })] });
+    default: return null; // rare kinds → leave the hole empty
   }
 }
 

@@ -65,11 +65,21 @@ export function resolveDrop(
 
   // Magic wand: drop it on a thing to copy that thing. Wand is not consumed.
   if (dragged instanceof Wand) {
-    const copy = target.copy();
+    // O ("original") on a robot → a CONCRETE copy of its thought-bubble condition
+    // box, with anything erased restored to its original value. Drop the result
+    // straight back on the robot to watch it run — the easy way to test it.
+    if (dragged.mode === 'O' && target instanceof Robot) {
+      const testBox = target.conditionBox();
+      testBox.moveTo({ x: target.x + 40, y: target.y + 30 });
+      world.add(testBox);
+      return 'copied';
+    }
+    const copy = target.copy(); // copy() already drops erased flags (a concrete copy)
     // C/O copy just the lead robot; S ("copy self") keeps the whole team.
     if (copy instanceof Robot && dragged.mode !== 'S') copy.team = [];
-    // O ("original") preserves the erased/wildcard state; C/S restore (un-erase).
-    if (dragged.mode === 'O') copy.erased = target.erased;
+    // C ("copy") is an EXACT copy — it keeps the erased/wildcard state; O restores
+    // (un-erases, already done by copy()); S is a normal team copy.
+    if (dragged.mode === 'C') copy.erased = target.erased;
     copy.moveTo({ x: target.x + 36, y: target.y + 28 });
     world.add(copy);
     // A copied TEAM (S-mode) carries its members embedded; spread them onto the

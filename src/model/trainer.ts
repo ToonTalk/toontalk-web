@@ -24,6 +24,9 @@ interface Session {
   box: Box;
   condition: ConditionHole[];
   exactValues: (Thing | null)[];
+  /** Each hole's value at the START (before any demonstrated action mutates the
+   * box) — what the wand's O mode restores for a generalized hole. */
+  originalValues: (Thing | null)[];
   actions: RobotAction[];
 }
 
@@ -62,6 +65,9 @@ export class Trainer {
       box,
       condition: box.holes.map((h) => (h ? h.kind : null)),
       exactValues: box.holes.map((h) => (h && !isWildcardPad(h) ? h.copy() : null)),
+      // The pre-action values (kept even once a hole is erased), so the wand's O
+      // mode can restore a concrete, testable box later.
+      originalValues: box.holes.map((h) => (h ? h.copy() : null)),
       actions: [],
     };
   }
@@ -175,9 +181,10 @@ export class Trainer {
   /** Finish: write the condition + actions onto the robot. Returns it. */
   finish(): Robot | null {
     if (!this.session) return null;
-    const { robot, condition, exactValues, actions } = this.session;
+    const { robot, condition, exactValues, originalValues, actions } = this.session;
     robot.condition = condition;
     robot.exactValues = exactValues;
+    robot.originalValues = originalValues; // pre-action values, for the wand's O restore
     robot.actions = actions;
     this.world.notifyChanged(robot);
     this.session = null;

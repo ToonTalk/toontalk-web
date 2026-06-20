@@ -1,9 +1,10 @@
 /**
  * The magic wand: ToonTalk's copying tool. Drop it on a thing and a copy
  * appears; the wand isn't consumed. Its button cycles three modes:
- *  - **C** (copy): a normal copy, *restored* (un-erased) — the default.
- *  - **O** (original): copy preserving the erased/wildcard state (picture.cpp:
- *    "in 'original' mode don't restore things").
+ *  - **C** (copy): an EXACT copy — the erased/wildcard state is preserved.
+ *  - **O** (original): RESTORE to the concrete original — anything erased is
+ *    un-erased. On a *robot* it hands back its thought-bubble condition as a
+ *    concrete, ready-to-test box (drop it back on the robot to run it).
  *  - **S** (copy self): copy a robot *with its whole team* (so teams/recursion
  *    can be duplicated); for other things it's a plain copy.
  */

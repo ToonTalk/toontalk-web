@@ -125,6 +125,7 @@ function buildByKind(s: ThingSnapshot): Thing {
           a.type === 'insert' ? { type: 'insert' as const, to: a.to, thing: buildThing(a.thing) } : { ...a },
         ),
         exactValues: (r.exactValues ?? []).map((v) => (v ? buildThing(v) : null)),
+        originalValues: (r.originalValues ?? []).map((v) => (v ? buildThing(v) : null)),
         team: (r.team ?? []).map((ts) => buildThing(ts) as Robot),
         name: r.name,
       });
