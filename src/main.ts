@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18h (robot re-enacts COPY/MOVE too: carries the thing across — the doubler lifts a copy of the number, then Bammer; combine/join on the strike)';
+const BUILD = 'build 2026-06-18i (robot re-enacts EVERY step: combine/copy/move/remove/swap/self-copy all carry the thing across, effect lands on arrival/Bammer)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -613,9 +613,74 @@ async function start(): Promise<void> {
         if (action.type === 'combine') return flyHole(action.from, action.to, true, true);
         if (action.type === 'move') return flyHole(action.from, action.to, true, false);
         if (action.type === 'copy') return flyHole(action.from, action.to, false, !box.isHoleEmpty(action.to));
-        // Remaining actions (remove / swap / selfCopy / fromModule) apply at once.
+
+        // REMOVE: the robot TAKES the thing out and tosses it away — a ghost lifts
+        // from the hole and flies off, shrinking, as the hole empties.
+        if (action.type === 'remove') {
+          const c = box.contentsAt(action.hole);
+          const src = c instanceof Nest ? c.front() : c;
+          if (src) {
+            const bvc = views.get(box.id);
+            const fromNode = bvc instanceof BoxView ? bvc.holeNode(action.hole) : null;
+            const p = holeWorld(box, action.hole);
+            const ghost = renderThingDisplay(src, textures, theme, 46);
+            ghost.position.set(p.x, p.y);
+            ghost.zIndex = 6000;
+            renderer.thingLayer.addChild(ghost);
+            if (fromNode) fromNode.node.visible = false; // taken out
+            tweenScale(ghost, 1, 0.25, 650); // shrink as it's tossed away
+            flyThing(ghost, { x: p.x + 210, y: p.y - 190 }, 650, () => apply());
+            setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 700);
+            return;
+          }
+          apply();
+          setTimeout(() => { if (!loop.cancelled) step(); }, 240);
+          return;
+        }
+
+        // SWAP: the two things trade places — a ghost of each flies to the other's
+        // hole (crossing over); the exchange (applyAction) lands when they arrive.
+        if (action.type === 'swap') {
+          const bvc = views.get(box.id);
+          const ca = box.contentsAt(action.a);
+          const cb = box.contentsAt(action.b);
+          const sa = ca instanceof Nest ? ca.front() : ca;
+          const sb = cb instanceof Nest ? cb.front() : cb;
+          let pending = (sa ? 1 : 0) + (sb ? 1 : 0);
+          if (pending === 0) { apply(); setTimeout(() => { if (!loop.cancelled) step(); }, 240); return; }
+          const onLand = (): void => {
+            if (--pending === 0 && !loop.cancelled) { apply(); setTimeout(() => { if (!loop.cancelled) step(); }, 120); }
+          };
+          const fly = (src: Thing, from: number, to: number): void => {
+            const node = bvc instanceof BoxView ? bvc.holeNode(from) : null;
+            const p = holeWorld(box, from);
+            const g = renderThingDisplay(src, textures, theme, 46);
+            g.position.set(p.x, p.y);
+            g.zIndex = 6000;
+            renderer.thingLayer.addChild(g);
+            if (node) node.node.visible = false;
+            flyThing(g, holeWorld(box, to), 600, onLand);
+          };
+          if (sa) fly(sa, action.a, action.b);
+          if (sb) fly(sb, action.b, action.a);
+          return;
+        }
+
+        // SELF-COPY: a copy of the robot itself flies from the runner into the empty
+        // hole (the wand's "a copy of himself" — recursion).
+        if (action.type === 'selfCopy') {
+          const ghost = renderThingDisplay(lead, textures, theme, 60);
+          ghost.position.set(runner.x, runner.y);
+          ghost.zIndex = 6000;
+          renderer.thingLayer.addChild(ghost);
+          flyThing(ghost, holeWorld(box, action.to), 620, () => apply());
+          setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 720);
+          return;
+        }
+
+        // fromModule (house-only — no module on the floor) or anything else: apply.
         apply();
-        setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 700);
+        setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 500);
       };
       step();
     };

@@ -252,14 +252,17 @@ drops it (combine → Bammer), then **walks home** (`walk` tween + `flyThing` +
 `toolboxSource` in main.ts) — robot.htm's "new" element comes from the toolbox
 each run. Guards: `robot-walk.mjs` (robot swings right to Tooly, left to the box,
 back home; combines 5→6) and `robot-fetch.mjs` (the fresh element is in flight).
-A `combine`, `copy` or `move` step is re-enacted by **carrying the thing across**:
-a ghost of hole `from`'s content lifts and flies to hole `to` — for combine/move
-it's **taken out** (the source empties), for `copy` a **duplicate** is made (the
-source stays — the magic wand), so the **doubler** (`copy 0→0`) lifts a copy of
-the number above its hole. **Bammer** hammers when it lands on a FILLED hole and
-the model change (`applyAction`) lands on that strike, not before (guards
-`team-run.mjs`, `robot-carry-anim.mjs`: copy 5→10 and move 0→1 land on the
-strike). The walk is the "watch it work" pace; a house runs instantly.
+EVERY action step is re-enacted by **carrying the thing across**, the effect
+landing on arrival / the Bammer strike (never instantly): **combine/move** take
+the thing OUT of hole `from` (source empties) and fly it to `to`; **copy** flies a
+**duplicate** (source stays — the magic wand), so the **doubler** (`copy 0→0`)
+lifts a copy of the number above its hole; **remove** tosses the thing out of the
+box (it shrinks away as the hole empties); **swap** flies a ghost of each thing to
+the other's hole (crossing over); **self-copy** flies a copy of the robot itself
+into the empty hole. **Bammer** hammers when something lands on a FILLED hole.
+(`fromModule` is house-only — no module on the floor — so it applies at once.)
+Guards: `team-run.mjs`, `robot-carry-anim.mjs` (copy 5→10 · move 0→1 · remove→∅ ·
+swap 3↔8 · self-copy→robot, each landing on arrival). A house runs instantly.
 ✅ **three-way match / wait** (`Robot.matchState` → match | mismatch | wait;
 team-level `teamMatch`): an INCOMPLETE box (a hole the rule needs is empty, or
 holds an *empty nest*) makes the robot **wait, not stop** — the loop suspends
