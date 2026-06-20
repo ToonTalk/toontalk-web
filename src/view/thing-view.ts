@@ -20,6 +20,10 @@ export abstract class ThingView {
   /** True when rendered as an inert display icon (e.g. resting in Tooly): the
    * robot shows its still Lego form (RB00) rather than its clay "alive" fidget. */
   protected readonly staticDisplay: boolean;
+  /** True while the thing is "alive": a held tool morphs from its Lego form to
+   * its clay form (Dusty/Pumpy). Subclasses read it in build(); the base just
+   * rebuilds when it flips. */
+  protected alive = false;
   private glow: PIXI.Graphics | null = null;
 
   constructor(
@@ -48,6 +52,14 @@ export abstract class ThingView {
    * transparency, so they read as solid "any value of this kind" wildcards. */
   protected baseAlpha(): number {
     return 1;
+  }
+
+  /** Morph between Lego (at rest) and clay (alive/held). Default rebuilds so a
+   * subclass's build() can pick the form; tools override build() to use it. */
+  setAlive(alive: boolean): void {
+    if (this.alive === alive) return;
+    this.alive = alive;
+    this.refresh();
   }
 
   /** Rebuild visuals after the underlying model changed. */

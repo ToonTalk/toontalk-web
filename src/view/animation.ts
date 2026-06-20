@@ -31,6 +31,9 @@ const ANIMATIONS: AnimSpec[] = [
   // One-shot effects (centered):
   { name: 'explode', frames: 5, frameMs: 80, anchor: [0.5, 0.5] }, // EXPLODE.TTS
   { name: 'dusty-suck', frames: 7, frameMs: 70, anchor: [0.5, 0.5] }, // SUCK0–7
+  // PUMP00–10: the clay (alive) Pumpy bobbing — shown while Pumpy is held, the
+  // way tools morph from Lego to clay in the hand. Frames base-aligned.
+  { name: 'pumpy-pump', frames: 11, frameMs: 90, anchor: [0.5, 0.5] },
   // BIRD.TTS flight cycles 0-7 (E,SE,S,SW,W,NW,N,NE) — the bird faces the way
   // it flies (bird.cpp fly_to sets the cycle to direction(dx,dy)).
   { name: 'bird-fly', frames: 6, frameMs: 90, anchor: [0.495, 0.446], dirs: 8 },

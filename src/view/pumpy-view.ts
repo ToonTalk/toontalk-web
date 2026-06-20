@@ -8,6 +8,7 @@ import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Pumpy, type PumpyMode } from '../model/pumpy';
 import { addModeButton, toolTipOffset } from './lego-button';
+import { makeIdleSprite } from './animation';
 
 const MODE_LABEL: Record<PumpyMode, string> = {
   bigger: '+',
@@ -22,24 +23,38 @@ const MODE_LABEL: Record<PumpyMode, string> = {
 export class PumpyView extends ThingView {
   protected build(): void {
     const pumpy = this.thing as Pumpy;
-    const tex = this.textures.get('pumpy') ?? PIXI.Texture.WHITE;
+    const tex = this.textures.get('pumpy') ?? PIXI.Texture.WHITE; // the Lego pump
 
-    // pumpy.png is the baked PUMP00 art (208x174) — shown at native tool size,
-    // like Dusty and the wand.
-    if (this.theme.dropShadow) {
-      const shadow = new PIXI.Sprite(tex);
-      shadow.anchor.set(0.5);
-      shadow.tint = 0x000000;
-      shadow.alpha = 0.25;
-      shadow.position.set(3, 4);
-      this.container.addChild(shadow);
+    // Held → the clay (alive) Pumpy bobbing; at rest → the Lego pump (tools
+    // morph in the hand). The clay is scaled to the Lego footprint.
+    const clay = this.alive ? makeIdleSprite('pumpy-pump') : null;
+    let bodyW: number;
+    let bodyH: number;
+    if (clay) {
+      const legoMax = Math.max(tex.width, tex.height);
+      const clayMax = Math.max(clay.width, clay.height);
+      if (clayMax > 0) clay.scale.set(legoMax / clayMax);
+      this.container.addChild(clay);
+      bodyW = clay.width;
+      bodyH = clay.height;
+    } else {
+      if (this.theme.dropShadow) {
+        const shadow = new PIXI.Sprite(tex);
+        shadow.anchor.set(0.5);
+        shadow.tint = 0x000000;
+        shadow.alpha = 0.25;
+        shadow.position.set(3, 4);
+        this.container.addChild(shadow);
+      }
+      const sprite = new PIXI.Sprite(tex);
+      sprite.anchor.set(0.5);
+      this.container.addChild(sprite);
+      bodyW = sprite.width;
+      bodyH = sprite.height;
     }
-    const sprite = new PIXI.Sprite(tex);
-    sprite.anchor.set(0.5);
-    this.container.addChild(sprite);
 
     // Mode shown as a 1×1 Lego plate a little below centre on Pumpy.
-    addModeButton(this.container, MODE_LABEL[pumpy.mode], this.theme, 'pumpy', sprite.width, sprite.height, this.textures);
+    addModeButton(this.container, MODE_LABEL[pumpy.mode], this.theme, 'pumpy', bodyW, bodyH, this.textures);
   }
 
   activeOffset(): { x: number; y: number } {

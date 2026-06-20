@@ -644,6 +644,7 @@ export class DragController {
     const view = this.views.get(thing.id);
     if (!view) return;
     this.heldTool = view;
+    view.setAlive(true); // a tool morphs from Lego to its clay form in the hand
     this.justGrabbedTool = true; // ignore this same click's apply/drop on the stage
     view.container.zIndex = 1000;
     if (this.pointer.x >= 0) {
@@ -657,6 +658,7 @@ export class DragController {
   private putDownTool(): void {
     if (!this.heldTool) return;
     this.heldTool.container.zIndex = 0;
+    this.heldTool.setAlive(false); // back to its Lego form at rest
     this.heldTool = null;
     this.onGrab(null);
   }
