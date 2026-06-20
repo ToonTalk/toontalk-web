@@ -358,7 +358,7 @@ export class Room {
     if (!this.toolboxOpen || !this.toolboxContainer) return;
     const ox = this.toolboxContainer.position.x;
     const oy = this.toolboxContainer.position.y;
-    this.popOpen(this.toolboxContainer, 380);
+    this.popOpen(this.toolboxContainer, 680);
     // Tooly morphs clay → Lego: its closed clay form briefly overlays the open
     // tray and fades, revealing the Lego tray growing underneath.
     const clay = this.makeToolyClosed();
@@ -366,8 +366,8 @@ export class Room {
     const trayW = this.toolboxContainer.width || 200;
     if (clay.width > 0) clay.scale.set((trayW * 0.95) / clay.width);
     this.chrome.addChild(clay);
-    this.fadeOutAndRemove(clay, 440);
-    this.toolChips.forEach((c, i) => this.riseTool(c, ox, oy, i * 150));
+    this.fadeOutAndRemove(clay, 820);
+    this.toolChips.forEach((c, i) => this.riseTool(c, ox, oy, 300 + i * 340));
   }
 
   /** Fade a node to transparent over `ms`, then remove it. */
@@ -400,7 +400,7 @@ export class Room {
   private riseTool(c: { node: PIXI.Container; tx: number; ty: number; tilt: number }, ox: number, oy: number, delay: number): void {
     const { node, tx, ty, tilt } = c;
     const body = node.children[0] as PIXI.Sprite | undefined;
-    const ms = 480;
+    const ms = 820;
     const start = performance.now() + delay;
     node.visible = false; // stays hidden inside Tooly until its turn
     const tick = (): void => {

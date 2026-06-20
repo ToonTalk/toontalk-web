@@ -294,11 +294,11 @@ export class CityScene {
       if (e.key.startsWith('Arrow')) e.preventDefault();
       if (e.key.toLowerCase() === 'h') this.model.callHelicopter();
       if (e.key === 'Escape') {
-        if (this.model.mode === 'walking') {
+        // Standing in the room (walking the street or inside a house) → the
+        // exit-or-minimize dialog (which offers "leave this room" when inside).
+        if (this.model.mode === 'walking' || this.model.mode === 'inside') {
           if (this.locked) document.exitPointerLock?.();
           this.cb.onEscape?.();
-        } else if (this.model.mode === 'inside') {
-          this.model.leaveRoom();
         }
       }
       if (e.key.toLowerCase() === 's') {

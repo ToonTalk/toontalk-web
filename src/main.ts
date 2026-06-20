@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18w (sit down → Tooly opens clay→Lego and the tools rise out of it, morphing into place)';
+const BUILD = 'build 2026-06-18x (sit-down sequence is slower; Esc on the floor stands you up, Esc in the room asks to exit/minimize)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -386,8 +386,8 @@ async function start(): Promise<void> {
     // later step; for now every house + the grass share the one floor.)
     onEnter: (where, house) =>
       enterRoom(where === 'house' ? (house?.style ?? 'a') : 'c', city.model.ix, city.model.iy),
-    // Escape while walking the street raises the street menu.
-    onEscape: () => showStreetMenu(),
+    // Escape in the room/city raises the exit-or-minimize dialog.
+    onEscape: () => showExitDialog(),
     // The room standing view shows the working floor's things in miniature, at
     // their floor positions (normalised to the canvas the floor view fills).
     floorItems: () => {
@@ -517,25 +517,38 @@ async function start(): Promise<void> {
     document.body.appendChild(overlay);
   }
 
-  function showStreetMenu(): void {
-    showMenu('In the city', [
-      { label: 'Take off ✈', onClick: () => city.model.callHelicopter() },
+  function exitToonTalk(): void {
+    document.getElementById('save-btn')?.click(); // save first, so nothing's lost
+    try { window.close(); } catch { /* not script-opened */ }
+    // Browsers won't let a page close a tab it didn't open — show a goodbye.
+    window.setTimeout(() => {
+      if (!menuOpen()) showMenu('Thanks for playing ToonTalk! 👋', [
+        { label: 'Close this tab to exit — or keep playing', onClick: () => {} },
+      ]);
+    }, 140);
+  }
+  function minimizeTab(): void {
+    // A web page can't minimize its own browser tab; blur is the closest it can do.
+    try { window.blur(); } catch { /* ignore */ }
+  }
+  /** In the room/city, Escape asks whether to leave: exit ToonTalk or minimize.
+   * Inside a house it also offers to step back out to the street. */
+  function showExitDialog(): void {
+    const inside = city.isActive && city.model.mode === 'inside';
+    showMenu('Leave ToonTalk?', [
+      ...(inside ? [{ label: 'Leave this room', onClick: () => city.model.leaveRoom() }] : []),
+      { label: 'Exit', onClick: exitToonTalk },
+      { label: 'Minimize the tab', onClick: minimizeTab },
       { label: 'Save', onClick: () => document.getElementById('save-btn')?.click() },
       { label: 'Keep exploring', onClick: () => {} },
     ]);
   }
-  function showRoomMenu(): void {
-    showMenu('Sitting down', [
-      { label: 'Stand up', onClick: () => returnToStreet() },
-      { label: 'Save', onClick: () => document.getElementById('save-btn')?.click() },
-      { label: 'Keep working', onClick: () => {} },
-    ]);
-  }
-  // Escape in the room (when not training) opens the room menu.
+  // Escape on the FLOOR (working view) always stands you up. (The city raises the
+  // exit-or-minimize dialog via its own onEscape, below; training handles Esc itself.)
   window.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape' && !city.isActive && !trainer.active && !menuOpen()) {
       ev.preventDefault();
-      showRoomMenu();
+      returnToStreet(); // stand up
     }
   });
 
