@@ -252,14 +252,17 @@ drops it (combine → Bammer), then **walks home** (`walk` tween + `flyThing` +
 `toolboxSource` in main.ts) — robot.htm's "new" element comes from the toolbox
 each run. Guards: `robot-walk.mjs` (robot swings right to Tooly, left to the box,
 back home; combines 5→6) and `robot-fetch.mjs` (the fresh element is in flight).
-EVERY action step is re-enacted by **carrying the thing across**, the effect
-landing on arrival / the Bammer strike (never instantly): **combine/move** take
-the thing OUT of hole `from` (source empties) and fly it to `to`; **copy** re-enacts
-the full **wand gesture** (robot.cpp: the robot holds the copier and moves it over
-the subject) — the robot **walks to Tooly and picks up the wand**, carries it over
-hole `from`, the wand **makes a copy** there (the original stays), carries the copy
-to hole `to` and **drops** it, then puts the wand down and walks home before the
-next pass; **remove** tosses the thing out of the
+EVERY action step is re-enacted by the robot **physically WALKING to the source
+hole and carrying the thing across** (`carryGesture` in main.ts), the effect
+landing on arrival / the Bammer strike (never instantly): for **combine/move** the
+robot walks over hole `from`, **picks the thing up with its hand** (the source
+empties), carries it to hole `to` and drops it; for **copy** it re-enacts the full
+**wand gesture** (robot.cpp: the robot holds the copier and moves it over the
+subject) — it **walks to the wand wherever it actually sits on the floor** (the
+nearest `Wand`, or Tooly if there is none — *not* always Tooly), picks it up,
+carries it over hole `from`, the wand **makes a copy** (the original stays), carries
+the copy to hole `to` and drops it, then puts the wand back and walks home before
+the next pass (guard `robot-wand-source.mjs`); **remove** tosses the thing out of the
 box (it shrinks away as the hole empties); **swap** flies a ghost of each thing to
 the other's hole (crossing over); **self-copy** flies a copy of the robot itself
 into the empty hole. **Bammer** hammers when something lands on a FILLED hole.

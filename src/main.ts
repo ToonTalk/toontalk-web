@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-18j (copy step re-enacts the WAND gesture: robot fetches the wand, holds it over the number, copies, carries the copy over, drops — then Bammer)';
+const BUILD = 'build 2026-06-18k (robot WALKS over and physically picks up/carries each thing; copy fetches the wand from wherever it sits on the floor, not Tooly)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -595,91 +595,92 @@ async function start(): Promise<void> {
           });
           return;
         }
-        // combine / copy / move all CARRY a thing from one hole to another — the
-        // robot re-enacting its training. A ghost of the thing lifts and flies
-        // across; for combine/move it's TAKEN out (the source empties), for copy a
-        // DUPLICATE is made (the source stays — the magic wand). Bammer hammers
-        // when it lands on a FILLED hole, and the model change (applyAction) lands
-        // on that strike; landing on an empty hole just drops in.
-        const flyHole = (from: number, to: number, take: boolean, merge: boolean): void => {
+        // combine / move / copy are re-enacted by the robot WALKING to the source
+        // hole, PICKING UP the thing (its hand for combine/move; the magic WAND —
+        // fetched from wherever it actually sits — for copy), CARRYING it to the
+        // target hole and DROPPING it. Bammer hammers it in if that hole is full,
+        // and the model change (applyAction) lands on the strike (robot.cpp: the
+        // robot holds the tool and moves it over the subject).
+        const overHole = (i: number): { x: number; y: number } => ({ x: holeWorld(box, i).x, y: holeWorld(box, i).y + 64 });
+        const nearestWand = (near: { x: number; y: number }): Wand | null => {
+          let best: Wand | null = null;
+          let bestD = Infinity;
+          for (const t of world.all()) {
+            if (t instanceof Wand) { const d = Math.hypot(t.x - near.x, t.y - near.y); if (d < bestD) { bestD = d; best = t; } }
+          }
+          return best;
+        };
+        const carryGesture = (from: number, to: number, take: boolean, merge: boolean, useWand: boolean): void => {
           const c = box.contentsAt(from);
           const src = c instanceof Nest ? c.front() : c; // the carried thing (through a nest)
           if (!src) { apply(); setTimeout(() => { if (!loop.cancelled) step(); }, 250); return; }
+          const back = { x: runner.x, y: runner.y };
           const bvc = views.get(box.id);
           const fromNode = take && bvc instanceof BoxView ? bvc.holeNode(from) : null;
-          const ghost = renderThingDisplay(src, textures, theme, 46);
-          ghost.position.set(holeWorld(box, from).x, holeWorld(box, from).y);
-          ghost.zIndex = 6000;
-          renderer.thingLayer.addChild(ghost);
-          if (fromNode) fromNode.node.visible = false; // taken out — the rebuild on apply replaces it
-          tweenScale(ghost, 1, 1.3, 650); // lift it as it's carried, so the move reads clearly
-          const toPos = holeWorld(box, to);
-          const dest = from === to ? { x: toPos.x, y: toPos.y - 64 } : toPos; // copy-onto-self: lift so it shows
-          flyThing(ghost, dest, 650, () => { if (merge) bamMouseAt(box, apply); else apply(); });
-          setTimeout(() => { if (!loop.cancelled) { apply(); step(); } }, 650 + (merge ? 1400 : 240));
-        };
-        if (action.type === 'combine') return flyHole(action.from, action.to, true, true);
-        if (action.type === 'move') return flyHole(action.from, action.to, true, false);
-
-        // COPY re-enacts the WAND gesture, step by step (robot.cpp: the robot holds
-        // the copier and moves it over the subject): walk to Tooly and pick up the
-        // wand, carry it over hole `from`, the wand makes a COPY there (the original
-        // stays), carry the copy to hole `to`, drop it — Bammer hammers it in if the
-        // hole is full — then put the wand down and walk home before the next pass.
-        if (action.type === 'copy') {
-          const c0 = box.contentsAt(action.from);
-          const csrc = c0 instanceof Nest ? c0.front() : c0;
-          if (!csrc) { apply(); setTimeout(() => { if (!loop.cancelled) step(); }, 250); return; }
-          const back = { x: runner.x, y: runner.y };
-          const toFilled = !box.isHoleEmpty(action.to);
-          const wand = renderThingDisplay(new Wand(), textures, theme, 64);
-          wand.zIndex = 6500;
-          wand.visible = false;
-          renderer.thingLayer.addChild(wand);
-          let copyNode: ReturnType<typeof renderThingDisplay> | null = null;
-          const handWand = (): void => { if (!wand.destroyed) wand.position.set(runner.x + 8, runner.y - 48); };
-          const handCopy = (): void => { if (copyNode && !copyNode.destroyed) copyNode.position.set(runner.x + 8, runner.y - 24); };
-          const cleanup = (): void => { if (!wand.destroyed) wand.destroy(); if (copyNode && !copyNode.destroyed) copyNode.destroy(); };
+          const wandThing = useWand ? nearestWand(overHole(from)) : null;
+          const wandView = wandThing ? views.get(wandThing.id) : null;
+          let wand: ReturnType<typeof renderThingDisplay> | null = null;
+          let carried: ReturnType<typeof renderThingDisplay> | null = null;
+          const handWand = (): void => { if (wand && !wand.destroyed) wand.position.set(runner.x + 14, runner.y - 52); };
+          const handCarried = (): void => { if (carried && !carried.destroyed) carried.position.set(runner.x - 2, runner.y - 30); };
+          const restoreWand = (): void => { if (wandView && !wandView.container.destroyed) wandView.container.visible = true; };
+          const cleanup = (): void => {
+            if (wand && !wand.destroyed) wand.destroy();
+            if (carried && !carried.destroyed) carried.destroy();
+            restoreWand();
+          };
           // If the robot is grabbed / the box or robot goes away mid-gesture, drop
-          // the wand and copy too (no orphaned sprites).
+          // everything held (no orphaned sprites) and un-hide the real wand.
           const watch = (): void => {
-            if (loop.cancelled || !world.get(runner.id) || !world.get(box.id)) {
-              renderer.app.ticker.remove(watch);
-              cleanup();
-            }
+            if (loop.cancelled || !world.get(runner.id) || !world.get(box.id)) { renderer.app.ticker.remove(watch); cleanup(); }
           };
           renderer.app.ticker.add(watch);
-          const tooly = toolboxSource();
-          walkRobot(runner, { x: tooly.x - 30, y: tooly.y + 80 }, 460, () => { // 1) go to the wand
-            wand.visible = true;
-            handWand();
-            const fromPos = holeWorld(box, action.from);
-            walkRobot(runner, { x: fromPos.x, y: fromPos.y + 70 }, 540, () => { // 2) wand over the number
-              copyNode = renderThingDisplay(csrc, textures, theme, 46); // 3) the wand makes a copy
-              copyNode.position.set(fromPos.x, fromPos.y);
-              copyNode.zIndex = 6000;
-              renderer.thingLayer.addChild(copyNode);
-              tweenScale(copyNode, 0.3, 1, 240); // pops out under the wand
+          const finish = (): void => { renderer.app.ticker.remove(watch); if (wand && !wand.destroyed) wand.destroy(); restoreWand(); };
+
+          const carryAcross = (): void => {
+            walkRobot(runner, overHole(from), 520, () => {
+              if (fromNode) fromNode.node.visible = false; // taken out of the hole (combine/move)
+              carried = renderThingDisplay(src, textures, theme, 46);
+              carried.zIndex = 6000;
+              renderer.thingLayer.addChild(carried);
+              if (useWand) { carried.position.set(holeWorld(box, from).x, holeWorld(box, from).y); tweenScale(carried, 0.3, 1, 240); } // a copy pops out under the wand
+              else handCarried();
               setTimeout(() => {
                 if (loop.cancelled) return;
-                const toPos = holeWorld(box, action.to);
-                walkRobot(runner, { x: toPos.x, y: toPos.y + 70 }, 540, () => { // 4) carry the copy over
-                  if (copyNode && !copyNode.destroyed) copyNode.destroy();
-                  copyNode = null;
-                  if (toFilled) bamMouseAt(box, apply); else apply(); // 5) drop it (Bammer if full)
+                walkRobot(runner, overHole(to), 520, () => {
+                  if (carried && !carried.destroyed) carried.destroy();
+                  carried = null;
+                  if (merge) bamMouseAt(box, apply); else apply(); // drop it (Bammer hammers if full)
                   setTimeout(() => {
-                    renderer.app.ticker.remove(watch);
-                    if (!wand.destroyed) wand.destroy(); // 6) put the wand down
+                    finish();
                     if (loop.cancelled) return;
                     apply();
                     walkRobot(runner, back, 440, step); // walk home, then wait + repeat
-                  }, toFilled ? 1400 : 260);
-                }, () => { handWand(); handCopy(); });
-              }, 320);
-            }, handWand);
-          });
-          return;
-        }
+                  }, merge ? 1400 : 260);
+                }, () => { handWand(); handCarried(); });
+              }, useWand ? 320 : 140);
+            }, useWand ? handWand : undefined);
+          };
+
+          if (useWand) {
+            const wp = wandThing ? { x: wandThing.x, y: wandThing.y } : toolboxSource(); // the actual wand, or Tooly if none
+            wand = renderThingDisplay(new Wand(), textures, theme, 64);
+            wand.zIndex = 6500;
+            wand.visible = false;
+            renderer.thingLayer.addChild(wand);
+            walkRobot(runner, { x: wp.x, y: wp.y + 30 }, 460, () => {
+              if (wandView && !wandView.container.destroyed) wandView.container.visible = false; // picked it up
+              if (wand) wand.visible = true;
+              handWand();
+              carryAcross();
+            });
+          } else {
+            carryAcross();
+          }
+        };
+        if (action.type === 'combine') return carryGesture(action.from, action.to, true, true, false);
+        if (action.type === 'move') return carryGesture(action.from, action.to, true, false, false);
+        if (action.type === 'copy') return carryGesture(action.from, action.to, false, !box.isHoleEmpty(action.to), true);
 
         // REMOVE: the robot TAKES the thing out and tosses it away — a ghost lifts
         // from the hole and flies off, shrinking, as the hole empties.
