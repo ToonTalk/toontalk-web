@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20o (city help no longer claims the mouse is captured — pointer lock was removed)';
+const BUILD = 'build 2026-06-20p (held Pumpy/Dusty clay back to ~Lego size; added the __ttDev headless debug-driver)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -1498,6 +1498,67 @@ async function start(): Promise<void> {
 
   // Boot into the outdoor city (flying the helicopter).
   showCity();
+
+  // Debug-driver API for headless exploration/verification (tools/verify/*.mjs).
+  // It drives the app through its REAL logic (no pixel hit-testing), so scenarios
+  // are deterministic — spawn things, apply drops, run robots, jump scenes, dump
+  // state. Dev aid; harmless in prod (just an extra window field).
+  (window as unknown as { __ttDev?: unknown }).__ttDev = {
+    /** Jump scenes: 'city'|'flying' · 'floor'|'room' (+style a|b|c) · 'street'|'walking'. */
+    scene(name: string, style: 'a' | 'b' | 'c' = 'c'): string {
+      if (name === 'city' || name === 'flying') showCity();
+      else if (name === 'floor' || name === 'room') enterRoom(style);
+      else if (name === 'street' || name === 'walking') returnToStreet();
+      else return `unknown scene: ${name}`;
+      return name;
+    },
+    /** Create a thing at floor SCREEN coords; returns its id. */
+    spawn(kind: string, x = 420, y = 320): string | null {
+      return spawnTool(kind, x, y)?.id ?? null;
+    },
+    /** Apply the universal drop rule A→B (optional box hole); returns the result. */
+    drop(aId: string, bId: string, hole?: number): string {
+      const a = world.get(aId);
+      const b = world.get(bId);
+      if (!a || !b) return 'missing';
+      return resolveDrop(world, a, b, hole == null ? {} : { holeIndex: hole });
+    },
+    /** Run a trained robot on a box (the animated floor replay). */
+    run(robotId: string, boxId: string): string {
+      const r = world.get(robotId);
+      const b = world.get(boxId);
+      if (!(r instanceof Robot) || !(b instanceof Box)) return 'need robot+box';
+      animateRun(r, b);
+      return 'running';
+    },
+    /** Move a thing to WORLD coords. */
+    move(id: string, x: number, y: number): boolean {
+      const t = world.get(id);
+      if (!t) return false;
+      t.moveTo({ x, y });
+      return true;
+    },
+    /** Remove a thing. */
+    remove(id: string): boolean {
+      if (!world.get(id)) return false;
+      world.remove(id);
+      return true;
+    },
+    /** Snapshot the world + scene for assertions. */
+    state(): unknown {
+      return {
+        scene: city.isActive ? `city:${city.model.mode}` : 'floor',
+        floorCamera: { x: Math.round(floorCamera.x), y: Math.round(floorCamera.y) },
+        things: world.all().map((t) => ({
+          id: t.id,
+          kind: t.kind,
+          x: Math.round(t.x),
+          y: Math.round(t.y),
+          desc: desc(t),
+        })),
+      };
+    },
+  };
 
   // Signals tools (tools/verify/snap.mjs) that boot is fully complete.
   (window as unknown as { __ttReady?: boolean }).__ttReady = true;
