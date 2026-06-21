@@ -89,6 +89,7 @@ export class CityScene {
   private readonly floorMiniLayer: PIXI.Container; // the floor's things, shown small in the room
   private floorMinis: { fx: number; fy: number; node: PIXI.Container }[] = [];
   private wasInside = false;
+  private miniRefreshT = 0; // throttle for refreshing the floor minis while standing
 
   private readonly avatar: PIXI.Container;
   private readonly heliFly: DirectionalSprite;
@@ -495,9 +496,23 @@ export class CityScene {
     this.heliParked.visible = false; // renderStreet re-enables it (depth-culled) for walking
     this.person.sprite.visible = m === 'walking' || inside;
     this.tooly.sprite.visible = m === 'walking'; // Tooly trails outside; in the room you just stand
-    // Build the floor's miniatures once on entering the room; clear on leaving.
-    if (inside && !this.wasInside) this.buildFloorMinis();
-    else if (!inside && this.wasInside) this.clearFloorMinis();
+    // Build the floor's miniatures on entering the room, and REFRESH them while
+    // inside (throttled) so a robot still working on the floor is seen updating its
+    // box in the mini; clear on leaving.
+    if (inside) {
+      if (!this.wasInside) {
+        this.buildFloorMinis();
+        this.miniRefreshT = 0;
+      } else {
+        this.miniRefreshT += this.renderer.app.ticker.deltaMS;
+        if (this.miniRefreshT >= 180) {
+          this.miniRefreshT = 0;
+          this.buildFloorMinis();
+        }
+      }
+    } else if (this.wasInside) {
+      this.clearFloorMinis();
+    }
     this.wasInside = inside;
   }
 

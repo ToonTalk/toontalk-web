@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20r (city edge-pan: cursor at a screen edge keeps you moving until the water — completes edge-scroll with the floor)';
+const BUILD = 'build 2026-06-20s (robots keep working when you stand up/leave: no enactment off the floor — fast standing, flat-out away; floor-mini refreshes)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -765,6 +765,21 @@ async function start(): Promise<void> {
     // self-copy source is the LEAD ("a copy of himself and his teammates").
     const runActions = (runner: Robot): void => {
       const actions = runner.actions;
+      // Off the working floor there's no enactment: the robot keeps working but you
+      // don't watch it walk. Standing in the room you see a small box updating in
+      // the floor mini (a touch faster than the floor); fully away it runs flat-out.
+      // The loop itself persists across views (only a grab/train cancels it).
+      if (city.isActive) {
+        for (const action of actions) {
+          if (loop.cancelled) return;
+          applyAction(box, action, { robot: lead });
+          recomputeScales(box);
+        }
+        world.notifyChanged(box);
+        const delay = city.model.mode === 'inside' ? 200 : 30; // standing vs away
+        setTimeout(() => { if (!loop.cancelled) iterate(); }, delay);
+        return;
+      }
       let i = 0;
       const step = (): void => {
         if (loop.cancelled) return;
@@ -1584,6 +1599,32 @@ async function start(): Promise<void> {
           desc: desc(t),
         })),
       };
+    },
+    /** Test helper: an "add 1" robot + a [counter] box on the floor. Each pass
+     * inserts a 1 into hole 0 → combines (+1), matching forever — so you can run()
+     * it then watch holeValue() climb (slow on the floor, fast off it). */
+    adder(counter = 5): { robot: string; box: string } {
+      const bx = floorCamera.x + renderer.width * 0.4;
+      const by = floorCamera.y + renderer.height * 0.4;
+      const box = new Box({ size: 1, x: bx, y: by });
+      box.put(0, new NumberThing({ value: counter }));
+      world.add(box);
+      const robot = new Robot({
+        x: bx,
+        y: by + 150,
+        condition: ['number'],
+        exactValues: [null],
+        actions: [{ type: 'insert', to: 0, thing: new NumberThing({ value: 1 }) }],
+      });
+      world.add(robot);
+      return { robot: robot.id, box: box.id };
+    },
+    /** Read a box hole's number value (for assertions); null if not a number. */
+    holeValue(boxId: string, i = 0): number | null {
+      const b = world.get(boxId);
+      if (!(b instanceof Box)) return null;
+      const c = b.contentsAt(i);
+      return c instanceof NumberThing ? Number(c.value.toString()) : null;
     },
   };
 

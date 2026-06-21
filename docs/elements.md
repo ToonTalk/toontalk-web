@@ -250,7 +250,14 @@ lands. NB re-opening a finished robot's bubble to edit its *actions* isn't
 supported yet (▢). ✅ **iteration / "keep counting"** — a robot is a guarded rule that
 keeps firing while its condition holds. Drop a box on a trained robot and it
 **iterates** (`animateRun` loops, re-running the matching team member each pass,
-Bammer and all); a generalised "add 1" robot counts forever. It **stops on
+Bammer and all); a generalised "add 1" robot counts forever. **The run is
+view-aware and keeps going across views**: on the working floor you watch the full
+enactment (walk/Bammer), but once you **stand up or leave the room** the loop
+runs **without enactment** — `runActions` applies the whole pass instantly and
+iterates fast (a touch slower while standing so the **floor-mini box visibly
+updates**, flat-out once fully away). The loop persists (only a grab/train cancels
+it). Verified via `__ttDev.adder()`: +1 in ~1.5 s on the floor vs +83 in ~3 s
+away. It **stops on
 mismatch** — e.g. a **scale** guard that tips the other way past a limit
 (`robot-scale-stop.mjs`: [counter, scale, limit] climbs to the limit then
 halts). You can always **stop it by hand**: grabbing the robot (or its box) mid-
