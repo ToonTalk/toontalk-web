@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20e (sprites keyed by the reserved transparent palette index: removes background everywhere incl. under-arm / heli windows / between legs, keeps dark figure detail)';
+const BUILD = 'build 2026-06-20f (a held Pumpy/Dusty now renders in front of the hand — you see the tool, the hand grips it from behind)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -232,6 +232,9 @@ async function start(): Promise<void> {
     } else {
       room.setPose('open');
     }
+    // Pumpy/Dusty are carried as a separate sprite; drop the hand behind so you
+    // see the tool (the wand is drawn into the hand-wand pose, so it's exempt).
+    room.setCursorBehind(!!thing && (thing.kind === 'pumpy' || thing.kind === 'dusty'));
   };
 
   const dragController = new DragController(

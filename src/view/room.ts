@@ -181,6 +181,16 @@ export class Room {
     this.setHand(this.handX, this.handY);
   }
 
+  /** While a tool (Pumpy/Dusty) is held, drop the hand cursor BEHIND the things
+   * layer so the held tool — which lives there, on top — shows in front of the
+   * hand (you should see most of the tool, not the hand covering it). The hand
+   * grips it from behind. Restored on top otherwise. */
+  setCursorBehind(behind: boolean): void {
+    const stage = this.renderer.app.stage;
+    const tlIndex = stage.getChildIndex(this.renderer.thingLayer);
+    stage.setChildIndex(this.cursor, behind ? tlIndex : stage.children.length - 1);
+  }
+
   resize(): void {
     this.floor.width = this.renderer.width;
     this.floor.height = this.renderer.height;
