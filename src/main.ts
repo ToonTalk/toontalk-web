@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20p (held Pumpy/Dusty clay back to ~Lego size; added the __ttDev headless debug-driver)';
+const BUILD = 'build 2026-06-20q (floor edge-scroll: pointer at a screen edge pans the floor to the wall — replaces the pan Pointer Lock used to give)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -118,7 +118,11 @@ async function start(): Promise<void> {
   cursorStyles.grabbing = 'none';
   cursorStyles.pointer = 'none';
   renderer.view.style.cursor = 'none';
+  // Latest pointer position in screen coords — used for edge-scrolling the floor.
+  const pointerScreen = { x: renderer.width / 2, y: renderer.height / 2 };
   renderer.app.stage.on('pointermove', (e) => {
+    pointerScreen.x = e.global.x;
+    pointerScreen.y = e.global.y;
     // When holding Pumpy/Dusty the hand grips the tool's BODY (offset back from
     // its tip, which is the active point on the cursor) — not the tip itself.
     const off = dragController.heldHandOffset();
@@ -468,6 +472,29 @@ async function start(): Promise<void> {
     room.setFloorPan(c.x, c.y);
   }
   (window as unknown as { __ttSetFloorCamera?: unknown }).__ttSetFloorCamera = setFloorCamera;
+
+  // Edge-scroll the working floor: when the pointer reaches a screen edge, pan the
+  // floor camera that way until a wall (setFloorCamera clamps to FLOOR_W/H). The
+  // floor is larger than the window, so this is how you reach things left
+  // off-screen — and it replaces the continuous pan that Pointer Lock used to give.
+  // The city/standing views drive their own movement; skip during a menu/training.
+  const EDGE_MARGIN = 46; // px from the edge where scrolling kicks in
+  const EDGE_SPEED = 16; // max px per ~16 ms frame, at the very edge
+  renderer.app.ticker.add(() => {
+    if (city.isActive || trainer.active || menuOpen()) return;
+    const W = renderer.width;
+    const H = renderer.height;
+    const into = (d: number): number => Math.max(0, Math.min(1, d / EDGE_MARGIN));
+    let dx = 0;
+    let dy = 0;
+    if (pointerScreen.x < EDGE_MARGIN) dx = -into(EDGE_MARGIN - pointerScreen.x);
+    else if (pointerScreen.x > W - EDGE_MARGIN) dx = into(pointerScreen.x - (W - EDGE_MARGIN));
+    if (pointerScreen.y < EDGE_MARGIN) dy = -into(EDGE_MARGIN - pointerScreen.y);
+    else if (pointerScreen.y > H - EDGE_MARGIN) dy = into(pointerScreen.y - (H - EDGE_MARGIN));
+    if (dx === 0 && dy === 0) return;
+    const k = EDGE_SPEED * (renderer.app.ticker.deltaMS / 16);
+    setFloorCamera(floorCamera.x + dx * k, floorCamera.y + dy * k);
+  });
   /** Sit down — switch to the working floor (room/World view), with the floor
    * coloured to match the house you entered (grass uses the default tan), and
    * the floor scrolled so where you sat (`sitFx`,`sitFy` ∈ 0..1 of the whole
