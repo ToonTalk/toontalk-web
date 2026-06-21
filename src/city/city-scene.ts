@@ -304,6 +304,14 @@ export class CityScene {
   get isActive(): boolean {
     return this.active;
   }
+  /** Choose the avatar's head (the "choice of heads"): swap the walking person's
+   * sprite sheet to the plain / purple-hair / red-cap variant. Applies to both
+   * the street walk and the room standing view (same `person` sprite). */
+  setHead(head: 'none' | 'hair' | 'hat'): void {
+    const spec =
+      head === 'hair' ? this.assets.personHair : head === 'hat' ? this.assets.personHat : this.assets.person;
+    this.person.setSpec(spec);
+  }
   resume(): void {
     if (this.model.mode === 'inside') this.model.iy = 0.72;
     else this.model.standUp();

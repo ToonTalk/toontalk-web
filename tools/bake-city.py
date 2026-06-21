@@ -176,6 +176,98 @@ def bake_directional(sprite_geom, out_root, name, m25_dir, m22_dir, use_cycles=N
     return {"name": name, "w": W, "h": H, "anchor": anchor, "frameCounts": counts}
 
 
+def _centroid(img, top_frac=1.0):
+    """Centroid of opaque pixels within the top `top_frac` of the image's opaque
+    bbox (top_frac<1 → the head region of a standing figure)."""
+    bbox = img.getbbox()
+    if not bbox:
+        return None
+    x0, y0, x1, y1 = bbox
+    yb = y0 + max(1, int((y1 - y0) * top_frac))
+    px = img.load(); sx = sy = n = 0
+    for yy in range(y0, yb):
+        for xx in range(x0, x1):
+            if px[xx, yy][3] > 40:
+                sx += xx; sy += yy; n += 1
+    return (sx / n, sy / n) if n else None
+
+
+def _place_head(canvas, pimg, ppx, ppy, himg):
+    """Composite an overlay head `himg` (a full replacement head) onto a person
+    image `pimg` already placed at (ppx,ppy) on `canvas`, by aligning the
+    overlay's centroid to the person's HEAD centroid (top 24% of the figure).
+    The head bobs per walk frame, so this is computed per frame."""
+    hc = _centroid(pimg, 0.24)   # person head centre (figure-local)
+    oc = _centroid(himg, 1.0)    # overlay head centre
+    if hc is None or oc is None:
+        return
+    hx = int(round(ppx + hc[0] - oc[0]))
+    hy = int(round(ppy + hc[1] - oc[1]))
+    canvas.alpha_composite(himg, (hx, hy))
+
+
+def bake_person_with_overlay(person_geom, overlay_geom, remap_start, out_root, name):
+    """Composite a head overlay (HAIR/HAT — a single 64-frame cycle ordered
+    E,N,NE,S,SE,W,NW,SW, each a full replacement head) onto the 8-cycle walking
+    person (enum order E,SE,S,SW,W,NW,N,NE), per direction/frame — aligning the
+    overlay onto the person's detected head so it tracks the bob. The figure is
+    placed by the person's (ox,oy) origin so the feet stay planted (no jiggle);
+    a top margin leaves room for hair that pokes above the head."""
+    pcyc = person_geom["cycles"]
+    ov = overlay_geom["cycles"][0]["frames"]
+    NDIR, NF = 8, 8
+    minL = minB = 10**9
+    maxR = maxT = -(10**9)
+    for d in range(NDIR):
+        for f in range(NF):
+            fr = pcyc[d]["frames"][f]
+            minL = min(minL, fr["ox2"]); maxR = max(maxR, fr["ox2"] + fr["w2"])
+            minB = min(minB, fr["oy2"]); maxT = max(maxT, fr["oy2"] + fr["h2"])
+    MT = 28  # top margin so an overlay that pokes above the head isn't clipped
+    W, H = maxR - minL, (maxT - minB) + MT
+    top = maxT + MT  # canvas top edge, in y-up coords
+    anchor = [(0 - minL) / W, top / H]
+    for d in range(NDIR):
+        cdir = os.path.join(out_root, name, str(d))
+        os.makedirs(cdir, exist_ok=True)
+        for f in range(NF):
+            pf = pcyc[d]["frames"][f]; hf = ov[remap_start[d] + f]
+            canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            if pf["img"] is not None:
+                ppx = pf["ox2"] - minL; ppy = top - (pf["oy2"] + pf["h2"])
+                canvas.alpha_composite(pf["img"], (ppx, ppy))
+                if hf["img"] is not None:
+                    _place_head(canvas, pf["img"], ppx, ppy, hf["img"])
+            canvas.save(os.path.join(cdir, f"{f:02d}.png"))
+    return {"name": name, "w": W, "h": H, "anchor": anchor, "frameCounts": [NF] * NDIR}
+
+
+def bake_head_icon(person_geom, overlay_geom, remap_start, out_path):
+    """A front-facing (SOUTH) head icon for the settings panel: the person's south
+    frame with the chosen head placed on it, cropped to the head, squared."""
+    d = 2  # SOUTH, toward the viewer
+    pf = person_geom["cycles"][d]["frames"][0]
+    pimg = pf["img"]
+    W, H = pimg.width, pimg.height + 40
+    canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    canvas.alpha_composite(pimg, (0, 40))
+    if overlay_geom is not None:
+        hf = overlay_geom["cycles"][0]["frames"][remap_start[d]]
+        if hf["img"] is not None:
+            _place_head(canvas, pimg, 0, 40, hf["img"])
+    hc = _centroid(canvas, 1.0)
+    bbox = canvas.getbbox()
+    x0, y0, x1, y1 = bbox
+    # crop a square around the head: from the top of opaque content down ~head height
+    head_h = int((x1 - x0) * 1.15)
+    head = canvas.crop((x0, y0, x1, min(y1, y0 + head_h)))
+    side = max(head.width, head.height)
+    sq = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    sq.alpha_composite(head, ((side - head.width) // 2, 0))
+    sq.thumbnail((84, 84))
+    sq.save(out_path)
+
+
 def prep_geom(geom, m25_dir, m22_dir, from_m25):
     """Attach 2x-space geometry + loaded image to every frame in place."""
     for cyc in geom["cycles"]:
@@ -262,6 +354,24 @@ def main():
     walk = parse_tts(os.path.join(m22, "MANWALK8.TTS"))
     prep_geom(walk, m25, m22, from_m25=False)
     summary["person"] = bake_directional(walk, out, "person", m25, m22)
+
+    # Head overlays composited on the walking person (the "choice of heads"):
+    # HAIR = purple-hair girl, HAT = red-cap boy. Same 8-dir x 8-frame structure
+    # as MANWALK8, sharing the logical origin, so align="origin" lines them up on
+    # the head per direction/frame. (The third choice, plain, is no overlay.)
+    # The hair/hat are a single 64-frame cycle ordered E,N,NE,S,SE,W,NW,SW; remap
+    # to the person's Direction-enum cycle order and composite onto each frame.
+    HEAD_REMAP = [0, 32, 24, 56, 40, 48, 8, 16]  # enum dir -> start frame in the 64-cycle
+    hair = parse_tts(os.path.join(m22, "HAIR.TTS"))
+    prep_geom(hair, m25, m22, from_m25=False)
+    summary["person-hair"] = bake_person_with_overlay(walk, hair, HEAD_REMAP, out, "person-hair")
+    hat = parse_tts(os.path.join(m22, "HAT.TTS"))
+    prep_geom(hat, m25, m22, from_m25=False)
+    summary["person-hat"] = bake_person_with_overlay(walk, hat, HEAD_REMAP, out, "person-hat")
+    # Head-choice icons for the settings panel (front-facing heads).
+    bake_head_icon(walk, None, HEAD_REMAP, os.path.join(out, "head-none.png"))
+    bake_head_icon(walk, hair, HEAD_REMAP, os.path.join(out, "head-hair.png"))
+    bake_head_icon(walk, hat, HEAD_REMAP, os.path.join(out, "head-hat.png"))
 
     # Tooly the toolbox (side view, follows the walker): 8 directions x 4 frames.
     tooly = parse_tts(os.path.join(m25, "TOOLBOXS.TTS"))

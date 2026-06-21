@@ -44,6 +44,15 @@ the city itself (`city.cpp`):
   - **walking back into the parked copter** (`nearHelicopter`) → take-off;
   - **H** → calls the helicopter back; **Esc** → the street menu.
   Trees are a web extra — **off by default** (`CityModel({trees})`).
+- **Avatar head choice** (the original `starttt.exe` "choice of heads") — pick
+  **plain / purple-hair girl / red-cap boy** from the **⚙ Settings** toolbar
+  button (`showSettings` in `main.ts`), not a startup screen. `HAIR.TTS`/`HAT.TTS`
+  are a single 64-frame cycle (E,N,NE,S,SE,W,NW,SW) of full replacement heads;
+  `bake-city.py` remaps them to the person's enum-order cycles and composites each
+  onto the matching walking frame by **detecting the head per frame** (the head
+  bobs), producing `person-hair`/`person-hat` sprite sheets. `CityScene.setHead`
+  swaps the `person` DirectionalSprite's spec (so it shows walking AND standing);
+  the choice is saved to `localStorage['tt-head']` and re-applied on boot.
 - **Room standing view** (`mode 'inside'`, `renderInterior`) — the missing
   middle step, faithful to **`source/room.cpp` + `Programmer_Room_Walking`** and
   matched against the `sitting and standing.mp4` reference: after entering a house

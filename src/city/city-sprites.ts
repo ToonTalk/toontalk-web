@@ -23,6 +23,11 @@ export interface CityAssets {
   heliFly: DirSpec;
   heliLand: DirSpec;
   person: DirSpec;
+  /** The walking person with the chosen head composited on (the "choice of
+   * heads"): hair = purple-hair girl, hat = red-cap boy. `person` is the plain
+   * head. Same 8-dir × 8-frame structure, so they're interchangeable specs. */
+  personHair: DirSpec;
+  personHat: DirSpec;
   /** Tooly the toolbox (side view, 8 directions) — follows the walker. */
   tooly: DirSpec;
   /** Top-down house art for the flyover, by style. */
@@ -106,6 +111,8 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
   const heliFly = await loadDirSpec(manifest['heli-fly'] ?? fallback('heli-fly', 8), scaleMode);
   const heliLand = await loadDirSpec(manifest['heli-land'] ?? fallback('heli-land', 1), scaleMode);
   const person = await loadDirSpec(manifest['person'] ?? fallback('person', 8), scaleMode);
+  const personHair = await loadDirSpec(manifest['person-hair'] ?? fallback('person-hair', 8), scaleMode);
+  const personHat = await loadDirSpec(manifest['person-hat'] ?? fallback('person-hat', 8), scaleMode);
   const tooly = await loadDirSpec(manifest['tooly'] ?? fallback('tooly', 8), scaleMode);
 
   const white = PIXI.Texture.WHITE;
@@ -154,6 +161,8 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
     heliFly,
     heliLand,
     person,
+    personHair,
+    personHat,
     tooly,
     houses: { a: houseC, b: houseB, c: houseC },
     houseSides: { a: sideA, b: sideB, c: sideC },
@@ -174,7 +183,7 @@ export class DirectionalSprite {
   private acc = 0;
 
   constructor(
-    private readonly spec: DirSpec,
+    private spec: DirSpec,
     private readonly frameMs = 90,
   ) {
     this.sprite = new PIXI.Sprite(spec.textures[0]![0]);
@@ -187,6 +196,17 @@ export class DirectionalSprite {
     this.dir = dir;
     this.frame = this.frame % this.spec.textures[dir]!.length;
     this.sprite.texture = this.spec.textures[dir]![this.frame]!;
+  }
+
+  /** Swap the whole sprite sheet (e.g. change the avatar's head), keeping the
+   * current direction/frame so the walk cycle doesn't hitch. */
+  setSpec(spec: DirSpec): void {
+    if (spec === this.spec) return;
+    this.spec = spec;
+    this.sprite.anchor.set(spec.anchor[0], spec.anchor[1]);
+    if (this.dir >= spec.textures.length) this.dir = 0;
+    this.frame = this.frame % spec.textures[this.dir]!.length;
+    this.sprite.texture = spec.textures[this.dir]![this.frame]!;
   }
 
   update(dtMs: number, moving: boolean): void {

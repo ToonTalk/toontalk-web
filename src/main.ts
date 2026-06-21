@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20b (the hand cursor’s arm is a slim brick-red forearm matching the wrist stub, not a thick pink bar)';
+const BUILD = 'build 2026-06-20c (choose your avatar head in ⚙ Settings — plain, purple hair, or red cap — composited on the walking figure and saved)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -550,6 +550,79 @@ async function start(): Promise<void> {
       if (e.target === overlay) close(); // click outside = cancel
     });
     document.body.appendChild(overlay);
+  }
+
+  type Head = 'none' | 'hair' | 'hat';
+  function currentHead(): Head {
+    const v = localStorage.getItem('tt-head');
+    return v === 'hair' || v === 'hat' ? v : 'none';
+  }
+  /** Settings panel. First (and for now only) setting is "Your head" — the
+   * original starttt.exe head choice (plain / purple-hair girl / red-cap boy),
+   * applied live to your avatar and remembered. */
+  function showSettings(): void {
+    if (menuOpen()) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'tt-menu';
+    overlay.style.cssText =
+      'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+      'background:rgba(0,0,0,0.45);z-index:9999;font-family:sans-serif';
+    const panel = document.createElement('div');
+    panel.style.cssText =
+      'background:#2b3037;color:#fff;border:2px solid #565e69;border-radius:12px;' +
+      'padding:22px 26px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.5)';
+    const title = document.createElement('div');
+    title.textContent = 'Settings';
+    title.style.cssText = 'font-weight:bold;font-size:18px;margin-bottom:4px';
+    const sub = document.createElement('div');
+    sub.textContent = 'Your head — click to choose';
+    sub.style.cssText = 'font-size:13px;opacity:.75;margin-bottom:14px';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:14px;justify-content:center';
+    panel.append(title, sub, row);
+    const tiles: Partial<Record<Head, HTMLElement>> = {};
+    const highlight = (key: Head): void => {
+      for (const k of Object.keys(tiles) as Head[])
+        tiles[k]!.style.borderColor = k === key ? '#5ad6ff' : 'transparent';
+    };
+    const choose = (key: Head): void => {
+      localStorage.setItem('tt-head', key);
+      city.setHead(key);
+      highlight(key);
+    };
+    for (const { key, label } of [
+      { key: 'hair', label: 'Hair' },
+      { key: 'hat', label: 'Cap' },
+      { key: 'none', label: 'Plain' },
+    ] as { key: Head; label: string }[]) {
+      const tile = document.createElement('button');
+      tile.style.cssText =
+        'display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;' +
+        'background:#3a4048;border:3px solid transparent;border-radius:10px;cursor:pointer;color:#fff';
+      const img = document.createElement('img');
+      img.src = `/assets/city/head-${key}.png`;
+      img.style.cssText = 'width:74px;height:74px;object-fit:contain';
+      const cap = document.createElement('div');
+      cap.textContent = label;
+      cap.style.fontSize = '13px';
+      tile.append(img, cap);
+      tile.onclick = () => choose(key);
+      tiles[key] = tile;
+      row.appendChild(tile);
+    }
+    const done = document.createElement('button');
+    done.textContent = 'Done';
+    done.style.cssText =
+      'margin-top:16px;padding:9px 22px;font-size:15px;background:#474e57;color:#fff;' +
+      'border:1px solid #6b7280;border-radius:7px;cursor:pointer';
+    done.onclick = () => overlay.remove();
+    panel.appendChild(done);
+    overlay.appendChild(panel);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+    document.body.appendChild(overlay);
+    highlight(currentHead());
   }
 
   function exitToonTalk(): void {
@@ -1360,6 +1433,8 @@ async function start(): Promise<void> {
   });
   // Toggle the copyable debug-log panel (click the panel to copy it).
   document.getElementById('log-btn')?.addEventListener('click', toggleDebugPanel);
+  document.getElementById('settings-btn')?.addEventListener('click', showSettings);
+  city.setHead(currentHead()); // apply the saved head choice to the avatar on boot
 
   // Render-mode toggle link.
   const toggle = document.getElementById('mode-toggle') as HTMLAnchorElement | null;

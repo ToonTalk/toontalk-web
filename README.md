@@ -6,6 +6,14 @@ visual programming environment for children created by Ken Kahn (1992–2007).
 This is a clean rewrite (TypeScript + PixiJS), not a port of the original
 DirectX C++ — see `../TOONTALK_WEB_PLAN.md` for the rationale and roadmap.
 
+## Status: Choose your avatar's head ⚙ ✅
+
+Like the original `starttt.exe`, you can pick your lego head — **plain**,
+**purple-hair girl**, or **red-cap boy** — but from a **⚙ Settings** button in
+the toolbar rather than a startup screen. The chosen head (`HAIR`/`HAT` art,
+baked onto the 8-direction walking person per frame at the head it detects) shows
+on your avatar everywhere it walks and stands, and is remembered across sessions.
+
 ## Status: A library of example robots in the notebook 📒 ✅
 
 The main notebook ("claude 1") now comes pre-stocked with a variety of trained
