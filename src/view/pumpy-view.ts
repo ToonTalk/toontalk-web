@@ -7,7 +7,7 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Pumpy, type PumpyMode } from '../model/pumpy';
-import { addModeButton, toolTipOffset } from './lego-button';
+import { addModeButton, toolTipOffset, CLAY_TIP_FRAC } from './lego-button';
 import { makeIdleSprite } from './animation';
 
 const MODE_LABEL: Record<PumpyMode, string> = {
@@ -21,6 +21,8 @@ const MODE_LABEL: Record<PumpyMode, string> = {
 };
 
 export class PumpyView extends ThingView {
+  private heldTip: { x: number; y: number } | null = null;
+
   protected build(): void {
     const pumpy = this.thing as Pumpy;
     const tex = this.textures.get('pumpy') ?? PIXI.Texture.WHITE; // the Lego pump
@@ -30,6 +32,7 @@ export class PumpyView extends ThingView {
     const clay = this.alive ? makeIdleSprite('pumpy-pump') : null;
     let bodyW: number;
     let bodyH: number;
+    this.heldTip = null;
     if (clay) {
       const legoMax = Math.max(tex.width, tex.height);
       const clayMax = Math.max(clay.width, clay.height);
@@ -37,6 +40,10 @@ export class PumpyView extends ThingView {
       this.container.addChild(clay);
       bodyW = clay.width;
       bodyH = clay.height;
+      // Active point = the hose nozzle on the clay, offset from the container
+      // origin (the clay's anchor point) so it lands on the cursor when held.
+      const [fx, fy] = CLAY_TIP_FRAC.pumpy!;
+      this.heldTip = { x: (fx - clay.anchor.x) * clay.width, y: (fy - clay.anchor.y) * clay.height };
     } else {
       if (this.theme.dropShadow) {
         const shadow = new PIXI.Sprite(tex);
@@ -58,6 +65,6 @@ export class PumpyView extends ThingView {
   }
 
   activeOffset(): { x: number; y: number } {
-    return toolTipOffset(this.textures, 'pumpy');
+    return this.heldTip ?? toolTipOffset(this.textures, 'pumpy');
   }
 }

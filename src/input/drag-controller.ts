@@ -265,7 +265,7 @@ export class DragController {
       }
       if (e.key === ' ') {
         e.preventDefault();
-        this.applyHeldTool(this.pointer.x, this.pointer.y);
+        this.applyHeldTool(this.pointer.x, this.pointer.y, true); // space = use; never drops on empty
         return;
       }
       if (this.setToolMode(held, e.key)) {
@@ -459,14 +459,11 @@ export class DragController {
    * keeps the plain hand offset. */
   private heldVec(view: ThingView): { x: number; y: number } {
     if (this.isTool(view.thing)) {
-      if (view.thing instanceof Wand) {
-        const o = view.activeOffset();
-        return { x: -o.x * view.container.scale.x, y: -o.y * view.container.scale.y };
-      }
-      // Pumpy/Dusty are carried at the FINGERTIP of the pointing hand, ABOVE it,
-      // so you see the whole tool (Video Project 13). Lift by ~half its height so
-      // its base sits at the fingertip (the active point — apply uses the pointer).
-      return { x: 0, y: -view.container.height * 0.5 };
+      // The tool's active point — Pumpy's hose nozzle, Dusty's nose tip, the
+      // wand's star (ThingView.activeOffset) — lands on the cursor; the rest of
+      // the tool extends from it, above/beside the pointing hand so you see it.
+      const o = view.activeOffset();
+      return { x: -o.x * view.container.scale.x, y: -o.y * view.container.scale.y };
     }
     return this.heldOffset();
   }
@@ -690,7 +687,7 @@ export class DragController {
    * puts the tool down (so does Escape). The pickup click can't reach here
    * (guarded by justGrabbedTool), so it won't self-drop.
    */
-  private applyHeldTool(x: number, y: number): void {
+  private applyHeldTool(x: number, y: number, fromSpace = false): void {
     const tool = this.heldTool;
     if (!tool) return;
     // Inside a robot's thoughts (training):
@@ -755,10 +752,10 @@ export class DragController {
       // Let the resolver speak for a no-target click (e.g. a bomb explains it
       // needs a house).
       this.resolve(t, undefined, {});
-      // A TOOL (wand/Dusty/Pumpy) over empty floor does NOTHING and STAYS in hand
-      // — point it at a thing to use it, press Esc to put it down. (Pressing space
-      // to "use" it must not drop it.) Only a carried ELEMENT is set on the floor.
-      if (!this.isTool(t)) this.putDownTool();
+      // SPACE over empty floor = "use" intent → a TOOL stays in hand (don't drop).
+      // A CLICK on empty floor puts the tool DOWN. A carried ELEMENT is always set
+      // on the floor.
+      if (!this.isTool(t) || !fromSpace) this.putDownTool();
       return;
     }
     this.resolve(tool.thing, target, this.contextFor(target, x, y, tool.thing));

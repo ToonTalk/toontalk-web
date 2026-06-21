@@ -32,6 +32,14 @@ export const TOOL_TIP_FRAC: Record<string, [number, number]> = {
   pumpy: [0.5, 0.5], // centred (no distinct nozzle in the art)
 };
 
+/** The HELD (clay) form's business end, as a fraction of the clay sprite. The
+ * Lego art has no nozzle, so a held Pumpy/Dusty takes its active point from the
+ * clay it morphs into: Pumpy's hose nozzle, Dusty's nose tip (both far-left). */
+export const CLAY_TIP_FRAC: Record<string, [number, number]> = {
+  pumpy: [0.04, 0.62],
+  dusty: [0.05, 0.34],
+};
+
 /** The tool's business end in its held view's LOCAL space (relative to the
  * container origin = the centre-anchored sprite's centre). Derived from the
  * texture's natural size (deterministic — unlike getLocalBounds, which also

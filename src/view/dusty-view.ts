@@ -6,12 +6,14 @@
 import * as PIXI from 'pixi.js';
 import { ThingView } from './thing-view';
 import { Dusty, type VacuumMode } from '../model/dusty';
-import { addModeButton, toolTipOffset } from './lego-button';
+import { addModeButton, toolTipOffset, CLAY_TIP_FRAC } from './lego-button';
 import { makeIdleSprite } from './animation';
 
 const MODE_LABEL: Record<VacuumMode, string> = { erase: 'E', suck: 'S', reverse: 'R' };
 
 export class DustyView extends ThingView {
+  private heldTip: { x: number; y: number } | null = null;
+
   protected build(): void {
     const dusty = this.thing as Dusty;
     const tex = this.textures.get('dusty') ?? PIXI.Texture.WHITE;
@@ -21,6 +23,7 @@ export class DustyView extends ThingView {
     const clay = this.alive ? makeIdleSprite('dusty-suck') : null;
     let bodyW: number;
     let bodyH: number;
+    this.heldTip = null;
     if (clay) {
       const legoMax = Math.max(tex.width, tex.height);
       const clayMax = Math.max(clay.width, clay.height);
@@ -28,6 +31,10 @@ export class DustyView extends ThingView {
       this.container.addChild(clay);
       bodyW = clay.width;
       bodyH = clay.height;
+      // Active point = the tip of Dusty's nose on the clay (offset from the
+      // container origin = the clay's anchor) so it lands on the cursor when held.
+      const [fx, fy] = CLAY_TIP_FRAC.dusty!;
+      this.heldTip = { x: (fx - clay.anchor.x) * clay.width, y: (fy - clay.anchor.y) * clay.height };
     } else {
       if (this.theme.dropShadow) {
         const shadow = new PIXI.Sprite(tex);
@@ -60,8 +67,9 @@ export class DustyView extends ThingView {
     }
   }
 
-  /** Held cursor hot point = Dusty's nose, so its nose is what sucks/erases. */
+  /** Held cursor hot point = the tip of Dusty's nose, so its nose is what
+   * sucks/erases (from the clay it morphs into when held). */
   activeOffset(): { x: number; y: number } {
-    return toolTipOffset(this.textures, 'dusty');
+    return this.heldTip ?? toolTipOffset(this.textures, 'dusty');
   }
 }

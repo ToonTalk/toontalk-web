@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20h (space over empty no longer drops a held tool; a tool re-picked-up off the floor morphs to clay again; dev server doesn’t auto-open a browser)';
+const BUILD = 'build 2026-06-20i (held Pumpy/Dusty carried by their own tip — hose nozzle / nose — at the cursor; removed the yellow active-point ring; click empty floor to put a tool down)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -173,10 +173,6 @@ async function start(): Promise<void> {
   // (and the floor wand is hidden, since it's now in the cursor), any other
   // thing → grab, nothing → point.
   let carriedWand: ThingView | undefined;
-  // True while a TOOL (wand/Dusty/Pumpy) is in hand — drives the floor active-
-  // point reticle so it's clear where the tool's tip will act (it was invisible
-  // on the floor, so tools kept missing).
-  let holdingTool = false;
   // A robot iterating on the floor: drop a box on a trained robot and it runs
   // over and over, stopping when the box stops matching its thought bubble. We
   // track it so grabbing the robot (or its box) mid-run stops it — the manual
@@ -196,8 +192,7 @@ async function start(): Promise<void> {
   }
   const onGrab = (thing: Thing | null): void => {
     tlog(thing ? `grab: ${desc(thing)}` : 'release (hand empty)');
-    holdingTool = !!thing && (thing.kind === 'wand' || thing.kind === 'dusty' || thing.kind === 'pumpy');
-    if (!holdingTool && !thoughtState) activePoint.visible = false; // dropped a tool on the floor
+    if (!thoughtState) activePoint.visible = false; // reticle is for training only now
     // Picking up a running robot (or the box it's working on) stops it.
     if (thing && runningLoop && (thing.id === runningLoop.robotId || thing.id === runningLoop.boxId)) {
       cancelRunningLoop();
@@ -1115,12 +1110,8 @@ async function start(): Promise<void> {
       });
       return;
     }
-    // On the floor, a held tool's tip sits on the cursor — mark it with the same
-    // reticle so it's clear exactly where Dusty/the wand will act.
-    if (holdingTool) {
-      activePoint.position.set(e.global.x, e.global.y);
-      activePoint.visible = true;
-    }
+    // On the floor there's no reticle — a held tool's own tip (Pumpy's hose,
+    // Dusty's nose) sits on the cursor, so it's already clear where it will act.
   });
 
   // Escape finishes training (the original ToonTalk gesture). Backspace cancels
