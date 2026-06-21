@@ -64,7 +64,13 @@ the city itself (`city.cpp`):
   drawn brick box — back/side-wall `SimpleMesh` quads + a floor trapezoid — which
   read as a "collage of perspectives".)* The avatar stands on it facing **NORTH**
   (back to camera, `Direction` enum 6), ~0.52 H tall and depth-scaled; Tooly does
-  **not** appear inside (it trails only in the street). You walk the room
+  **not** appear inside (it trails only in the street). The floor's **things** (the
+  World items + the spilled hand tools) are laid out on the perspective floor at
+  **floor scale** (`STAND_ITEM_SCALE` × depth ≈ ¼ the avatar's height) — matching
+  the original, where a box/robot/house is a substantial object you stand *among*,
+  **not** the tiny corner mini-map we drew before (verified against a `tt3191.exe`
+  capture of the original standing view). They **refresh while standing** (throttled)
+  so a robot still working on the floor is seen updating its box. You walk the room
   in normalised coords (`ix`/`iy`, slight depth perspective); `walkInside`
   returns **`'leave'`** at a side wall (→ back to the street just south of the
   house door, `leaveRoom`) or **`'sit'`** at the front of the floor (→ `onEnter`

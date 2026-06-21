@@ -60,6 +60,10 @@ const KEY_RAMP_MS = 800; // held arrow keys ramp to full speed over this long
 const KEY_START_FRACTION = 0.3;
 const CITY_EDGE_MARGIN = 46; // px from a screen edge where edge-pan kicks in
 const CITY_EDGE_SCREENS_PER_S = 0.8; // edge-pan speed (capped by each mode's clamp)
+// Standing in the room, the floor's things show at FLOOR scale on the perspective
+// floor (like the original — a box/robot is a substantial object you stand among),
+// not a tiny mini-map. This multiplies the base 64px display by the depth factor.
+const STAND_ITEM_SCALE = 2.3;
 
 export class CityScene {
   readonly container: PIXI.Container;
@@ -732,7 +736,7 @@ export class CityScene {
     // floor (so it's clear what's there, and where to sit down to work on it).
     for (const mini of this.floorMinis) {
       mini.node.position.set(fx(mini.fx, mini.fy), fy(mini.fy));
-      mini.node.scale.set(depthScale(mini.fy));
+      mini.node.scale.set(depthScale(mini.fy) * STAND_ITEM_SCALE);
       mini.node.zIndex = mini.fy;
     }
 
