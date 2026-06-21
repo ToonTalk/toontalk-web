@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20a (the notebook rises from Tooly to bottom-centre by the sit spot, where the original keeps it)';
+const BUILD = 'build 2026-06-20b (the hand cursor’s arm is a slim brick-red forearm matching the wrist stub, not a thick pink bar)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

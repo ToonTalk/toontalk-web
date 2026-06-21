@@ -61,7 +61,7 @@ export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, 
 /** Take a fresh copy of a toolbox element out at (x, y) — an infinite stack. */
 export type PickHandler = (key: string, x: number, y: number) => void;
 
-const ARM_COLOR = 0xbb5d64; // sampled from the hand texture's wrist stub
+const ARM_COLOR = 0xb1584f; // brick red, sampled from the hand texture's red wrist stub
 
 /** Blend two 0xRRGGBB colours (t: 0→a, 1→b) — used to tint a tool from clay to
  * its Lego look as it rises during the sit-down sequence. */
@@ -94,8 +94,8 @@ const HAND_POSES: Record<HandPose, PoseSpec> = {
   // Empty: the POINTING hand (HAND04) — index extended, others curled, like the
   // original's idle cursor. Hotspot at the fingertip (top); red wrist stub at the
   // bottom-centre.
-  open: { key: 'hand-point', anchor: [0.54, 0.02], scale: 0.47, cx: 0.17, w: 0.5, top: 0.82 },
-  grab: { key: 'hand-grab', anchor: [0.5, 0.2], scale: 1.2, cx: 0.24, w: 0.41, top: 0.62 },
+  open: { key: 'hand-point', anchor: [0.54, 0.02], scale: 0.47, cx: 0.17, w: 0.33, top: 0.86 },
+  grab: { key: 'hand-grab', anchor: [0.5, 0.2], scale: 1.2, cx: 0.26, w: 0.36, top: 0.69 },
   // Holding the wand: the hand grips it on the right, tip points left (hotspot);
   // wrist is far right (~0.83w). Wide sprite, so scaled down. (May need tuning.)
   holdwand: { key: 'hand-wand', anchor: [0.06, 0.42], scale: 0.85, cx: 0.77, w: 0.33, top: 0.16 },
