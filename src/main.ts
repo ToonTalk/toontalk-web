@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20l (held Pumpy/Dusty drawn ~2.4x bigger so the tool is the focus; the hand grips the body’s far side so the hose/nose + body show, like the original)';
+const BUILD = 'build 2026-06-20m (city no longer grabs Pointer Lock — on Hi-DPI displays it trapped the cursor in a top-left corner; mouse-delta steering works without it)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

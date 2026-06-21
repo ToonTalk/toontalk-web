@@ -109,8 +109,6 @@ export class CityScene {
   private readonly keyStart = new Map<string, number>();
   private mouseDX = 0;
   private mouseDY = 0;
-  private locked = false;
-  private lockUnavailable = false;
 
   constructor(
     private readonly renderer: Renderer,
@@ -229,12 +227,6 @@ export class CityScene {
     const view = this.renderer.view;
     this.renderer.app.stage.on('pointerdown', (e) => {
       if (!this.active) return;
-      if (!this.locked && !this.lockUnavailable) {
-        const p = view.requestPointerLock?.() as unknown as Promise<void> | undefined;
-        if (p && typeof p.catch === 'function') p.catch(() => (this.lockUnavailable = true));
-        if (!view.requestPointerLock) this.lockUnavailable = true;
-        return;
-      }
       if (e.button === 2) {
         this.buttons.right = true;
       } else {
@@ -250,20 +242,16 @@ export class CityScene {
       this.buttons.left = this.buttons.right = false;
     });
     view.addEventListener('mousemove', (e) => {
-      // Steer as soon as the scene is active — don't require pointer lock, which
-      // needs a click to engage (so after standing up the mouse worked only after
-      // a click). A click still locks the pointer for unlimited, cursor-free
-      // steering; until then the visible cursor's movement steers within the window.
+      // Steer from the raw mouse delta (movementX/Y) whenever the scene is active.
+      // We deliberately do NOT requestPointerLock: on Hi-DPI displays the lock
+      // confines the still-visible cursor to a top-left sub-rectangle (~1/DPR of
+      // the window) instead of hiding it, trapping the mouse until focus is lost.
+      // Without the lock the cursor steers within the window and just stops at its
+      // edges (re-centre the mouse to keep turning).
       if (this.active) {
         this.mouseDX += e.movementX;
         this.mouseDY += e.movementY;
       }
-    });
-    document.addEventListener('pointerlockchange', () => {
-      this.locked = document.pointerLockElement === view;
-    });
-    document.addEventListener('pointerlockerror', () => {
-      this.lockUnavailable = true;
     });
     window.addEventListener('keydown', (e) => {
       if (!this.active) return;
@@ -277,7 +265,6 @@ export class CityScene {
         // Standing in the room (walking the street or inside a house) → the
         // exit-or-minimize dialog (which offers "leave this room" when inside).
         if (this.model.mode === 'walking' || this.model.mode === 'inside') {
-          if (this.locked) document.exitPointerLock?.();
           this.cb.onEscape?.();
         }
       }
@@ -302,7 +289,6 @@ export class CityScene {
       this.buttons.left = this.buttons.right = false;
       this.keys.clear();
       this.keyStart.clear();
-      if (this.locked) document.exitPointerLock?.();
     }
   }
   get isActive(): boolean {
