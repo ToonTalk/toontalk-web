@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20j (after standing the mouse steers right away — no click needed; filled the open-toolbox’s transparent holes; the spilled tools show on the floor in the standing view)';
+const BUILD = 'build 2026-06-20k (held Pumpy/Dusty are grabbed by the BODY — grab hand, not a finger pointing at the tip; removed the duplicate clay-Dusty that popped up while sucking)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -118,7 +118,12 @@ async function start(): Promise<void> {
   cursorStyles.grabbing = 'none';
   cursorStyles.pointer = 'none';
   renderer.view.style.cursor = 'none';
-  renderer.app.stage.on('pointermove', (e) => room.setHand(e.global.x, e.global.y));
+  renderer.app.stage.on('pointermove', (e) => {
+    // When holding Pumpy/Dusty the hand grips the tool's BODY (offset back from
+    // its tip, which is the active point on the cursor) — not the tip itself.
+    const off = dragController.heldHandOffset();
+    room.setHand(e.global.x + off.x, e.global.y + off.y);
+  });
 
   // Debug hook: lets tools pause the render loop to capture a still of the
   // (otherwise continuously animating) canvas. Harmless in production.
@@ -209,11 +214,9 @@ async function start(): Promise<void> {
       room.setPose('holdwand');
       carriedWand = views.get(thing.id);
       if (carriedWand) carriedWand.container.alpha = 0;
-    } else if (thing && (thing.kind === 'pumpy' || thing.kind === 'dusty')) {
-      // A held tool POINTS (Video Project 13) — the pointing hand, with the tool
-      // carried at the fingertip ABOVE the hand (heldVec lifts it), so you see it.
-      room.setPose('open');
     } else if (thing) {
+      // A held tool (Pumpy/Dusty) is GRABBED by its body, not pointed at by a
+      // finger; its business end (hose nozzle / nose) points out toward the work.
       room.setPose('grab');
       // Discoverability: a fresh robot gives no clue how to teach it. Prompt the
       // gesture while it's in hand (matches interactions.ts: an untrained robot
@@ -296,9 +299,6 @@ async function start(): Promise<void> {
       // One-shot effects at the action site.
       if (result === 'exploded') {
         playOnce('explode', renderer.thingLayer, dragged.x, dragged.y);
-      } else if (result === 'erased' || result === 'sucked') {
-        const at = target ?? dragged;
-        playOnce('dusty-suck', renderer.thingLayer, at.x, at.y);
       } else if ((result === 'filled' || result === 'combined') && target instanceof Box && ctx.holeIndex != null) {
         // The dropped item shrinks to fit the hole.
         const bv = views.get(target.id);

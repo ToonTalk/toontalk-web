@@ -148,13 +148,14 @@ the drag controller's `onGrab(thing)` callback (not Room's own press
 handler): `open` (HAND01, point — **hotspot at the leftmost fingertip,
 0.24w/0.17h**), `grab` (HAND04, while carrying a thing), and `holdwand`
 (USEWAND1, while carrying the **wand** — the floor wand is alpha-hidden since
-it's "in" the cursor). A held **Pumpy/Dusty** uses the `open` (pointing) pose,
-carried by its **own active point** — Pumpy's hose nozzle, Dusty's nose tip
-(`CLAY_TIP_FRAC` on the clay it morphs into, since the Lego art has no nozzle) —
-which sits on the cursor; the rest of the tool extends above/beside the hand, so
-you see it (matching `Video Project 13.mp4` + the C++ `tool_in_hand`). The tip
-*is* the active point, so there's **no reticle** on the floor (the yellow ring is
-training-only). On empty floor, **space** keeps the tool in hand (use intent) but
+it's "in" the cursor). A held **Pumpy/Dusty** is **grabbed by its body** with the
+`grab` pose (not a finger pointing at it); its business end — Pumpy's hose nozzle,
+Dusty's nose tip (`CLAY_TIP_FRAC` on the clay it morphs into, since the Lego art
+has no nozzle) — is the **active point** and sits on the cursor, with the rest of
+the tool pointing out toward the work. So the hand grips the BODY (offset back
+from the tip by `DragController.heldHandOffset` = `heldVec`) while the tip is on
+the cursor. The tip *is* the active point, so there's **no reticle** on the floor
+(the yellow ring is training-only). On empty floor, **space** keeps the tool in hand (use intent) but
 a **click** puts it down. Each pose has its own wrist calibration
 (`cx`/`w`/`top`/anchor/scale) so the coral sleeve (`#bb5d64`) continues the
 stub. ⚠ `holdwand` is a wide sprite with estimated anchors — **may need

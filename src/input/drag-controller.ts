@@ -36,7 +36,7 @@ import { BoxView } from '../view/box-view';
 import { NestView } from '../view/nest-view';
 import { NotebookView } from '../view/notebook-view';
 import { renderThingDisplay } from '../view/display';
-import { tweenScale, playOnce } from '../view/animation';
+import { tweenScale } from '../view/animation';
 import { floorCamera } from '../view/floor-camera';
 import { tlog, desc } from '../debug-log';
 
@@ -468,6 +468,17 @@ export class DragController {
     return this.heldOffset();
   }
 
+  /** Offset to add to the cursor for the HAND while a tool is held, so the hand
+   * grips the tool's BODY (its tip is the active point, kept on the cursor) — not
+   * the tip itself. Zero for the wand (drawn into the hand-wand pose) and when
+   * nothing is held. Mirrors heldVec: the tool's body centre is at cursor+heldVec. */
+  heldHandOffset(): { x: number; y: number } {
+    if (this.heldTool && !(this.heldTool.thing instanceof Wand)) {
+      return this.heldVec(this.heldTool);
+    }
+    return { x: 0, y: 0 };
+  }
+
   /** Cursor → world: the floor view is panned by the floor camera, so a screen
    * point maps to a world point by adding the camera offset. All placement and
    * hit-testing here works in WORLD coords. */
@@ -707,9 +718,6 @@ export class DragController {
           if (held instanceof Dusty) {
             if (held.mode === 'erase') this.trainer.eraseHole(to!);
             else this.trainer.removeHole(to!);
-            // Visible feedback that Dusty acted — the floor plays this via
-            // resolveDrop; the training path bypasses it, so play it here too.
-            playOnce('dusty-suck', this.renderer.thingLayer, x, y);
           } else {
             this.resolve(held, content, {});
           }
