@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20c (choose your avatar head in ⚙ Settings — plain, purple hair, or red cap — composited on the walking figure and saved)';
+const BUILD = 'build 2026-06-20d (sprites no longer moth-eaten: flood-fill keying keeps interior dark pixels, a despeckle pass cleans dithered edges; hat/hair keep the neck)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

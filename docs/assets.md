@@ -26,6 +26,13 @@
 - Converted PNGs live in `public/assets/sprites/`. Black is the transparency
   key (see `ASSET_GUIDE.md` for the `.TTS` format, offsets, and per-asset
   exceptions like the green/magenta-keyed number/text plates).
+- **Keying is flood-fill, not per-pixel** (`key_black` in `bake-city.py` /
+  `convert-assets.py`): only black pixels CONNECTED to the border are removed, so
+  dark pixels *inside* a figure (hair, robot seams, outlines, shading) are kept
+  rather than punched into "moth-eaten" holes (a per-pixel threshold removed 213
+  of a 31×31 hair frame, showing the head through the hair). A `_despeckle` pass
+  then fills transparent pixels mostly surrounded by opaque ones, turning the
+  art's dithered figure/background boundary into a solid edge (hand, robot, Tooly).
 - Known M25 gaps already substituted: thought bubble (`BUBBL10`). Tooling:
   `tools/parse-tts.py` → `tools/tts-manifest.json`.
 - **Lego vs clay** — ToonTalk's data (numbers/text/boxes) and *resting* tools
