@@ -40,68 +40,32 @@ BLACK_THRESHOLD = 16
 
 
 def key_black(im: Image.Image) -> Image.Image:
-    """Make the black background transparent — but ONLY black connected to the
-    border (flood-fill), so dark pixels inside the figure (robot seams, outlines,
-    shading) are kept rather than punched into 'moth-eaten' holes."""
-    from collections import deque
+    """Make the background transparent by removing the art's RESERVED transparent
+    palette index (the most common index among the four corners — index 0/black in
+    this 8-bit art). Removes the background EVERYWHERE — the border AND enclosed
+    pockets (between robot legs, etc.) — while keeping every figure pixel, even
+    dark ones (robot seams/visor, outlines) that use OTHER indices."""
+    if im.mode == "P":
+        from collections import Counter
+        idx = im.load()
+        w, h = im.size
+        bg = Counter([idx[0, 0], idx[w - 1, 0], idx[0, h - 1], idx[w - 1, h - 1]]).most_common(1)[0][0]
+        rgba = im.convert("RGBA")
+        px = rgba.load()
+        for y in range(h):
+            for x in range(w):
+                if idx[x, y] == bg:
+                    px[x, y] = (0, 0, 0, 0)
+        return rgba
+    # non-palettized fallback: per-pixel black threshold
     im = im.convert("RGBA")
     px = im.load()
     w, h = im.size
-
-    def is_bg(x: int, y: int) -> bool:
-        r, g, b, _ = px[x, y]
-        return max(r, g, b) < BLACK_THRESHOLD
-
-    seen = bytearray(w * h)
-    dq: deque = deque()
-
-    def seed(x: int, y: int) -> None:
-        if not seen[y * w + x] and is_bg(x, y):
-            seen[y * w + x] = 1
-            dq.append((x, y))
-
-    for x in range(w):
-        seed(x, 0); seed(x, h - 1)
     for y in range(h):
-        seed(0, y); seed(w - 1, y)
-    while dq:
-        x, y = dq.popleft()
-        px[x, y] = (0, 0, 0, 0)
-        if x > 0: seed(x - 1, y)
-        if x < w - 1: seed(x + 1, y)
-        if y > 0: seed(x, y - 1)
-        if y < h - 1: seed(x, y + 1)
-    return _despeckle(im)
-
-
-def _despeckle(im: Image.Image, passes: int = 2, min_opaque: int = 4) -> Image.Image:
-    """Fill transparent pixels that are mostly surrounded by opaque ones — the
-    speckled edges/pinholes left where the original art DITHERS the figure into
-    the black background. Filled pixels take the average of their opaque
-    neighbours, so a dithered boundary becomes a solid edge."""
-    px = im.load()
-    w, h = im.size
-    for _ in range(passes):
-        fill = []
-        for y in range(h):
-            for x in range(w):
-                if px[x, y][3] >= 40:
-                    continue
-                rs = gs = bs = n = 0
-                for dy in (-1, 0, 1):
-                    for dx in (-1, 0, 1):
-                        if dx == 0 and dy == 0:
-                            continue
-                        nx, ny = x + dx, y + dy
-                        if 0 <= nx < w and 0 <= ny < h and px[nx, ny][3] >= 120:
-                            r, g, b, _ = px[nx, ny]
-                            rs += r; gs += g; bs += b; n += 1
-                if n >= min_opaque:
-                    fill.append((x, y, (rs // n, gs // n, bs // n, 255)))
-        if not fill:
-            break
-        for x, y, c in fill:
-            px[x, y] = c
+        for x in range(w):
+            r, g, b, _ = px[x, y]
+            if max(r, g, b) < BLACK_THRESHOLD:
+                px[x, y] = (0, 0, 0, 0)
     return im
 
 

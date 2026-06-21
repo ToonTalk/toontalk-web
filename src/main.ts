@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20d (sprites no longer moth-eaten: flood-fill keying keeps interior dark pixels, a despeckle pass cleans dithered edges; hat/hair keep the neck)';
+const BUILD = 'build 2026-06-20e (sprites keyed by the reserved transparent palette index: removes background everywhere incl. under-arm / heli windows / between legs, keeps dark figure detail)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
