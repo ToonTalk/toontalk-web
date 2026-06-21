@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20f (a held Pumpy/Dusty now renders in front of the hand — you see the tool, the hand grips it from behind)';
+const BUILD = 'build 2026-06-20g (held Pumpy/Dusty sit at the fingertip of the pointing hand, above it — you see the whole tool, like Video 13)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -214,6 +214,10 @@ async function start(): Promise<void> {
       room.setPose('holdwand');
       carriedWand = views.get(thing.id);
       if (carriedWand) carriedWand.container.alpha = 0;
+    } else if (thing && (thing.kind === 'pumpy' || thing.kind === 'dusty')) {
+      // A held tool POINTS (Video Project 13) — the pointing hand, with the tool
+      // carried at the fingertip ABOVE the hand (heldVec lifts it), so you see it.
+      room.setPose('open');
     } else if (thing) {
       room.setPose('grab');
       // Discoverability: a fresh robot gives no clue how to teach it. Prompt the
@@ -232,9 +236,9 @@ async function start(): Promise<void> {
     } else {
       room.setPose('open');
     }
-    // Pumpy/Dusty are carried as a separate sprite; drop the hand behind so you
-    // see the tool (the wand is drawn into the hand-wand pose, so it's exempt).
-    room.setCursorBehind(!!thing && (thing.kind === 'pumpy' || thing.kind === 'dusty'));
+    // The held tool now sits at the fingertip ABOVE the pointing hand, so it's
+    // visible without dropping the hand behind the things layer.
+    room.setCursorBehind(false);
   };
 
   const dragController = new DragController(

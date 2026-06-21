@@ -459,8 +459,14 @@ export class DragController {
    * keeps the plain hand offset. */
   private heldVec(view: ThingView): { x: number; y: number } {
     if (this.isTool(view.thing)) {
-      const o = view.activeOffset();
-      return { x: -o.x * view.container.scale.x, y: -o.y * view.container.scale.y };
+      if (view.thing instanceof Wand) {
+        const o = view.activeOffset();
+        return { x: -o.x * view.container.scale.x, y: -o.y * view.container.scale.y };
+      }
+      // Pumpy/Dusty are carried at the FINGERTIP of the pointing hand, ABOVE it,
+      // so you see the whole tool (Video Project 13). Lift by ~half its height so
+      // its base sits at the fingertip (the active point — apply uses the pointer).
+      return { x: 0, y: -view.container.height * 0.5 };
     }
     return this.heldOffset();
   }
