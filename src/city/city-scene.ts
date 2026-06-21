@@ -58,6 +58,8 @@ const LAND_SCREENS_PER_S = 3;
 const WALK_SCREENS_PER_S = 1;
 const KEY_RAMP_MS = 800; // held arrow keys ramp to full speed over this long
 const KEY_START_FRACTION = 0.3;
+const CITY_EDGE_MARGIN = 46; // px from a screen edge where edge-pan kicks in
+const CITY_EDGE_SCREENS_PER_S = 0.8; // edge-pan speed (capped by each mode's clamp)
 
 export class CityScene {
   readonly container: PIXI.Container;
@@ -109,6 +111,12 @@ export class CityScene {
   private readonly keyStart = new Map<string, number>();
   private mouseDX = 0;
   private mouseDY = 0;
+  // Absolute pointer position (canvas px) for edge-pan: when the cursor sits at a
+  // screen edge, keep moving that way (until the water) — without Pointer Lock the
+  // raw delta dies at the edge, so we inject a steady push there instead.
+  private pointerX = 0;
+  private pointerY = 0;
+  private pointerInside = false;
 
   constructor(
     private readonly renderer: Renderer,
@@ -252,6 +260,12 @@ export class CityScene {
         this.mouseDX += e.movementX;
         this.mouseDY += e.movementY;
       }
+      this.pointerX = e.offsetX;
+      this.pointerY = e.offsetY;
+      this.pointerInside = true;
+    });
+    view.addEventListener('mouseleave', () => {
+      this.pointerInside = false; // stop edge-pan once the cursor leaves the canvas
     });
     window.addEventListener('keydown', (e) => {
       if (!this.active) return;
@@ -360,6 +374,25 @@ export class CityScene {
     const keyVy = (this.keyRamp('ArrowDown') - this.keyRamp('ArrowUp')) * maxScreensPerS * H;
     return clampAbs(this.mouseDY + (keyVy * dt) / 1000, maxPx);
   }
+  /** Steady pan (screen px this frame) when the cursor sits at a screen edge —
+   * folded into the mouse delta so it flows through the normal speed clamp and the
+   * model's water clamp. Zero in the middle of the screen / when the cursor is out. */
+  private edgePush(dt: number): { dx: number; dy: number } {
+    if (!this.pointerInside) return { dx: 0, dy: 0 };
+    const W = this.renderer.width;
+    const H = this.renderer.height;
+    const into = (d: number): number => Math.max(0, Math.min(1, d / CITY_EDGE_MARGIN));
+    let fx = 0;
+    let fy = 0;
+    if (this.pointerX < CITY_EDGE_MARGIN) fx = -into(CITY_EDGE_MARGIN - this.pointerX);
+    else if (this.pointerX > W - CITY_EDGE_MARGIN) fx = into(this.pointerX - (W - CITY_EDGE_MARGIN));
+    if (this.pointerY < CITY_EDGE_MARGIN) fy = -into(CITY_EDGE_MARGIN - this.pointerY);
+    else if (this.pointerY > H - CITY_EDGE_MARGIN) fy = into(this.pointerY - (H - CITY_EDGE_MARGIN));
+    return {
+      dx: (fx * CITY_EDGE_SCREENS_PER_S * W * dt) / 1000,
+      dy: (fy * CITY_EDGE_SCREENS_PER_S * H * dt) / 1000,
+    };
+  }
 
   // --- per-frame ------------------------------------------------------------
 
@@ -367,6 +400,13 @@ export class CityScene {
     if (!this.active) return;
     const dt = this.renderer.app.ticker.deltaMS;
     this.camera.setViewport(this.renderer.width, this.renderer.height);
+
+    // Cursor at a screen edge → keep moving that way (until the water / room wall),
+    // since without Pointer Lock the raw delta dies at the edge. Folds into the
+    // mouse delta consumed below; the model clamps to the city extent.
+    const edge = this.edgePush(dt);
+    this.mouseDX += edge.dx;
+    this.mouseDY += edge.dy;
 
     if (this.model.mode === 'flying') {
       const up = this.buttons.right || this.keys.has('ArrowUp') || this.keys.has('Shift');

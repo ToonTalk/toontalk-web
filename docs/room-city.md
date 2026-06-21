@@ -88,6 +88,12 @@ the city itself (`city.cpp`):
   controller, the `getBounds`-based hit tests (`containsPoint`,
   nest/notebook `pressedOn…`) shift bounds by `floorCamera`, `holeIndexAt` is
   already world, and drop-overlap is screen-consistent.
+- **Edge-scroll**: holding the pointer near a screen edge pans the view that way —
+  on the working floor it scrolls `floorCamera` to the wall (the clamp); in the
+  city (flying/walking/inside) `CityScene.edgePush` folds a steady push into the
+  mouse delta so you keep moving until the water (the model's `[0,CITY_W]` clamp).
+  This is the continuous pan that Pointer Lock used to provide (now removed); the
+  push stops when the cursor leaves the canvas (`mouseleave`).
 - **Input is the original's RELATIVE_MOUSE_MODE** (the default,
   globals.cpp:729): click the city to capture the mouse (Pointer Lock, cursor
   hidden, like `show_cursor(FALSE)`); raw mouse **movement** then steers

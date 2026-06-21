@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20q (floor edge-scroll: pointer at a screen edge pans the floor to the wall — replaces the pan Pointer Lock used to give)';
+const BUILD = 'build 2026-06-20r (city edge-pan: cursor at a screen edge keeps you moving until the water — completes edge-scroll with the floor)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
