@@ -250,7 +250,11 @@ export class CityScene {
       this.buttons.left = this.buttons.right = false;
     });
     view.addEventListener('mousemove', (e) => {
-      if (this.active && this.locked) {
+      // Steer as soon as the scene is active — don't require pointer lock, which
+      // needs a click to engage (so after standing up the mouse worked only after
+      // a click). A click still locks the pointer for unlimited, cursor-free
+      // steering; until then the visible cursor's movement steers within the window.
+      if (this.active) {
         this.mouseDX += e.movementX;
         this.mouseDY += e.movementY;
       }

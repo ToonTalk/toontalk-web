@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20i (held Pumpy/Dusty carried by their own tip — hose nozzle / nose — at the cursor; removed the yellow active-point ring; click empty floor to put a tool down)';
+const BUILD = 'build 2026-06-20j (after standing the mouse steers right away — no click needed; filled the open-toolbox’s transparent holes; the spilled tools show on the floor in the standing view)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -395,11 +395,35 @@ async function start(): Promise<void> {
     floorItems: () => {
       // Positions are normalised to the whole (large) floor, so the room view
       // shows the entire work area in miniature and you can sit anywhere on it.
-      return world.all().map((t) => ({
-        fx: Math.max(0.02, Math.min(0.98, t.x / FLOOR_W)),
-        fy: Math.max(0.05, Math.min(0.98, t.y / FLOOR_H)),
+      const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+      const items = world.all().map((t) => ({
+        fx: clamp(t.x / FLOOR_W, 0.02, 0.98),
+        fy: clamp(t.y / FLOOR_H, 0.05, 0.98),
         node: renderThingDisplay(t, textures, theme, 64),
       }));
+      // The spilled hand tools live in Tooly (screen chrome), not the world — so
+      // add them to the miniature too, at their spill spot by the sit point, so
+      // they're ON THE FLOOR when you stand (not "inside Tooly"). Skip any that
+      // are already a floor thing (picked out and dropped).
+      const spill: [string, number, number][] = [
+        ['dusty', 0.2, 0.44],
+        ['pumpy', 0.43, 0.56],
+        ['wand', 0.24, 0.72],
+      ];
+      for (const [kind, sx, sy] of spill) {
+        if (world.all().some((t) => t.kind === kind)) continue;
+        const tex = textures.get(kind);
+        if (!tex) continue;
+        const s = new PIXI.Sprite(tex);
+        s.anchor.set(0.5);
+        s.scale.set(64 / (Math.max(s.width, s.height) || 1));
+        items.push({
+          fx: clamp((sx * renderer.width + floorCamera.x) / FLOOR_W, 0.02, 0.98),
+          fy: clamp((sy * renderer.height + floorCamera.y) / FLOOR_H, 0.05, 0.98),
+          node: s,
+        });
+      }
+      return items;
     },
   });
   (window as unknown as { __ttCity?: unknown }).__ttCity = city;
