@@ -152,9 +152,11 @@ it's "in" the cursor). A held **Pumpy/Dusty** is **grabbed by its body** with th
 `grab` pose (not a finger pointing at it); its business end — Pumpy's hose nozzle,
 Dusty's nose tip (`CLAY_TIP_FRAC` on the clay it morphs into, since the Lego art
 has no nozzle) — is the **active point** and sits on the cursor, with the rest of
-the tool pointing out toward the work. So the hand grips the BODY (offset back
-from the tip by `DragController.heldHandOffset` = `heldVec`) while the tip is on
-the cursor. The tip *is* the active point, so there's **no reticle** on the floor
+the tool pointing out toward the work. The held clay is drawn **~2.4× its Lego
+footprint** so the tool reads as the focus (like the original), and the hand grips
+the BODY's far side (`DragController.heldHandOffset` = `1.6·heldVec`, i.e. past the
+tool centre toward its far edge) so the hose/nose + body stay clear of the hand
+and show. The tip *is* the active point, so there's **no reticle** on the floor
 (the yellow ring is training-only). On empty floor, **space** keeps the tool in hand (use intent) but
 a **click** puts it down. Each pose has its own wrist calibration
 (`cx`/`w`/`top`/anchor/scale) so the coral sleeve (`#bb5d64`) continues the

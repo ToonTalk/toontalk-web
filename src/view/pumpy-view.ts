@@ -36,7 +36,9 @@ export class PumpyView extends ThingView {
     if (clay) {
       const legoMax = Math.max(tex.width, tex.height);
       const clayMax = Math.max(clay.width, clay.height);
-      if (clayMax > 0) clay.scale.set(legoMax / clayMax);
+      // Held → bigger than the Lego footprint so the tool reads as the focus
+      // (the hand grips its side, like the original); at rest it's the Lego pump.
+      if (clayMax > 0) clay.scale.set((2.4 * legoMax) / clayMax);
       this.container.addChild(clay);
       bodyW = clay.width;
       bodyH = clay.height;

@@ -469,12 +469,17 @@ export class DragController {
   }
 
   /** Offset to add to the cursor for the HAND while a tool is held, so the hand
-   * grips the tool's BODY (its tip is the active point, kept on the cursor) — not
-   * the tip itself. Zero for the wand (drawn into the hand-wand pose) and when
-   * nothing is held. Mirrors heldVec: the tool's body centre is at cursor+heldVec. */
+   * grips the tool's BODY — not the tip (which is the active point on the cursor).
+   * The tip sits on the cursor and the body extends to cursor+heldVec (its centre)
+   * and on to ~cursor+2·heldVec (its far edge). We grip PAST the centre, toward
+   * that far edge (GRIP_BACK·heldVec), so the hose/nose + body stay clear of the
+   * hand and show — matching the original (hand on the far side, tool pointing
+   * out). Zero for the wand (drawn into the hand-wand pose) and when nothing is held. */
   heldHandOffset(): { x: number; y: number } {
     if (this.heldTool && !(this.heldTool.thing instanceof Wand)) {
-      return this.heldVec(this.heldTool);
+      const GRIP_BACK = 1.6;
+      const v = this.heldVec(this.heldTool);
+      return { x: v.x * GRIP_BACK, y: v.y * GRIP_BACK };
     }
     return { x: 0, y: 0 };
   }

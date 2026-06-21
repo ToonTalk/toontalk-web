@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20k (held Pumpy/Dusty are grabbed by the BODY — grab hand, not a finger pointing at the tip; removed the duplicate clay-Dusty that popped up while sucking)';
+const BUILD = 'build 2026-06-20l (held Pumpy/Dusty drawn ~2.4x bigger so the tool is the focus; the hand grips the body’s far side so the hose/nose + body show, like the original)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
