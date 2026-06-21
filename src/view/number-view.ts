@@ -39,8 +39,10 @@ export class NumberView extends ThingView {
       height = pad.height;
     }
 
-    // Operation badge (top-left) — omitted on a blank/erased plate.
-    if (!n.erased) {
+    // Operation badge (top-left) — omitted on a blank/erased plate, and on a
+    // static display (a Tooly tray sample or a box-hole icon), where the original
+    // shows a clean plate; the live held/floor pad still shows it.
+    if (!n.erased && !this.staticDisplay) {
       const badge = new PIXI.Text(OP_GLYPH[n.operation] ?? '+', {
         fontFamily: this.theme.fontFamily,
         fontSize: 14,

@@ -47,7 +47,7 @@ function instantiateView(
 ): ThingView {
   switch (thing.kind) {
     case 'number':
-      return new NumberView(thing, textures, theme);
+      return new NumberView(thing, textures, theme, opts);
     case 'text':
       return new TextView(thing, textures, theme);
     case 'box':

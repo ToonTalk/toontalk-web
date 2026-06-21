@@ -593,10 +593,13 @@ export class Room {
       if (sample) {
         // static: the robot stays a still Lego figure in Tooly until taken out.
         // stretch: reshaped to fill its compartment (taken out → natural size).
+        // Fit each element INSIDE its compartment preserving aspect (not stretched
+        // to fill — that distorts the plates/studs). Scaled up so it fills the cell
+        // on its limiting dimension, like the original's tray icons.
         icon = renderThingDisplay(sample, this.tools, this.theme, cellW, {
           static: true,
           maxHeight: cellH,
-          stretch: true,
+          scaleUp: true,
         });
         icon.position.set(cx, cy);
         box.addChild(icon);

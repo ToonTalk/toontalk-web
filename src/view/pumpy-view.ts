@@ -62,8 +62,11 @@ export class PumpyView extends ThingView {
       bodyH = sprite.height;
     }
 
-    // Mode shown as a 1×1 Lego plate a little below centre on Pumpy.
-    addModeButton(this.container, MODE_LABEL[pumpy.mode], this.theme, 'pumpy', bodyW, bodyH, this.textures);
+    // Mode plate (1×1 Lego button) shown only at REST (on the Lego pump). While
+    // held, the clay tool should read cleanly — no button on it.
+    if (!this.alive) {
+      addModeButton(this.container, MODE_LABEL[pumpy.mode], this.theme, 'pumpy', bodyW, bodyH, this.textures);
+    }
   }
 
   activeOffset(): { x: number; y: number } {

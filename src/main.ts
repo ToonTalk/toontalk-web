@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20m (city no longer grabs Pointer Lock — on Hi-DPI displays it trapped the cursor in a top-left corner; mouse-delta steering works without it)';
+const BUILD = 'build 2026-06-20n (held tools show no mode plate / no Dusty count; toolbox icons fit at natural aspect — no squish — and tray numbers show a clean plate with no + badge)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

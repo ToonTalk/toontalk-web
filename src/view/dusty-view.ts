@@ -53,19 +53,10 @@ export class DustyView extends ThingView {
       bodyH = sprite.height;
     }
 
-    // Mode shown as a 1×1 Lego plate on Dusty's nose.
-    addModeButton(this.container, MODE_LABEL[dusty.mode], this.theme, 'dusty', bodyW, bodyH, this.textures);
-
-    if (dusty.stomach.length > 0) {
-      const count = new PIXI.Text(`×${dusty.stomach.length}`, {
-        fontFamily: this.theme.fontFamily,
-        fontSize: 12,
-        fill: 0x884400,
-        fontWeight: 'bold',
-      });
-      count.anchor.set(0.5);
-      count.position.set(bodyW / 2 - 4, -bodyH / 2 + 6);
-      this.container.addChild(count);
+    // Mode plate (1×1 Lego button) shown only at REST (on the Lego brick). While
+    // held, the clay tool should read cleanly — no button, and no stomach count.
+    if (!this.alive) {
+      addModeButton(this.container, MODE_LABEL[dusty.mode], this.theme, 'dusty', bodyW, bodyH, this.textures);
     }
   }
 
