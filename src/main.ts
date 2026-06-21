@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20n (held tools show no mode plate / no Dusty count; toolbox icons fit at natural aspect — no squish — and tray numbers show a clean plate with no + badge)';
+const BUILD = 'build 2026-06-20o (city help no longer claims the mouse is captured — pointer lock was removed)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');
@@ -442,8 +442,8 @@ async function start(): Promise<void> {
 
   const CITY_HUD =
     `ToonTalk City — fly · land · walk\n` +
-    `click the city to take the controls (the mouse is captured; Esc = menu)\n` +
-    `mouse / arrow keys steer · left button / ↓ descends · right button / Shift / ↑ climbs\n` +
+    `mouse or arrow keys steer (re-centre the mouse to keep turning) · Esc = menu\n` +
+    `left button / ↓ descends · right button / Shift / ↑ climbs\n` +
     `street: walk any direction (every street) · up to a door enters the house · click or 's' sits on the grass\n` +
     `in the room: click (or walk to the front / 's') to sit & work · Esc steps back out\n` +
     `walk into the parked copter to take off · H calls the helicopter · Esc = leave menu`;
