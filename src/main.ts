@@ -52,7 +52,7 @@ import { getRenderMode, themeFor, type RenderMode } from './config/render-mode';
  * actually picked up the latest code (vs. a cached page). Bump it whenever you
  * want a visible "this is the new version" marker.
  */
-const BUILD = 'build 2026-06-20g (held Pumpy/Dusty sit at the fingertip of the pointing hand, above it — you see the whole tool, like Video 13)';
+const BUILD = 'build 2026-06-20h (space over empty no longer drops a held tool; a tool re-picked-up off the floor morphs to clay again; dev server doesn’t auto-open a browser)';
 
 function setHud(text: string): void {
   const hud = document.getElementById('hud');

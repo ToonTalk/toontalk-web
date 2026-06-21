@@ -622,6 +622,9 @@ export class DragController {
     // thing and click/space to apply it — rather than dragged-and-dropped.
     if (this.isTool(picked)) {
       this.heldTool = view;
+      this.justGrabbedTool = true; // this same click shouldn't also apply/drop it
+      view.setAlive(true); // morph Lego→clay in hand (was missing here, so a tool
+      // re-picked-up FROM THE FLOOR stayed Lego — holdTool from Tooly did set it)
       view.container.zIndex = 1000;
       const o = this.heldVec(view);
       this.world.moveThing(picked.id, { x: x + o.x, y: y + o.y });
@@ -741,8 +744,7 @@ export class DragController {
       this.nearestThing(x, y, 48, tool.thing.id);
     if (!target) {
       // Dusty in REVERSE spits its last sucked thing onto the empty floor here
-      // (it stays in hand); any other tool/mode treats an empty-floor click as
-      // "put the tool down". (resolveDrop ignores a null target, so spit here.)
+      // (it stays in hand). (resolveDrop ignores a null target, so spit here.)
       const t = tool.thing;
       if (t instanceof Dusty && t.mode === 'reverse' && t.stomach.length > 0) {
         const spat = t.stomach.pop()!;
@@ -751,9 +753,12 @@ export class DragController {
         return;
       }
       // Let the resolver speak for a no-target click (e.g. a bomb explains it
-      // needs a house) before the held thing is set down on the bare floor.
+      // needs a house).
       this.resolve(t, undefined, {});
-      this.putDownTool();
+      // A TOOL (wand/Dusty/Pumpy) over empty floor does NOTHING and STAYS in hand
+      // — point it at a thing to use it, press Esc to put it down. (Pressing space
+      // to "use" it must not drop it.) Only a carried ELEMENT is set on the floor.
+      if (!this.isTool(t)) this.putDownTool();
       return;
     }
     this.resolve(tool.thing, target, this.contextFor(target, x, y, tool.thing));
