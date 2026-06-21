@@ -1477,6 +1477,9 @@ async function start(): Promise<void> {
       );
       return;
     }
+    // NOTE(release): this multi-line cheatsheet is a DEV aid only. Per the project
+    // owner it stays for now, but it must NOT be shown by default in the shipping
+    // build — gate it behind a help key / the Log panel before final.
     setHud(
       `ToonTalk Web — Phase 4 · ${BUILD}\n` +
         `render mode: ${mode}\n` +
