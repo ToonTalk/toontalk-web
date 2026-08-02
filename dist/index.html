@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ToonTalk Web</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1b1b1f; overflow: hidden; }
+      #game-container { position: absolute; inset: 0; }
+      #hud {
+        position: absolute; top: 8px; left: 8px; z-index: 10;
+        font: 12px/1.4 system-ui, sans-serif; color: #fff;
+        background: rgba(0,0,0,0.45); padding: 6px 9px; border-radius: 6px;
+        pointer-events: none; white-space: pre;
+      }
+      #toolbar {
+        position: absolute; top: 8px; right: 8px; z-index: 10;
+        display: flex; gap: 6px; align-items: center;
+        font: 12px system-ui, sans-serif;
+      }
+      #toolbar a, #toolbar button {
+        font: 12px system-ui, sans-serif; color: #fff;
+        background: rgba(0,0,0,0.45); padding: 6px 9px; border-radius: 6px;
+        text-decoration: none; border: none; cursor: pointer;
+      }
+      #toolbar button:hover, #toolbar a:hover { background: rgba(0,0,0,0.65); }
+    </style>
+    <script type="module" crossorigin src="./assets/index-72odiR7y.js"></script>
+  </head>
+  <body>
+    <div id="game-container"></div>
+    <div id="hud">ToonTalk Web — starting…</div>
+    <div id="toolbar">
+      <a id="mode-toggle" href="#">render mode</a>
+      <button id="save-btn" type="button">Save</button>
+      <button id="load-btn" type="button">Load</button>
+      <button id="reset-btn" type="button">Reset</button>
+      <button id="log-btn" type="button">Log</button>
+      <button id="settings-btn" type="button">⚙ Settings</button>
+      <input id="load-input" type="file" accept="application/json" hidden />
+    </div>
+  </body>
+</html>
