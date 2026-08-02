@@ -8,6 +8,7 @@
  * public/assets/anim/<name>/NN.png and add a spec below.
  */
 import * as PIXI from 'pixi.js';
+import { assetUrl } from '../config/asset-url';
 import type { RenderTheme } from '../config/render-mode';
 
 interface AnimSpec {
@@ -58,7 +59,7 @@ export async function loadAnimations(theme: RenderTheme): Promise<void> {
     const texs: PIXI.Texture[] = [];
     for (let i = 0; i < count; i++) {
       try {
-        const t = await PIXI.Assets.load(`/assets/anim/${dir}/${String(i).padStart(2, '0')}.png`);
+        const t = await PIXI.Assets.load(assetUrl(`/assets/anim/${dir}/${String(i).padStart(2, '0')}.png`));
         t.baseTexture.scaleMode = scaleMode;
         texs.push(t);
       } catch {

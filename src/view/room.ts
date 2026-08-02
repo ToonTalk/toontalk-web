@@ -10,6 +10,7 @@
  * pick events; it never touches the model directly.
  */
 import * as PIXI from 'pixi.js';
+import { assetUrl } from '../config/asset-url';
 import type { Renderer } from './renderer';
 import type { RenderTheme } from '../config/render-mode';
 import type { Thing } from '../model/thing';
@@ -33,7 +34,7 @@ export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, 
   await Promise.all(
     ROOM_KEYS.map(async (key) => {
       try {
-        const tex = await PIXI.Assets.load(`/assets/room/${key}.png`);
+        const tex = await PIXI.Assets.load(assetUrl(`/assets/room/${key}.png`));
         tex.baseTexture.scaleMode = scaleMode;
         map.set(key, tex);
       } catch {
@@ -46,7 +47,7 @@ export async function loadRoomTextures(theme: RenderTheme): Promise<Map<string, 
   await Promise.all(
     (['a', 'b', 'c'] as const).map(async (s) => {
       try {
-        const tex = await PIXI.Assets.load(`/assets/city/floor-${s}.png`);
+        const tex = await PIXI.Assets.load(assetUrl(`/assets/city/floor-${s}.png`));
         tex.baseTexture.scaleMode = scaleMode;
         map.set(`floor-${s}`, tex);
       } catch {

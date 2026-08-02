@@ -8,6 +8,7 @@
  * Direction enum order); the landing helicopter has one.
  */
 import * as PIXI from 'pixi.js';
+import { assetUrl } from '../config/asset-url';
 import type { RenderTheme } from '../config/render-mode';
 
 interface SpriteMeta {
@@ -80,7 +81,7 @@ async function loadDirSpec(meta: SpriteMeta, scaleMode: PIXI.SCALE_MODES): Promi
     const frames: PIXI.Texture[] = [];
     for (let f = 0; f < meta.frameCounts[d]!; f++) {
       const t = await loadTex(
-        `/assets/city/${meta.name}/${d}/${String(f).padStart(2, '0')}.png`,
+        assetUrl(`/assets/city/${meta.name}/${d}/${String(f).padStart(2, '0')}.png`),
         scaleMode,
       );
       if (t) frames.push(t);
@@ -96,7 +97,7 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
     theme.scaleMode === 'nearest' ? PIXI.SCALE_MODES.NEAREST : PIXI.SCALE_MODES.LINEAR;
   let manifest: Manifest = {};
   try {
-    manifest = (await (await fetch('/assets/city/city-sprites.json')).json()) as Manifest;
+    manifest = (await (await fetch(assetUrl('/assets/city/city-sprites.json'))).json()) as Manifest;
   } catch {
     // fall back to sane defaults if the manifest is missing
   }
@@ -116,13 +117,13 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
   const tooly = await loadDirSpec(manifest['tooly'] ?? fallback('tooly', 8), scaleMode);
 
   const white = PIXI.Texture.WHITE;
-  const houseB = (await loadTex('/assets/city/house-b.png', scaleMode)) ?? white;
-  const houseC = (await loadTex('/assets/city/house-c.png', scaleMode)) ?? white;
-  const sideA = (await loadTex('/assets/city/house-a-side.png', scaleMode)) ?? white;
-  const sideB = (await loadTex('/assets/city/house-b-side.png', scaleMode)) ?? white;
-  const sideC = (await loadTex('/assets/city/house-c-side.png', scaleMode)) ?? white;
-  const heliParked = (await loadTex('/assets/city/heli-parked.png', scaleMode)) ?? white;
-  const tree = (await loadTex('/assets/city/tree.png', scaleMode)) ?? white;
+  const houseB = (await loadTex(assetUrl('/assets/city/house-b.png'), scaleMode)) ?? white;
+  const houseC = (await loadTex(assetUrl('/assets/city/house-c.png'), scaleMode)) ?? white;
+  const sideA = (await loadTex(assetUrl('/assets/city/house-a-side.png'), scaleMode)) ?? white;
+  const sideB = (await loadTex(assetUrl('/assets/city/house-b-side.png'), scaleMode)) ?? white;
+  const sideC = (await loadTex(assetUrl('/assets/city/house-c-side.png'), scaleMode)) ?? white;
+  const heliParked = (await loadTex(assetUrl('/assets/city/heli-parked.png'), scaleMode)) ?? white;
+  const tree = (await loadTex(assetUrl('/assets/city/tree.png'), scaleMode)) ?? white;
 
   // Ground brushes: always nearest-neighbour so the 8×8 stud pattern stays crisp.
   const brushes: Record<string, PIXI.Texture> = {};
@@ -133,22 +134,22 @@ export async function loadCityAssets(theme: RenderTheme): Promise<CityAssets> {
     water1: 'brush-water1', water2: 'brush-water2', water4: 'brush-water4',
   };
   for (const [key, file] of Object.entries(brushFiles)) {
-    const t = await loadTex(`/assets/city/${file}.png`, PIXI.SCALE_MODES.NEAREST);
+    const t = await loadTex(assetUrl(`/assets/city/${file}.png`), PIXI.SCALE_MODES.NEAREST);
     brushes[key] = t ?? white;
   }
 
   const floors: Record<string, PIXI.Texture> = {
-    a: (await loadTex('/assets/city/floor-a.png', scaleMode)) ?? white,
-    b: (await loadTex('/assets/city/floor-b.png', scaleMode)) ?? white,
-    c: (await loadTex('/assets/city/floor-c.png', scaleMode)) ?? white,
+    a: (await loadTex(assetUrl('/assets/city/floor-a.png'), scaleMode)) ?? white,
+    b: (await loadTex(assetUrl('/assets/city/floor-b.png'), scaleMode)) ?? white,
+    c: (await loadTex(assetUrl('/assets/city/floor-c.png'), scaleMode)) ?? white,
   };
-  const backwall = (await loadTex('/assets/city/backwall.png', scaleMode)) ?? white;
-  const wall = (await loadTex('/assets/city/wall.png', scaleMode)) ?? white;
-  const roomdoor = (await loadTex('/assets/city/roomdoor.png', scaleMode)) ?? white;
+  const backwall = (await loadTex(assetUrl('/assets/city/backwall.png'), scaleMode)) ?? white;
+  const wall = (await loadTex(assetUrl('/assets/city/wall.png'), scaleMode)) ?? white;
+  const roomdoor = (await loadTex(assetUrl('/assets/city/roomdoor.png'), scaleMode)) ?? white;
   const rooms: Record<string, PIXI.Texture> = {
-    a: (await loadTex('/assets/city/room-a.png', scaleMode)) ?? white,
-    b: (await loadTex('/assets/city/room-b.png', scaleMode)) ?? white,
-    c: (await loadTex('/assets/city/room-c.png', scaleMode)) ?? white,
+    a: (await loadTex(assetUrl('/assets/city/room-a.png'), scaleMode)) ?? white,
+    b: (await loadTex(assetUrl('/assets/city/room-b.png'), scaleMode)) ?? white,
+    c: (await loadTex(assetUrl('/assets/city/room-c.png'), scaleMode)) ?? white,
   };
 
   return {

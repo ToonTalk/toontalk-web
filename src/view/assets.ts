@@ -4,6 +4,7 @@
  */
 
 import * as PIXI from 'pixi.js';
+import { assetUrl } from '../config/asset-url';
 import type { RenderTheme } from '../config/render-mode';
 
 const SPRITE_KEYS = [
@@ -30,7 +31,7 @@ export async function loadAssets(theme: RenderTheme): Promise<LoadedAssets> {
   await Promise.all(
     SPRITE_KEYS.map(async (key) => {
       try {
-        const tex = await PIXI.Assets.load(`/assets/sprites/${key}.png`);
+        const tex = await PIXI.Assets.load(assetUrl(`/assets/sprites/${key}.png`));
         tex.baseTexture.scaleMode = scaleMode;
         textures.set(key, tex);
       } catch {
@@ -42,7 +43,7 @@ export async function loadAssets(theme: RenderTheme): Promise<LoadedAssets> {
 
   let background: PIXI.Texture;
   try {
-    background = await PIXI.Assets.load('/assets/backgrounds/city.png');
+    background = await PIXI.Assets.load(assetUrl('/assets/backgrounds/city.png'));
     background.baseTexture.scaleMode = scaleMode;
   } catch {
     background = PIXI.Texture.WHITE;

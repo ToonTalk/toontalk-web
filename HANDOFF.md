@@ -14,6 +14,11 @@ and the **original C++** in `C:\Users\toont\dev\source\` — *read it, don't gue
 - `npm install` (first time on a new machine), `npm run dev` (port 3000),
   `npm run typecheck` (strict), `npm test` (vitest — keep all green before commit),
   `npm run build`.
+- **Testing a production build:** `npm run build` then serve the repo and open
+  `…/dist/`. The build uses a **relative base** (`vite.config.ts`) and all runtime
+  assets go through `assetUrl()` (`src/config/asset-url.ts`), so `dist/` runs from
+  any sub-path. Rebuild before testing — a stale `dist/` silently shows an old
+  version (it is gitignored, so it never updates itself).
 - **Visual checks use the harness, NOT the preview screenshot tool**:
   `node tools/verify/snap.mjs …` (headless Chromium that pumps
   `__ttApp.ticker.update()`; the preview tab backgrounds rAF so the ticker/city

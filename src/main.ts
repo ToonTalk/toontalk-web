@@ -8,6 +8,7 @@
  */
 
 import { World } from './model/world';
+import { assetUrl } from './config/asset-url';
 import type { Thing } from './model/thing';
 import { NumberThing } from './model/number';
 import { TextThing } from './model/text';
@@ -653,7 +654,7 @@ async function start(): Promise<void> {
         'display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;' +
         'background:#3a4048;border:3px solid transparent;border-radius:10px;cursor:pointer;color:#fff';
       const img = document.createElement('img');
-      img.src = `/assets/city/head-${key}.png`;
+      img.src = assetUrl(`/assets/city/head-${key}.png`);
       img.style.cssText = 'width:74px;height:74px;object-fit:contain';
       const cap = document.createElement('div');
       cap.textContent = label;
